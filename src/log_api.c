@@ -19,7 +19,6 @@ aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, 
     char *buf = NULL;
     int64_t buf_len;
     char *b64_value = NULL;
-    int b64_len = 0;
     aos_buf_t *content = NULL;
     aos_status_t *s = NULL;
 
@@ -68,14 +67,15 @@ aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, 
     buf = aos_buf_list_content(options->pool, &buffer);
     md5 = aos_md5(options->pool, buf, (apr_size_t)buf_len);
     b64_value = aos_pcalloc(options->pool, 50);
-    while(*md5)
+    int loop = 0;
+    for(; loop < 16; ++loop)
     {
         unsigned char a = ((*md5)>>4) & 0xF, b = (*md5) & 0xF;
-        b64_value[b64_len++] = a > 9 ? (a - 10 + 'A') : (a + '0');
-        b64_value[b64_len++] = b > 9 ? (b - 10 + 'A') : (b + '0');
+        b64_value[loop<<1] = a > 9 ? (a - 10 + 'A') : (a + '0');
+        b64_value[(loop<<1)|1] = b > 9 ? (b - 10 + 'A') : (b + '0');
         ++md5;
     }
-    b64_value[b64_len] = '\0';
+    b64_value[loop<<1] = '\0';
     apr_table_set(headers, LOG_CONTENT_MD5, b64_value);
 
     s = log_post_logs_from_buffer(options, &project_name, &logstore_name, 
