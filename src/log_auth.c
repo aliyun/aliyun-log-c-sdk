@@ -263,9 +263,12 @@ int log_sign_request(aos_http_request_t *req,
         aos_get_gmt_str_time(datestr);
         apr_table_set(req->headers, LOG_DATE, datestr);
     }
-
     res = log_get_signed_headers(req->pool, &config->access_key_id, 
                                  &config->access_key_secret, &canon_res, req);
+    
+    
+    
+    
     return res;
 }
 
