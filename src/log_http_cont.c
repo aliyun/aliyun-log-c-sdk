@@ -7,7 +7,8 @@
 //
 
 #include "log_http_cont.h"
-
+#include "lz4.h"
+#include "log_auth.h"
 void log_clean_http_cont(log_http_cont* cont)
 {
     apr_pool_destroy(cont->root);
@@ -27,9 +28,9 @@ int _starts_with(const aos_string_t *str, const char *prefix) {
 log_buf* _compressed_buffer(apr_pool_t* pool,log_buf* before)
 {
     char *body = before->data;
-    int compress_bound = LZ4_compressBound(before->length);
+    int compress_bound = LZ4_compressBound((int)before->length);
     char *compress_data = aos_pcalloc(pool, compress_bound);
-    int compressed_size = LZ4_compress(body, compress_data, before->length);
+    int compressed_size = LZ4_compress(body, compress_data, (int)before->length);
     
     log_buf* after = aos_pcalloc(pool, sizeof(log_buf));
     
@@ -43,8 +44,7 @@ char* _get_url(apr_pool_t* pool,aos_string_t _endpoint,aos_string_t logstore_nam
     const char *proto;
     proto = _starts_with(&_endpoint, AOS_HTTP_PREFIX) ? AOS_HTTP_PREFIX : "";
     proto = _starts_with(&_endpoint, AOS_HTTPS_PREFIX) ? AOS_HTTPS_PREFIX : proto;
-    int32_t proto_len = strlen(proto);
-    char *resource = apr_psprintf(pool, "logstores/%.*s/shards/lb",(int)logstore_name.len, logstore_name.data);
+    int32_t proto_len = (int)strlen(proto);
     aos_string_t raw_endpoint = {_endpoint.len - proto_len,
         _endpoint.data + proto_len};
     char* host = apr_psprintf(pool, "%.*s.%.*s",
@@ -111,7 +111,7 @@ log_http_cont* log_create_http_cont(const char *endpoint, const char * accesskey
     }
     
     log_buf* buff = serialize_to_proto_buf(bder);
-    apr_table_set(headers, LOG_BODY_RAW_SIZE, apr_itoa(bder->root, buff->length));
+    apr_table_set(headers, LOG_BODY_RAW_SIZE, apr_itoa(bder->root, (int)buff->length));
     buff = _compressed_buffer(bder->root, buff);
     
     char* b64_value = _get_md5(bder->root, buff);
