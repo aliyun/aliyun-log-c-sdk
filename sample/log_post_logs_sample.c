@@ -165,6 +165,6 @@ void log_post_logs_sample2(){
 
 int main(int argc, char *argv[])
 {
-    printf("%lf\n",log_build_http_cont_test("/Users/wangjwchn/Downloads/sample_log.log"));
+    printf("%lf\n",log_build_http_cont_test(argv[1]));
     return 0;
 }
