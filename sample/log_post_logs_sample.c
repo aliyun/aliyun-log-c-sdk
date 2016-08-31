@@ -13,7 +13,7 @@ void log_post_logs_sample()
     aos_pool_t *p = NULL;
     aos_status_t *s = NULL;
     aos_pool_create(&p, NULL);
-
+    
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "__source__", "127.0.0.1");
     cJSON_AddStringToObject(root, "__topic__", "topic");
@@ -41,7 +41,7 @@ void log_post_logs_sample()
         printf("%s\n",s->error_code);
         printf("%s\n",s->error_msg);
         printf("%s\n",s->req_id);
-	    printf("put logs failed\n");
+        printf("put logs failed\n");
     }
     cJSON_Delete(root);
     aos_pool_destroy(p);
@@ -53,10 +53,11 @@ double log_build_http_cont_test(const char* path){
     
     FILE* f = fopen(path, "r");
     if(!f)  return -1;
-
+    
     const int content_number = 10*2000*28*2;
     char **buf = malloc(sizeof(char*)*content_number);
-    for(int i=0;i<content_number;i++){
+    int i;
+    for(i=0;i<content_number;i++){
         buf[i] = (char*)malloc(sizeof(char)*32);
     }
     char buffer[1024];
@@ -76,30 +77,34 @@ double log_build_http_cont_test(const char* path){
     
     clock_t start = clock();
     
-    for(int test_time = 0;test_time < 100;test_time++)
+    int test_time;
+    for(test_time = 0;test_time < 100;test_time++)
     {
-    
-    int log_buffer_index = 0;
-    for(int log_group_index = 0;log_group_index < 10;log_group_index++)
-    {
-        log_group_builder* bder = log_group_create();
-        for(int log_index = 0;log_index < 2000;log_index++)
+        
+        int log_buffer_index = 0;
+        int log_group_index;
+        for(log_group_index = 0;log_group_index < 10;log_group_index++)
         {
-            add_log(bder);
-            for(int content_index = 0;content_index < 28;content_index++)
+            log_group_builder* bder = log_group_create();
+            int log_index;
+            for(log_index = 0;log_index < 2000;log_index++)
             {
-                add_log_key_value(bder, buf[log_buffer_index], strlen(buf[log_buffer_index]), buf[log_buffer_index+1], strlen(buf[log_buffer_index+1]));
-                log_buffer_index+=2;
+                add_log(bder);
+                int content_index;
+                for(content_index = 0;content_index < 28;content_index++)
+                {
+                    add_log_key_value(bder, buf[log_buffer_index], strlen(buf[log_buffer_index]), buf[log_buffer_index+1], strlen(buf[log_buffer_index+1]));
+                    log_buffer_index+=2;
+                }
             }
+            log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
+            log_clean_http_cont(cont);
         }
-        log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
-        log_clean_http_cont(cont);
-    }
-
+        
     }
     clock_t end = clock();
     
-    for(int i=0;i<content_number;i++){
+    for(i=0;i<content_number;i++){
         free(buf[i]);
     }
     free(buf);
@@ -111,38 +116,40 @@ double log_build_http_cont_test(const char* path){
 }
 
 void log_post_logs_sample2(){
-
+    
     aos_status_t *s = NULL;
     log_group_builder* bder = log_group_create();
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
     
-    for(int i=0;i<256;i++){
+    int i;
+    for(i=0;i<256;i++){
         add_log(bder);
-        for(int j=0;j<256;j++){
+        int j;
+        for(j=0;j<256;j++){
             char k[] = "neiwnnv3crecimwerutueidkiewhfiwunmiencbwcwncweubyfwencwnbeifuhdsadsadsadsads";
             char v[] = "diwqdh8f32ddojsaihufuediamos,miesxcnudemiocdunbeiryndenmwioenwbrunworyhfjkjf8h753f";
             add_log_key_value(bder, k, strlen(k), v, strlen(v));
         }
     }
-
-
+    
+    
     /*
-    for(int i=0;i<20;i++){
-        add_log(bder);
-        for(int j=0;j<65536;j++){
-            char k[] = "k";
-            char v[] = "v";
-            add_log_key_value(bder, k, strlen(k), v, strlen(v));
-        }
-    }
+     for(int i=0;i<20;i++){
+     add_log(bder);
+     for(int j=0;j<65536;j++){
+     char k[] = "k";
+     char v[] = "v";
+     add_log_key_value(bder, k, strlen(k), v, strlen(v));
+     }
+     }
      */
     
     
-   //s = log_post_logs_from_proto_buf(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
+    //s = log_post_logs_from_proto_buf(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
     
-      log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
-     s =  log_post_logs_from_http_cont(cont);
+    log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
+    s =  log_post_logs_from_http_cont(cont);
     if (aos_status_is_ok(s)) {
         printf("post logs succeeded\n");
     } else {
@@ -153,7 +160,7 @@ void log_post_logs_sample2(){
         printf("put logs failed\n");
     }
     
-        log_clean_http_cont(cont);
+    log_clean_http_cont(cont);
 }
 
 int main(int argc, char *argv[])
