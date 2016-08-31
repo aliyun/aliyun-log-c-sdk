@@ -50,19 +50,11 @@ typedef struct _log_header_pair{
 } log_header_pair;
 
 typedef struct _log_http_cont{
-    char* proto;
-    char* host;
-    char* uri;
+    char* url;
     apr_table_t *headers;
     log_buf body;
     apr_pool_t *root;
 } log_http_cont;
-
-
-
-extern void log_http_cont_set_url(log_http_cont* cont,char* url);
-extern void log_http_cont_set_body(log_http_cont* cont,log_buf* body);
-extern void log_http_cont_set_header(log_http_cont* cont,char* h_k,char* h_v);
 
 
 extern log_buf* serialize_to_proto_buf(log_group_builder* bder);
@@ -74,4 +66,6 @@ extern void add_source(log_group_builder* bder,char* src,size_t len);
 extern void add_topic(log_group_builder* bder,char* tpc,size_t len);
 extern void add_log_time(log_group_builder* bder,uint32_t time);
 extern void add_log_key_value(log_group_builder* bder,char* v,size_t v_len,char* k,size_t k_len);
+
+
 #endif /* log_builder_h */

@@ -150,7 +150,7 @@ int aos_query_params_to_string(aos_pool_t *p, aos_table_t *query_params, aos_str
 
     // result
     querystr->data = (char *)querybuf->pos;
-    querystr->len = aos_buf_size(querybuf);
+    querystr->len = (int)aos_buf_size(querybuf);
     
     return AOSE_OK;
 }
@@ -223,7 +223,7 @@ int aos_base64_encode(const unsigned char *in, int inLen, char *out)
         in++, inLen--;
     }
 
-    return (out - original_out);
+    return (int)(out - original_out);
 }
 
 // HMAC-SHA-1:

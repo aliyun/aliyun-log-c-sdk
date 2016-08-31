@@ -116,6 +116,7 @@ INSTALL(FILES
   src/log_define.h
   src/log_util.h
   src/log_api.h
+  src/log_http_cont.h
   src/log_builder.h
   src/protobuf-c.h
   src/sls_logstores.pb-c.h

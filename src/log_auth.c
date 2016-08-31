@@ -266,9 +266,6 @@ int log_sign_request(aos_http_request_t *req,
     res = log_get_signed_headers(req->pool, &config->access_key_id, 
                                  &config->access_key_secret, &canon_res, req);
     
-    
-    
-    
     return res;
 }
 

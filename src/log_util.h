@@ -43,6 +43,11 @@ aos_status_t *log_post_logs_from_buffer(const log_request_options_t *options,
         aos_table_t *headers, 
         aos_table_t **resp_headers);
 aos_table_t* aos_table_create_if_null(const log_request_options_t *options, aos_table_t *table, int table_size);
-
+void log_init_request(const log_request_options_t *options,
+                      http_method_e method,
+                      aos_http_request_t **req,
+                      aos_table_t *params,
+                      aos_table_t *headers,
+                      aos_http_response_t **resp);
 LOG_CPP_END
 #endif

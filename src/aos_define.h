@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include <curl/curl.h>
+
 #include <apr_time.h>
 #include <apr_strings.h>
 #include <apr_pools.h>

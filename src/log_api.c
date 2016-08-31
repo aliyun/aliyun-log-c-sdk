@@ -7,100 +7,37 @@
 #include "log_util.h"
 #include "log_api.h"
 
-log_http_cont* log_get_http_cont(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken,const char* project,const char* logstore,log_group_builder* bder)
-{
-    aos_pool_t* tmp;
-    apr_pool_create(&tmp, NULL);
-    aos_http_request_t *req = (aos_http_request_t*)apr_palloc(tmp, sizeof(aos_http_request_t));
-    req->pool = tmp;
+aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont){
     
-    aos_string_t project_name, logstore_name;
-    aos_table_t *headers = NULL;
-    log_request_options_t *options = NULL;
+    aos_http_request_t *req = (aos_http_request_t*)apr_palloc(cont->root, sizeof(aos_http_request_t));
+    req->pool = cont->root;
+    req->headers = cont->headers;
+    req->body_len = cont->body.length;
+    req->method = HTTP_POST;
+    req->signed_url = cont->url;
+    req->file_path = NULL;
+    req->file_buf = NULL;
+    
+    log_request_options_t *options = log_request_options_create(cont->root);
+    
+    options->ctl = aos_http_controller_create(cont->root, 0);
+    options->ctl->pool = cont->root;
+    
     aos_list_t buffer;
-    unsigned char *md5 = NULL;
-    char *buf = NULL;
-    int64_t buf_len;
-    char *b64_value = NULL;
-    aos_buf_t *content = NULL;
-    aos_status_t *s = NULL;
-    
-    options = log_request_options_create(tmp);
-    options->config = log_config_create(tmp);
-    aos_str_set(&(options->config->endpoint), endpoint);
-    aos_str_set(&(options->config->access_key_id), accesskeyId);
-    aos_str_set(&(options->config->access_key_secret), accessKey);
-    if(stsToken != NULL)
-    {
-        aos_str_set(&(options->config->sts_token), stsToken);
-    }
-    options->ctl = aos_http_controller_create(tmp, 0);
-    headers = aos_table_make(options->pool, 5);
-    apr_table_set(headers, LOG_API_VERSION, "0.6.0");
-    apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
-    apr_table_set(headers, LOG_SIGNATURE_METHOD, "hmac-sha1");
-    apr_table_set(headers, LOG_CONTENT_TYPE, "application/x-protobuf");
-    aos_str_set(&project_name, project);
-    aos_str_set(&logstore_name, logstore);
-    
     aos_list_init(&buffer);
     
-    log_buf* buff = serialize_to_proto_buf(bder);
-    char *body = buff->data;
-    int org_body_size = (int)buff->length;
-    apr_table_set(headers, LOG_BODY_RAW_SIZE, apr_itoa(options->pool, org_body_size));
-    int compress_bound = LZ4_compressBound(org_body_size);
-    char *compress_data = aos_pcalloc(tmp, compress_bound);
-    int compressed_size = LZ4_compress(body, compress_data, org_body_size);
-    content = aos_buf_pack(tmp, compress_data, compressed_size);
+    aos_buf_t *content = aos_buf_pack(cont->root, cont->body.data, (int)cont->body.length);
     aos_list_add_tail(&content->node, &buffer);
-    
-    //add Content-MD5
-    buf_len = aos_buf_list_len(&buffer);
-    buf = aos_buf_list_content(tmp, &buffer);
-    md5 = aos_md5(tmp, buf, (apr_size_t)buf_len);
-    b64_value = aos_pcalloc(tmp, 50);
-    int loop = 0;
-    for(; loop < 16; ++loop)
-    {
-        unsigned char a = ((*md5)>>4) & 0xF, b = (*md5) & 0xF;
-        b64_value[loop<<1] = a > 9 ? (a - 10 + 'A') : (a + '0');
-        b64_value[(loop<<1)|1] = b > 9 ? (b - 10 + 'A') : (b + '0');
-        ++md5;
-    }
-    b64_value[loop<<1] = '\0';
-    apr_table_set(headers, LOG_CONTENT_MD5, b64_value);
-   
-    aos_http_response_t *resp = NULL;
-    aos_table_t *query_params = NULL;
-    headers = aos_table_create_if_null(options, headers, 0);
-    
-    query_params = aos_table_create_if_null(options, query_params, 0);
-    
-    log_post_logs_request(options, &project_name, &logstore_name, HTTP_POST,
-                          &req, query_params, headers, &resp);
     log_write_request_body_from_buffer(&buffer, req);
     
-    int res = AOSE_OK;
-    s = aos_status_create(options->pool);
-    res = log_sign_request(req, options->config);
-
-    log_http_cont* cont_out = (log_http_cont*)apr_palloc(req->pool, sizeof(log_http_cont));
-    cont_out->body.data = compress_data;
-    cont_out->body.length = compressed_size;
-    cont_out->root = req->pool;
-    cont_out->headers = req->headers;
-    cont_out->host = req->host;
-    cont_out->proto = req->proto;
-    cont_out->uri = req->uri;
+    aos_http_response_t *resp = aos_http_response_create(options->pool);
     
-    return cont_out;
+    req->read_body = aos_read_http_body_memory;
+    aos_status_t* s = log_send_request(options->ctl, req, resp);
+    
+    return s;
 }
 
-void log_clean_http_cont(log_http_cont* cont)
-{
-    apr_pool_destroy(cont->root);
-}
 
 aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder)
 {
@@ -254,7 +191,7 @@ aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, 
     b64_value[loop<<1] = '\0';
     apr_table_set(headers, LOG_CONTENT_MD5, b64_value);
 
-    s = log_post_logs_from_buffer(options, &project_name, &logstore_name, 
+    s = log_post_logs_from_buffer(options, &project_name, &logstore_name,
 				   &buffer, headers, &resp_headers);
     free(body);
     return s;

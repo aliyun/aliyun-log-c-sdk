@@ -10,7 +10,6 @@
 
 log_group_builder* log_group_create()
 {
-    apr_pool_initialize();
     apr_pool_t *tmp;
     apr_pool_create(&tmp, NULL);
     log_group_builder* bder = (log_group_builder*)apr_palloc(tmp,sizeof(log_group_builder));

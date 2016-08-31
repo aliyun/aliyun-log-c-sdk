@@ -66,6 +66,9 @@ void log_post_logs_uri(const log_request_options_t *options,
     req->host = apr_psprintf(options->pool, "%.*s.%.*s",
             project->len, project->data, 
             raw_endpoint.len, raw_endpoint.data);
+    
+    //req->uri = apr_psprintf(options->pool, "%.*s%.*s/logstores/%.*s/shards/lb", (int)strlen(req->proto),req->proto,(int)strlen(req->host), req->host,logstore->len, logstore->data);
+    
     req->uri = apr_psprintf(options->pool, "logstores/%.*s/shards/lb", logstore->len, logstore->data);
 }
 

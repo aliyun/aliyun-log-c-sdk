@@ -3,7 +3,7 @@
 
 #include "aos_define.h"
 #include "aos_buf.h"
-
+#include <curl/curl.h>
 AOS_CPP_START
 
 typedef struct aos_http_request_s aos_http_request_t;
