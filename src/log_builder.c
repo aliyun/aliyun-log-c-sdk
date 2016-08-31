@@ -34,7 +34,7 @@ void add_log(log_group_builder* bder)
     *bder->grp->logs[bder->grp->n_logs] = (log_lg)log_lg_init;
     bder->lg = bder->grp->logs[bder->grp->n_logs];
     bder->grp->n_logs++;
-    if((bder->grp->n_logs & bder->grp->n_logs - 1) == 0
+    if((bder->grp->n_logs & (bder->grp->n_logs - 1)) == 0
        &&bder->grp->n_logs>=INIT_LOG_NUMBER_IN_LOGGROUP){
         log_lg** tmp = apr_palloc(bder->root,sizeof(log_lg*)*bder->grp->n_logs<<1);
         memcpy(tmp, bder->grp->logs,sizeof(log_lg*)*bder->grp->n_logs);
@@ -71,7 +71,7 @@ void lg_end(log_group_builder* bder)
     }
     bder->grp->logs[bder->grp->n_logs] = bder->lg;
     bder->grp->n_logs++;
-    if((bder->grp->n_logs & bder->grp->n_logs - 1) == 0
+    if((bder->grp->n_logs & (bder->grp->n_logs - 1)) == 0
        &&bder->grp->n_logs>=INIT_LOG_NUMBER_IN_LOGGROUP){
         log_lg** tmp = apr_palloc(bder->root,sizeof(log_lg*)*bder->grp->n_logs<<1);
         memcpy(tmp, bder->grp->logs,sizeof(log_lg*)*bder->grp->n_logs);
@@ -104,7 +104,7 @@ void add_log_key_value(log_group_builder* bder,char* k,size_t v_len,char* v,size
     }
     bder->lg->contents[bder->lg->n_contents] = con;
     bder->lg->n_contents++;
-    if((bder->lg->n_contents & bder->lg->n_contents - 1) == 0
+    if((bder->lg->n_contents & (bder->lg->n_contents - 1)) == 0
        &&bder->lg->n_contents>=INIT_KVPAIR_NUMBER_IN_LOG){
         log_content** tmp = apr_palloc(bder->root,sizeof(log_content*)*bder->lg->n_contents<<1);
         memcpy(tmp, bder->lg->contents,sizeof(log_content*)*bder->lg->n_contents);
