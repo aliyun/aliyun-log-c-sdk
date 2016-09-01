@@ -107,7 +107,10 @@ log_post_logs_from_proto_buf("LOG_ENDPOINT", "ACCESS_KEY_ID","ACCESS_KEY_SECRET"
 
 ```
 
-###如果不需要此SDk执行发送逻辑，则可以用一下接口，获得要发送的请求的内容：
+
+## 构造
+ - 如果不需要此SDk执行发送逻辑，则可以用一下接口，获得要发送的请求的内容：
+ 
 #### 构造Http包内容
 
 ```
@@ -117,9 +120,9 @@ log_http_cont* cont =  log_create_http_cont("LOG_ENDPOINT", "ACCESS_KEY_ID","ACC
 
 `log_http_cont`包括：
 
- - Url(char\*)
- - Header(apr_table)
- - Body({void\* buf,size_t length})
+ - `char* url`
+ - `apr_table_t* header`
+ - `void* body,size_t body_length`
  
 注意：log_http_cont 和 log_group_builder 共用一个内存池，所以构造`log_http_cont`后，调用`log_group_destroy`或`log_clean_http_cont`中任一个都将同时销毁`builder`和`http_cont`.
 
