@@ -65,7 +65,7 @@ extern void* pack_protobuf(log_group_builder* bder);
 extern void add_source(log_group_builder* bder,char* src,size_t len);
 extern void add_topic(log_group_builder* bder,char* tpc,size_t len);
 extern void add_log_time(log_group_builder* bder,uint32_t time);
-extern void add_log_key_value(log_group_builder* bder,char* v,size_t v_len,char* k,size_t k_len);
+extern void add_log_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len);
 
 
 #endif /* log_builder_h */

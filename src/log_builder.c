@@ -81,7 +81,7 @@ void lg_end(log_group_builder* bder)
     *bder->lg = (log_lg)log_lg_init;
 }
 
-void add_log_key_value(log_group_builder* bder,char* k,size_t v_len,char* v,size_t k_len)
+void add_log_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len)
 {
     char* key   = (char*)apr_palloc(bder->root, sizeof(char)*(k_len+1));
     char* value = (char*)apr_palloc(bder->root, sizeof(char)*(v_len+1));

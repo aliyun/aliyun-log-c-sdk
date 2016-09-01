@@ -117,34 +117,25 @@ double log_build_http_cont_test(const char* path){
 
 void log_post_logs_sample2(){
     
+    if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
+        exit(1);
+    }
+    
     aos_status_t *s = NULL;
     log_group_builder* bder = log_group_create();
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
     
     int i;
-    for(i=0;i<256;i++){
+    for(i=0;i<3;i++){
         add_log(bder);
         int j;
-        for(j=0;j<256;j++){
-            char k[] = "neiwnnv3crecimwerutueidkiewhfiwunmiencbwcwncweubyfwencwnbeifuhdsadsadsadsads";
-            char v[] = "diwqdh8f32ddojsaihufuediamos,miesxcnudemiocdunbeiryndenmwioenwbrunworyhfjkjf8h753f";
+        for(j=0;j<5;j++){
+            char k[] = "_k_";
+            char v[] = "_v_";
             add_log_key_value(bder, k, strlen(k), v, strlen(v));
         }
     }
-    
-    
-    /*
-     for(int i=0;i<20;i++){
-     add_log(bder);
-     for(int j=0;j<65536;j++){
-     char k[] = "k";
-     char v[] = "v";
-     add_log_key_value(bder, k, strlen(k), v, strlen(v));
-     }
-     }
-     */
-    
     
     //s = log_post_logs_from_proto_buf(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
     
@@ -161,10 +152,12 @@ void log_post_logs_sample2(){
     }
     
     log_clean_http_cont(cont);
+    
+    aos_http_io_deinitialize();
 }
 
 int main(int argc, char *argv[])
 {
-    printf("%lf\n",log_build_http_cont_test(argv[1]));
+    log_post_logs_sample2();
     return 0;
 }
