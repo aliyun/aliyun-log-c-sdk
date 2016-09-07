@@ -19,14 +19,14 @@
 
 #define INIT_KVPAIR_NUMBER_IN_LOG        8
 #define INIT_LOG_NUMBER_IN_LOGGROUP      8
-#define log_group                 LogLogstores__LogGroup
-#define log_group_init            LOG_LOGSTORES__LOG_GROUP__INIT
-#define log_content               LogLogstores__Log__Content
-#define log_content_init          LOG_LOGSTORES__LOG__CONTENT__INIT
-#define log_lg                    LogLogstores__Log
-#define log_lg_init               LOG_LOGSTORES__LOG__INIT
-#define log_get_packed_size       log_logstores__log_group__get_packed_size
-#define log_pack                  log_logstores__log_group__pack
+#define log_group                 LogGroup
+#define log_group_init            LOG_GROUP__INIT
+#define log_content               Log__Content
+#define log_content_init          LOG__CONTENT__INIT
+#define log_lg                    _Log
+#define log_lg_init               LOG__INIT
+#define log_get_packed_size       log_group__get_packed_size
+#define log_pack                  log_group__pack
 
 #define _new(type, ...) ({\
 type* __t = (type*) malloc(sizeof(type));\
