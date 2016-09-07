@@ -15,18 +15,18 @@
 #include <apr_pools.h>
 #include <apr_tables.h>
 #include <apr_file_io.h>
-#include "sls_logstores.pb-c.h"
+#include "log_logstores.pb-c.h"
 
 #define INIT_KVPAIR_NUMBER_IN_LOG        8
 #define INIT_LOG_NUMBER_IN_LOGGROUP      8
-#define log_group                 SlsLogstores__LogGroup
-#define log_group_init            SLS_LOGSTORES__LOG_GROUP__INIT
-#define log_content               SlsLogstores__Log__Content
-#define log_content_init          SLS_LOGSTORES__LOG__CONTENT__INIT
-#define log_lg                    SlsLogstores__Log
-#define log_lg_init               SLS_LOGSTORES__LOG__INIT
-#define log_get_packed_size       sls_logstores__log_group__get_packed_size
-#define log_pack                  sls_logstores__log_group__pack
+#define log_group                 LogLogstores__LogGroup
+#define log_group_init            LOG_LOGSTORES__LOG_GROUP__INIT
+#define log_content               LogLogstores__Log__Content
+#define log_content_init          LOG_LOGSTORES__LOG__CONTENT__INIT
+#define log_lg                    LogLogstores__Log
+#define log_lg_init               LOG_LOGSTORES__LOG__INIT
+#define log_get_packed_size       log_logstores__log_group__get_packed_size
+#define log_pack                  log_logstores__log_group__pack
 
 #define _new(type, ...) ({\
 type* __t = (type*) malloc(sizeof(type));\
