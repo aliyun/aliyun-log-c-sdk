@@ -120,7 +120,8 @@ void post_logs_with_http_cont(){
     log_group_builder* bder = log_group_create();
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
-
+    add_tag_key_value(bder,"mTag_key",sizeof("mTag_key"),"mTag_value",sizeof("mTag_value"));
+    
     int i;
     for(i=0;i<3;i++){
         add_log(bder);

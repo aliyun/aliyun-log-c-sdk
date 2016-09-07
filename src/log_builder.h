@@ -25,6 +25,8 @@
 #define log_content_init          LOG__CONTENT__INIT
 #define log_lg                    Log
 #define log_lg_init               LOG__INIT
+#define log_tag                   LogTag
+#define log_tag_init              LOG_TAG__INIT
 #define log_get_packed_size       log_group__get_packed_size
 #define log_pack                  log_group__pack
 
@@ -64,6 +66,7 @@ extern void add_log(log_group_builder* bder);
 extern void* pack_protobuf(log_group_builder* bder);
 extern void add_source(log_group_builder* bder,char* src,size_t len);
 extern void add_topic(log_group_builder* bder,char* tpc,size_t len);
+extern void add_tag_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len);
 extern void add_log_time(log_group_builder* bder,uint32_t time);
 extern void add_log_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len);
 

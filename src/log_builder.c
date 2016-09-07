@@ -63,6 +63,35 @@ void add_topic(log_group_builder* bder,char* tpc,size_t len)
     bder->grp->topic = topic;
 }
 
+void add_tag_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len)
+{
+    char* key   = (char*)apr_palloc(bder->root, sizeof(char)*(k_len+1));
+    char* value = (char*)apr_palloc(bder->root, sizeof(char)*(v_len+1));
+    memcpy(key  , k, k_len);
+    memcpy(value, v, v_len);
+    key[k_len]   = '\0';
+    value[v_len] = '\0';
+    log_tag* tag = (log_tag*)apr_palloc(bder->root,sizeof(log_tag));
+    *tag = (log_tag)log_tag_init;
+    tag->key = key;
+    tag->value = value;
+
+   if(!bder->grp->logtags){
+         bder->grp->logtags = (log_tag**)apr_palloc(bder->root,sizeof(log_tag*)*INIT_KVPAIR_NUMBER_IN_LOG);
+         bder->grp->n_logtags = 0;
+     }
+     bder->grp->logtags[bder->grp->n_logtags] = tag;
+     bder->grp->n_logtags++;
+     if((bder->grp->n_logtags & (bder->grp->n_logtags - 1)) == 0
+        &&bder->grp->n_logtags>=INIT_KVPAIR_NUMBER_IN_LOG){
+         log_tag** tmp = apr_palloc(bder->root,sizeof(log_tag*)*(bder->grp->n_logtags<<1));
+         memcpy(tmp, bder->grp->logtags,sizeof(log_tag*)*bder->grp->n_logtags);
+         bder->grp->logtags = tmp;  //memory usage issue
+
+     }
+
+}
+
 void add_log_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len)
 {
     char* key   = (char*)apr_palloc(bder->root, sizeof(char)*(k_len+1));
