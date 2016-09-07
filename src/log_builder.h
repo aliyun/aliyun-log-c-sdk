@@ -40,8 +40,8 @@ typedef struct _log_buf{
 
 typedef struct _log_group_builder{
     apr_pool_t *root;
-    log_group* grp;
-    log_lg* lg;
+    struct log_group* grp;
+    struct log_lg* lg;
 }log_group_builder;
 
 typedef struct _log_header_pair{
