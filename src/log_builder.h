@@ -23,7 +23,7 @@
 #define log_group_init            LOG_GROUP__INIT
 #define log_content               Log__Content
 #define log_content_init          LOG__CONTENT__INIT
-#define log_lg                    _Log
+#define log_lg                    Log
 #define log_lg_init               LOG__INIT
 #define log_get_packed_size       log_group__get_packed_size
 #define log_pack                  log_group__pack
@@ -40,8 +40,8 @@ typedef struct _log_buf{
 
 typedef struct _log_group_builder{
     apr_pool_t *root;
-    struct log_group* grp;
-    struct log_lg* lg;
+    log_group* grp;
+    log_lg* lg;
 }log_group_builder;
 
 typedef struct _log_header_pair{

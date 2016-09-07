@@ -6,7 +6,7 @@
 #define PROTOBUF_C__NO_DEPRECATED
 #endif
 
-#include "log_logstore.pb-c.h"
+#include "log_logstores.pb-c.h"
 void   log__content__init
                      (Log__Content         *message)
 {
