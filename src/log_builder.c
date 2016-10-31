@@ -47,7 +47,7 @@ void add_log_time(log_group_builder* bder,uint32_t time)
     bder->lg->time = (uint32_t)time;
 }
 
-void add_source(log_group_builder* bder,char* src,size_t len)
+void add_source(log_group_builder* bder,const char* src,size_t len)
 {
     char* source = (char*)apr_palloc(bder->root, sizeof(char)*(len+1));
     memcpy(source, src, len);
@@ -55,7 +55,7 @@ void add_source(log_group_builder* bder,char* src,size_t len)
     bder->grp->source = source;
 }
 
-void add_topic(log_group_builder* bder,char* tpc,size_t len)
+void add_topic(log_group_builder* bder,const char* tpc,size_t len)
 {
     char* topic = (char*)apr_palloc(bder->root, sizeof(char)*(len+1));
     memcpy(topic, tpc, len);
@@ -63,7 +63,7 @@ void add_topic(log_group_builder* bder,char* tpc,size_t len)
     bder->grp->topic = topic;
 }
 
-void add_log_key_value(log_group_builder* bder,char* k,size_t k_len,char* v,size_t v_len)
+void add_log_key_value(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len)
 {
     char* key   = (char*)apr_palloc(bder->root, sizeof(char)*(k_len+1));
     char* value = (char*)apr_palloc(bder->root, sizeof(char)*(v_len+1));
