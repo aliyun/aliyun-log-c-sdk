@@ -8,6 +8,10 @@
 #ifndef LOG_BUILDER_H
 #define LOG_BUILDER_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdlib.h>
 #include <time.h>
 #include <apr_time.h>
@@ -67,5 +71,8 @@ extern void add_topic(log_group_builder* bder,const char* tpc,size_t len);
 extern void add_log_time(log_group_builder* bder,uint32_t time);
 extern void add_log_key_value(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* log_builder_h */
