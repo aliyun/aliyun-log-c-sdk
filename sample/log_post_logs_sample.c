@@ -8,6 +8,46 @@
 #include "log_config.h"
 #include <time.h>
 #include <stdlib.h>
+
+log_post_option g_log_option;
+
+
+void post_logs_with_json_with_option()
+{
+    aos_pool_t *p = NULL;
+    aos_status_t *s = NULL;
+    aos_pool_create(&p, NULL);
+    
+    g_log_option.interface = "eth0";
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "__source__", "127.0.0.1");
+    cJSON_AddStringToObject(root, "__topic__", "topic");
+    cJSON *logs = cJSON_CreateArray();
+    cJSON_AddItemToObject(root, "__logs__", logs);
+    cJSON *log1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(log1, "level", "error1");
+    cJSON_AddStringToObject(log1, "message", "c sdk test message1");
+    cJSON_AddNumberToObject(log1, "__time__", apr_time_now()/1000000);
+    cJSON *log2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(log2, "level", "error2");
+    cJSON_AddStringToObject(log2, "message", "c sdk test message2");
+    cJSON_AddNumberToObject(log2, "__time__", apr_time_now()/1000000);
+    cJSON_AddItemToArray(logs, log1);
+    cJSON_AddItemToArray(logs, log2);
+    s = log_post_logs_with_option(p, LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, PROJECT_NAME, LOGSTORE_NAME, root, &g_log_option);
+    if (aos_status_is_ok(s)) {
+        printf("post logs succeeded\n");
+    } else {
+        printf("%d\n",s->code);
+        printf("%s\n",s->error_code);
+        printf("%s\n",s->error_msg);
+        printf("%s\n",s->req_id);
+        printf("put logs failed\n");
+    }
+    cJSON_Delete(root);
+    aos_pool_destroy(p);
+}
+
 void post_logs_with_json()
 {
     aos_pool_t *p = NULL;
@@ -109,7 +149,45 @@ double test_build_speed_second(const char* path){
     
 }
 
-    
+void post_logs_with_http_cont_log_option(){
+
+    if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
+        exit(1);
+    }
+
+    aos_status_t *s = NULL;
+    log_group_builder* bder = log_group_create();
+    add_source(bder,"mSource",sizeof("mSource"));
+    add_topic(bder,"mTopic", sizeof("mTopic"));
+
+    g_log_option.interface = "eth0";
+    int i;
+    for(i=0;i<3;i++){
+        add_log(bder);
+        int j;
+        for(j=0;j<5;j++){
+            char k[] = {i*j + 'a'};
+            char v[] = {2*j + 'a'} ;
+            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+        }
+    }
+    log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
+    s =  log_post_logs_from_http_cont_with_option(cont, &g_log_option);
+    if (aos_status_is_ok(s)) {
+        printf("post logs succeeded\n");
+    } else {
+        printf("%d\n",s->code);
+        printf("%s\n",s->error_code);
+        printf("%s\n",s->error_msg);
+        printf("%s\n",s->req_id);
+        printf("put logs failed\n");
+    }
+
+    log_clean_http_cont(cont);
+
+    aos_http_io_deinitialize();
+}
+
 void post_logs_with_http_cont(){
 
     if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
@@ -147,6 +225,46 @@ void post_logs_with_http_cont(){
 
     aos_http_io_deinitialize();
 }
+void post_logs_with_proto_buffer_with_option(){
+      
+    if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
+        exit(1);
+    }
+    
+    aos_status_t *s = NULL;
+    log_group_builder* bder = log_group_create();
+    add_source(bder,"mSource",sizeof("mSource"));
+    add_topic(bder,"mTopic", sizeof("mTopic"));
+    
+    int i;
+    for(i=0;i<3;i++){
+        add_log(bder);
+        int j;
+        for(j=0;j<5;j++){
+            char k[] = {i*j + 'a'};
+            char v[] = {2*j + 'a'} ;
+            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+        }
+    }
+    g_log_option.interface = "eth0";
+    s = log_post_logs_from_proto_buf_with_option(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder, &g_log_option);
+    
+    if (aos_status_is_ok(s)) {
+        printf("post logs succeeded\n");
+    } else {
+        printf("%d\n",s->code);
+        printf("%s\n",s->error_code);
+        printf("%s\n",s->error_msg);
+        printf("%s\n",s->req_id);
+        printf("put logs failed\n");
+    }
+    
+    log_group_destroy(bder);
+    
+    aos_http_io_deinitialize();
+}
+
+
 void post_logs_with_proto_buffer(){
       
     if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
@@ -189,6 +307,7 @@ void post_logs_with_proto_buffer(){
 
 int main(int argc, char *argv[])
 {
-    post_logs_with_http_cont();
+    post_logs_with_proto_buffer_with_option();
+    post_logs_with_http_cont_log_option();
     return 0;
 }

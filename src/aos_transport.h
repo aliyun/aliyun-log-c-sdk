@@ -43,7 +43,8 @@ struct aos_http_transport_options_s {
     int64_t first_byte_time;                    \
     int64_t finish_time;                        \
     uint32_t owner:1;                           \
-    void *user_data;
+    void *user_data;                            \
+    char * interface;
 
 struct aos_http_controller_s {
     AOS_HTTP_BASE_CONTROLLER_DEFINE
@@ -118,7 +119,8 @@ typedef enum {
     aos_transport_state_e state;                 \
     aos_array_header_t *cleanup;                 \
     aos_http_transport_options_t *options;       \
-    aos_http_controller_ex_t *controller;
+    aos_http_controller_ex_t *controller;        \
+    char * interface;
     
 struct aos_http_transport_s {
     AOS_HTTP_BASE_TRANSPORT_DEFINE

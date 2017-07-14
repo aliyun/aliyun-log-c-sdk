@@ -349,6 +349,11 @@ int aos_curl_transport_setup(aos_curl_http_transport_t *t)
     curl_easy_setopt_safe(CURLOPT_TCP_NODELAY, 1);
     curl_easy_setopt_safe(CURLOPT_NETRC, CURL_NETRC_IGNORED);
 
+    // interface
+    if (t->interface != NULL){
+        curl_easy_setopt_safe(CURLOPT_INTERFACE, t->interface);
+    }
+
     // transport options
     curl_easy_setopt_safe(CURLOPT_SSL_VERIFYPEER, 0);
     curl_easy_setopt_safe(CURLOPT_USERAGENT, t->options->user_agent);

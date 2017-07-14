@@ -7,7 +7,7 @@
 #include "log_util.h"
 #include "log_api.h"
 
-aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont){
+aos_status_t* log_post_logs_from_http_cont_with_option(log_http_cont* cont, log_post_option * logPostOption){
     
     aos_http_request_t *req = (aos_http_request_t*)apr_palloc(cont->root, sizeof(aos_http_request_t));
     req->pool = cont->root;
@@ -22,7 +22,9 @@ aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont){
     
     options->ctl = aos_http_controller_create(cont->root, 0);
     options->ctl->pool = cont->root;
-    
+    if (logPostOption != NULL){
+        options->ctl->interface = (char *)logPostOption->interface;
+    }    
     aos_list_t buffer;
     aos_list_init(&buffer);
     
@@ -38,8 +40,7 @@ aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont){
     return s;
 }
 
-
-aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder)
+aos_status_t *log_post_logs_from_proto_buf_with_option(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder, log_post_option * logPostOption)
 {
     aos_pool_t *p = bder->root;
     aos_string_t project_name, logstore_name;
@@ -64,6 +65,9 @@ aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * ac
         aos_str_set(&(options->config->sts_token), stsToken);
     }
     options->ctl = aos_http_controller_create(options->pool, 0);
+    if (logPostOption != NULL){
+        options->ctl->interface = (char *)logPostOption->interface;
+    }
     headers = aos_table_make(p, 5);
     apr_table_set(headers, LOG_API_VERSION, "0.6.0");
     apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
@@ -120,8 +124,7 @@ aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * ac
     
 }
 
-
-aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, cJSON *root)
+aos_status_t *log_post_logs_with_sts_token_with_option(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, cJSON *root, log_post_option * logPostOption)
 {
     aos_string_t project_name, logstore_name;
     aos_table_t *headers = NULL;
@@ -145,6 +148,9 @@ aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, 
         aos_str_set(&(options->config->sts_token), stsToken);
     }
     options->ctl = aos_http_controller_create(options->pool, 0);
+    if (logPostOption != NULL){
+        options->ctl->interface = (char *)logPostOption->interface;
+    }
     headers = aos_table_make(p, 5);
     apr_table_set(headers, LOG_API_VERSION, "0.6.0");
     apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
@@ -196,7 +202,32 @@ aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, 
     free(body);
     return s;
 }
+
+aos_status_t *log_post_logs_with_option(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *project, const char *logstore, cJSON *root, log_post_option * logPostOption)
+{
+    return log_post_logs_with_sts_token_with_option(p, endpoint, accesskeyId, accessKey, NULL, project, logstore, root, logPostOption);
+}
+
+
+
+
+aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, cJSON *root)
+{
+    return log_post_logs_with_sts_token_with_option(p, endpoint, accesskeyId, accessKey, stsToken, project, logstore, root, NULL);
+
+}
+
+aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder)
+{
+    return log_post_logs_from_proto_buf_with_option(endpoint, accesskeyId, accessKey, stsToken, project, logstore, bder, NULL);
+}
+
+aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont)
+{
+    return log_post_logs_from_http_cont_with_option(cont, NULL);
+}
+
 aos_status_t *log_post_logs(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *project, const char *logstore, cJSON *root)
 {
-    return log_post_logs_with_sts_token(p, endpoint, accesskeyId, accessKey, NULL, project, logstore, root);
+    return log_post_logs_with_option(p, endpoint, accesskeyId, accessKey, project, logstore, root, NULL);
 }

@@ -322,6 +322,7 @@ int aos_http_send_request(aos_http_controller_t *ctl, aos_http_request_t *req, a
     t->req = req;
     t->resp = resp;
     t->controller = (aos_http_controller_ex_t *)ctl;
+    t->interface = ctl->interface;
     
     return aos_http_transport_perform(t);
 }
