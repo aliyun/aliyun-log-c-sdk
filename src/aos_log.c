@@ -5,6 +5,19 @@ aos_log_print_pt  aos_log_print = aos_log_print_default;
 aos_log_format_pt aos_log_format = aos_log_format_default;
 aos_log_level_e   aos_log_level = AOS_LOG_WARN;
 
+
+static const char * _aos_log_level_str[] = {
+        "NONE",
+        "NONE",
+        "FATAL",
+        "ERROR",
+        "WARN",
+        "INFO",
+        "DEBUG",
+        "TRACE",
+        "NONE"
+};
+
 extern apr_file_t *aos_stderr_file;
 
 void aos_log_set_print(aos_log_print_pt p)
@@ -54,11 +67,14 @@ void aos_log_format_default(int level,
     if ((s = apr_time_exp_lt(&tm, t)) != APR_SUCCESS) {
         return;
     }
+
+
     
-    len = snprintf(buffer, 4090, "[%04d-%02d-%02d %02d:%02d:%02d.%03d] %" APR_INT64_T_FMT " %s:%d ",
+    len = snprintf(buffer, 4090, "[%04d-%02d-%02d %02d:%02d:%02d.%03d] [%s] [%d] [%s:%d] ",
                    tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                    tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_usec/1000,
-                   (int64_t)apr_os_thread_current(), file, line);
+                   _aos_log_level_str[level],
+                   ((uint32_t)apr_os_thread_current()) & 0xFFFFFF, file, line);
     
     va_start(args, fmt);
     len += vsnprintf(buffer + len, 4090 - len, fmt, args);

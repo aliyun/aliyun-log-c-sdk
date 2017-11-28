@@ -22,14 +22,17 @@ LOG_CPP_START
 
 #define INIT_KVPAIR_NUMBER_IN_LOG        8
 #define INIT_LOG_NUMBER_IN_LOGGROUP      8
-#define log_group                 LogLogstores__LogGroup
-#define log_group_init            LOG_LOGSTORES__LOG_GROUP__INIT
-#define log_content               LogLogstores__Log__Content
-#define log_content_init          LOG_LOGSTORES__LOG__CONTENT__INIT
-#define log_lg                    LogLogstores__Log
-#define log_lg_init               LOG_LOGSTORES__LOG__INIT
-#define log_get_packed_size       log_logstores__log_group__get_packed_size
-#define log_pack                  log_logstores__log_group__pack
+#define INIT_TAG_NUMBER_IN_LOGGROUP      4
+#define log_group                 SlsLogs__LogGroup
+#define log_group_init            SLS_LOGS__LOG_GROUP__INIT
+#define log_content               SlsLogs__Log__Content
+#define log_content_init          SLS_LOGS__LOG__CONTENT__INIT
+#define log_lg                    SlsLogs__Log
+#define log_lg_init               SLS_LOGS__LOG__INIT
+#define log_get_packed_size       sls_logs__log_group__get_packed_size
+#define log_pack                  sls_logs__log_group__pack
+#define log_tag                   SlsLogs__LogTag
+#define log_tag_init              SLS_LOGS__LOG_TAG__INIT
 
 #define _new(type, ...) ({\
 type* __t = (type*) malloc(sizeof(type));\
@@ -37,14 +40,21 @@ type* __t = (type*) malloc(sizeof(type));\
 __t; })
 
 typedef struct _log_buf{
-    void* data;
+    void * data;
     size_t length;
 }log_buf;
+
+typedef struct _lz4_log_buf{
+    size_t length;
+    size_t raw_length;
+    unsigned char data[0];
+}lz4_log_buf;
 
 typedef struct _log_group_builder{
     apr_pool_t *root;
     log_group* grp;
     log_lg* lg;
+    size_t loggroup_size;
 }log_group_builder;
 
 typedef struct _log_header_pair{
@@ -61,14 +71,21 @@ typedef struct _log_http_cont{
 
 
 extern log_buf* serialize_to_proto_buf(log_group_builder* bder);
+extern log_buf* serialize_to_proto_buf_with_malloc(log_group_builder* bder);
+extern void free_proto_log_buf(log_buf* pBuf);
+extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
+extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();
 extern void log_group_destroy(log_group_builder* bder);
 extern void add_log(log_group_builder* bder);
 extern void* pack_protobuf(log_group_builder* bder);
 extern void add_source(log_group_builder* bder,const char* src,size_t len);
 extern void add_topic(log_group_builder* bder,const char* tpc,size_t len);
+extern void add_tag(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
+extern void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum);
 extern void add_log_time(log_group_builder* bder,uint32_t time);
 extern void add_log_key_value(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
+
 
 LOG_CPP_END
 #endif /* log_builder_h */

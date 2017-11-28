@@ -7,274 +7,662 @@
 #endif
 
 #include "log_logstores.pb-c.h"
-void   log_logstores__log__content__init
-                     (LogLogstores__Log__Content         *message)
+void   sls_logs__log__content__init
+                     (SlsLogs__Log__Content         *message)
 {
-  static LogLogstores__Log__Content init_value = LOG_LOGSTORES__LOG__CONTENT__INIT;
+  static const SlsLogs__Log__Content init_value = SLS_LOGS__LOG__CONTENT__INIT;
   *message = init_value;
 }
-void   log_logstores__log__init
-                     (LogLogstores__Log         *message)
+void   sls_logs__log__init
+                     (SlsLogs__Log         *message)
 {
-  static LogLogstores__Log init_value = LOG_LOGSTORES__LOG__INIT;
+  static const SlsLogs__Log init_value = SLS_LOGS__LOG__INIT;
   *message = init_value;
 }
-size_t log_logstores__log__get_packed_size
-                     (const LogLogstores__Log *message)
+size_t sls_logs__log__get_packed_size
+                     (const SlsLogs__Log *message)
 {
-  assert(message->base.descriptor == &log_logstores__log__descriptor);
+  assert(message->base.descriptor == &sls_logs__log__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t log_logstores__log__pack
-                     (const LogLogstores__Log *message,
+size_t sls_logs__log__pack
+                     (const SlsLogs__Log *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &log_logstores__log__descriptor);
+  assert(message->base.descriptor == &sls_logs__log__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t log_logstores__log__pack_to_buffer
-                     (const LogLogstores__Log *message,
+size_t sls_logs__log__pack_to_buffer
+                     (const SlsLogs__Log *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &log_logstores__log__descriptor);
+  assert(message->base.descriptor == &sls_logs__log__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-LogLogstores__Log *
-       log_logstores__log__unpack
+SlsLogs__Log *
+       sls_logs__log__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (LogLogstores__Log *)
-     protobuf_c_message_unpack (&log_logstores__log__descriptor,
+  return (SlsLogs__Log *)
+     protobuf_c_message_unpack (&sls_logs__log__descriptor,
                                 allocator, len, data);
 }
-void   log_logstores__log__free_unpacked
-                     (LogLogstores__Log *message,
+void   sls_logs__log__free_unpacked
+                     (SlsLogs__Log *message,
                       ProtobufCAllocator *allocator)
 {
-  assert(message->base.descriptor == &log_logstores__log__descriptor);
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__log__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   log_logstores__log_group__init
-                     (LogLogstores__LogGroup         *message)
+void   sls_logs__log_tag__init
+                     (SlsLogs__LogTag         *message)
 {
-  static LogLogstores__LogGroup init_value = LOG_LOGSTORES__LOG_GROUP__INIT;
+  static const SlsLogs__LogTag init_value = SLS_LOGS__LOG_TAG__INIT;
   *message = init_value;
 }
-size_t log_logstores__log_group__get_packed_size
-                     (const LogLogstores__LogGroup *message)
+size_t sls_logs__log_tag__get_packed_size
+                     (const SlsLogs__LogTag *message)
 {
-  assert(message->base.descriptor == &log_logstores__log_group__descriptor);
+  assert(message->base.descriptor == &sls_logs__log_tag__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t log_logstores__log_group__pack
-                     (const LogLogstores__LogGroup *message,
+size_t sls_logs__log_tag__pack
+                     (const SlsLogs__LogTag *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &log_logstores__log_group__descriptor);
+  assert(message->base.descriptor == &sls_logs__log_tag__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t log_logstores__log_group__pack_to_buffer
-                     (const LogLogstores__LogGroup *message,
+size_t sls_logs__log_tag__pack_to_buffer
+                     (const SlsLogs__LogTag *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &log_logstores__log_group__descriptor);
+  assert(message->base.descriptor == &sls_logs__log_tag__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-LogLogstores__LogGroup *
-       log_logstores__log_group__unpack
+SlsLogs__LogTag *
+       sls_logs__log_tag__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (LogLogstores__LogGroup *)
-     protobuf_c_message_unpack (&log_logstores__log_group__descriptor,
+  return (SlsLogs__LogTag *)
+     protobuf_c_message_unpack (&sls_logs__log_tag__descriptor,
                                 allocator, len, data);
 }
-void   log_logstores__log_group__free_unpacked
-                     (LogLogstores__LogGroup *message,
+void   sls_logs__log_tag__free_unpacked
+                     (SlsLogs__LogTag *message,
                       ProtobufCAllocator *allocator)
 {
-  assert(message->base.descriptor == &log_logstores__log_group__descriptor);
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__log_tag__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor log_logstores__log__content__field_descriptors[2] =
+void   sls_logs__log_group__init
+                     (SlsLogs__LogGroup         *message)
+{
+  static const SlsLogs__LogGroup init_value = SLS_LOGS__LOG_GROUP__INIT;
+  *message = init_value;
+}
+size_t sls_logs__log_group__get_packed_size
+                     (const SlsLogs__LogGroup *message)
+{
+  assert(message->base.descriptor == &sls_logs__log_group__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t sls_logs__log_group__pack
+                     (const SlsLogs__LogGroup *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &sls_logs__log_group__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t sls_logs__log_group__pack_to_buffer
+                     (const SlsLogs__LogGroup *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &sls_logs__log_group__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+SlsLogs__LogGroup *
+       sls_logs__log_group__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (SlsLogs__LogGroup *)
+     protobuf_c_message_unpack (&sls_logs__log_group__descriptor,
+                                allocator, len, data);
+}
+void   sls_logs__log_group__free_unpacked
+                     (SlsLogs__LogGroup *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__log_group__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   sls_logs__sls_log_package__init
+                     (SlsLogs__SlsLogPackage         *message)
+{
+  static const SlsLogs__SlsLogPackage init_value = SLS_LOGS__SLS_LOG_PACKAGE__INIT;
+  *message = init_value;
+}
+size_t sls_logs__sls_log_package__get_packed_size
+                     (const SlsLogs__SlsLogPackage *message)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t sls_logs__sls_log_package__pack
+                     (const SlsLogs__SlsLogPackage *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t sls_logs__sls_log_package__pack_to_buffer
+                     (const SlsLogs__SlsLogPackage *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+SlsLogs__SlsLogPackage *
+       sls_logs__sls_log_package__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (SlsLogs__SlsLogPackage *)
+     protobuf_c_message_unpack (&sls_logs__sls_log_package__descriptor,
+                                allocator, len, data);
+}
+void   sls_logs__sls_log_package__free_unpacked
+                     (SlsLogs__SlsLogPackage *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__sls_log_package__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   sls_logs__sls_log_package_list__init
+                     (SlsLogs__SlsLogPackageList         *message)
+{
+  static const SlsLogs__SlsLogPackageList init_value = SLS_LOGS__SLS_LOG_PACKAGE_LIST__INIT;
+  *message = init_value;
+}
+size_t sls_logs__sls_log_package_list__get_packed_size
+                     (const SlsLogs__SlsLogPackageList *message)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package_list__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t sls_logs__sls_log_package_list__pack
+                     (const SlsLogs__SlsLogPackageList *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package_list__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t sls_logs__sls_log_package_list__pack_to_buffer
+                     (const SlsLogs__SlsLogPackageList *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &sls_logs__sls_log_package_list__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+SlsLogs__SlsLogPackageList *
+       sls_logs__sls_log_package_list__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (SlsLogs__SlsLogPackageList *)
+     protobuf_c_message_unpack (&sls_logs__sls_log_package_list__descriptor,
+                                allocator, len, data);
+}
+void   sls_logs__sls_log_package_list__free_unpacked
+                     (SlsLogs__SlsLogPackageList *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__sls_log_package_list__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+void   sls_logs__log_group_list__init
+                     (SlsLogs__LogGroupList         *message)
+{
+  static const SlsLogs__LogGroupList init_value = SLS_LOGS__LOG_GROUP_LIST__INIT;
+  *message = init_value;
+}
+size_t sls_logs__log_group_list__get_packed_size
+                     (const SlsLogs__LogGroupList *message)
+{
+  assert(message->base.descriptor == &sls_logs__log_group_list__descriptor);
+  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+}
+size_t sls_logs__log_group_list__pack
+                     (const SlsLogs__LogGroupList *message,
+                      uint8_t       *out)
+{
+  assert(message->base.descriptor == &sls_logs__log_group_list__descriptor);
+  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+}
+size_t sls_logs__log_group_list__pack_to_buffer
+                     (const SlsLogs__LogGroupList *message,
+                      ProtobufCBuffer *buffer)
+{
+  assert(message->base.descriptor == &sls_logs__log_group_list__descriptor);
+  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+}
+SlsLogs__LogGroupList *
+       sls_logs__log_group_list__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data)
+{
+  return (SlsLogs__LogGroupList *)
+     protobuf_c_message_unpack (&sls_logs__log_group_list__descriptor,
+                                allocator, len, data);
+}
+void   sls_logs__log_group_list__free_unpacked
+                     (SlsLogs__LogGroupList *message,
+                      ProtobufCAllocator *allocator)
+{
+  if(!message)
+    return;
+  assert(message->base.descriptor == &sls_logs__log_group_list__descriptor);
+  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+}
+static const ProtobufCFieldDescriptor sls_logs__log__content__field_descriptors[2] =
 {
   {
-    "key",
+    "Key",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__Log__Content, key),
+    offsetof(SlsLogs__Log__Content, key),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "value",
+    "Value",
     2,
     PROTOBUF_C_LABEL_REQUIRED,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__Log__Content, value),
+    offsetof(SlsLogs__Log__Content, value),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned log_logstores__log__content__field_indices_by_name[] = {
-  0,   /* field[0] = key */
-  1,   /* field[1] = value */
+static const unsigned sls_logs__log__content__field_indices_by_name[] = {
+  0,   /* field[0] = Key */
+  1,   /* field[1] = Value */
 };
-static const ProtobufCIntRange log_logstores__log__content__number_ranges[1 + 1] =
+static const ProtobufCIntRange sls_logs__log__content__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 2 }
 };
-const ProtobufCMessageDescriptor log_logstores__log__content__descriptor =
+const ProtobufCMessageDescriptor sls_logs__log__content__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "log_logstores.Log.Content",
+  "sls_logs.Log.Content",
   "Content",
-  "LogLogstores__Log__Content",
-  "log_logstores",
-  sizeof(LogLogstores__Log__Content),
+  "SlsLogs__Log__Content",
+  "sls_logs",
+  sizeof(SlsLogs__Log__Content),
   2,
-  log_logstores__log__content__field_descriptors,
-  log_logstores__log__content__field_indices_by_name,
-  1,  log_logstores__log__content__number_ranges,
-  (ProtobufCMessageInit) log_logstores__log__content__init,
+  sls_logs__log__content__field_descriptors,
+  sls_logs__log__content__field_indices_by_name,
+  1,  sls_logs__log__content__number_ranges,
+  (ProtobufCMessageInit) sls_logs__log__content__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor log_logstores__log__field_descriptors[2] =
+static const ProtobufCFieldDescriptor sls_logs__log__field_descriptors[2] =
 {
   {
-    "time",
+    "Time",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
     PROTOBUF_C_TYPE_UINT32,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__Log, time),
+    offsetof(SlsLogs__Log, time),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "contents",
+    "Contents",
     2,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(LogLogstores__Log, n_contents),
-    offsetof(LogLogstores__Log, contents),
-    &log_logstores__log__content__descriptor,
+    offsetof(SlsLogs__Log, n_contents),
+    offsetof(SlsLogs__Log, contents),
+    &sls_logs__log__content__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned log_logstores__log__field_indices_by_name[] = {
-  1,   /* field[1] = contents */
-  0,   /* field[0] = time */
+static const unsigned sls_logs__log__field_indices_by_name[] = {
+  1,   /* field[1] = Contents */
+  0,   /* field[0] = Time */
 };
-static const ProtobufCIntRange log_logstores__log__number_ranges[1 + 1] =
+static const ProtobufCIntRange sls_logs__log__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 2 }
 };
-const ProtobufCMessageDescriptor log_logstores__log__descriptor =
+const ProtobufCMessageDescriptor sls_logs__log__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "log_logstores.Log",
+  "sls_logs.Log",
   "Log",
-  "LogLogstores__Log",
-  "log_logstores",
-  sizeof(LogLogstores__Log),
+  "SlsLogs__Log",
+  "sls_logs",
+  sizeof(SlsLogs__Log),
   2,
-  log_logstores__log__field_descriptors,
-  log_logstores__log__field_indices_by_name,
-  1,  log_logstores__log__number_ranges,
-  (ProtobufCMessageInit) log_logstores__log__init,
+  sls_logs__log__field_descriptors,
+  sls_logs__log__field_indices_by_name,
+  1,  sls_logs__log__number_ranges,
+  (ProtobufCMessageInit) sls_logs__log__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor log_logstores__log_group__field_descriptors[4] =
+static const ProtobufCFieldDescriptor sls_logs__log_tag__field_descriptors[2] =
 {
   {
-    "logs",
+    "Key",
     1,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(LogLogstores__LogGroup, n_logs),
-    offsetof(LogLogstores__LogGroup, logs),
-    &log_logstores__log__descriptor,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(SlsLogs__LogTag, key),
+    NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "reserved",
+    "Value",
+    2,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(SlsLogs__LogTag, value),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned sls_logs__log_tag__field_indices_by_name[] = {
+  0,   /* field[0] = Key */
+  1,   /* field[1] = Value */
+};
+static const ProtobufCIntRange sls_logs__log_tag__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 2 }
+};
+const ProtobufCMessageDescriptor sls_logs__log_tag__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "sls_logs.LogTag",
+  "LogTag",
+  "SlsLogs__LogTag",
+  "sls_logs",
+  sizeof(SlsLogs__LogTag),
+  2,
+  sls_logs__log_tag__field_descriptors,
+  sls_logs__log_tag__field_indices_by_name,
+  1,  sls_logs__log_tag__number_ranges,
+  (ProtobufCMessageInit) sls_logs__log_tag__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor sls_logs__log_group__field_descriptors[6] =
+{
+  {
+    "Logs",
+    1,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(SlsLogs__LogGroup, n_logs),
+    offsetof(SlsLogs__LogGroup, logs),
+    &sls_logs__log__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "Category",
     2,
     PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__LogGroup, reserved),
+    offsetof(SlsLogs__LogGroup, category),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "topic",
+    "Topic",
     3,
     PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__LogGroup, topic),
+    offsetof(SlsLogs__LogGroup, topic),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "source",
+    "Source",
     4,
     PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(LogLogstores__LogGroup, source),
+    offsetof(SlsLogs__LogGroup, source),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "MachineUUID",
+    5,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(SlsLogs__LogGroup, machineuuid),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "LogTags",
+    6,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(SlsLogs__LogGroup, n_logtags),
+    offsetof(SlsLogs__LogGroup, logtags),
+    &sls_logs__log_tag__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned sls_logs__log_group__field_indices_by_name[] = {
+  1,   /* field[1] = Category */
+  5,   /* field[5] = LogTags */
+  0,   /* field[0] = Logs */
+  4,   /* field[4] = MachineUUID */
+  3,   /* field[3] = Source */
+  2,   /* field[2] = Topic */
+};
+static const ProtobufCIntRange sls_logs__log_group__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 6 }
+};
+const ProtobufCMessageDescriptor sls_logs__log_group__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "sls_logs.LogGroup",
+  "LogGroup",
+  "SlsLogs__LogGroup",
+  "sls_logs",
+  sizeof(SlsLogs__LogGroup),
+  6,
+  sls_logs__log_group__field_descriptors,
+  sls_logs__log_group__field_indices_by_name,
+  1,  sls_logs__log_group__number_ranges,
+  (ProtobufCMessageInit) sls_logs__log_group__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor sls_logs__sls_log_package__field_descriptors[2] =
+{
+  {
+    "data",
+    1,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_BYTES,
+    0,   /* quantifier_offset */
+    offsetof(SlsLogs__SlsLogPackage, data),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "uncompress_size",
+    2,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_INT32,
+    offsetof(SlsLogs__SlsLogPackage, has_uncompress_size),
+    offsetof(SlsLogs__SlsLogPackage, uncompress_size),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned log_logstores__log_group__field_indices_by_name[] = {
-  0,   /* field[0] = logs */
-  1,   /* field[1] = reserved */
-  3,   /* field[3] = source */
-  2,   /* field[2] = topic */
+static const unsigned sls_logs__sls_log_package__field_indices_by_name[] = {
+  0,   /* field[0] = data */
+  1,   /* field[1] = uncompress_size */
 };
-static const ProtobufCIntRange log_logstores__log_group__number_ranges[1 + 1] =
+static const ProtobufCIntRange sls_logs__sls_log_package__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 4 }
+  { 0, 2 }
 };
-const ProtobufCMessageDescriptor log_logstores__log_group__descriptor =
+const ProtobufCMessageDescriptor sls_logs__sls_log_package__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "log_logstores.LogGroup",
-  "LogGroup",
-  "LogLogstores__LogGroup",
-  "log_logstores",
-  sizeof(LogLogstores__LogGroup),
-  4,
-  log_logstores__log_group__field_descriptors,
-  log_logstores__log_group__field_indices_by_name,
-  1,  log_logstores__log_group__number_ranges,
-  (ProtobufCMessageInit) log_logstores__log_group__init,
+  "sls_logs.SlsLogPackage",
+  "SlsLogPackage",
+  "SlsLogs__SlsLogPackage",
+  "sls_logs",
+  sizeof(SlsLogs__SlsLogPackage),
+  2,
+  sls_logs__sls_log_package__field_descriptors,
+  sls_logs__sls_log_package__field_indices_by_name,
+  1,  sls_logs__sls_log_package__number_ranges,
+  (ProtobufCMessageInit) sls_logs__sls_log_package__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor sls_logs__sls_log_package_list__field_descriptors[1] =
+{
+  {
+    "packages",
+    1,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(SlsLogs__SlsLogPackageList, n_packages),
+    offsetof(SlsLogs__SlsLogPackageList, packages),
+    &sls_logs__sls_log_package__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned sls_logs__sls_log_package_list__field_indices_by_name[] = {
+  0,   /* field[0] = packages */
+};
+static const ProtobufCIntRange sls_logs__sls_log_package_list__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor sls_logs__sls_log_package_list__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "sls_logs.SlsLogPackageList",
+  "SlsLogPackageList",
+  "SlsLogs__SlsLogPackageList",
+  "sls_logs",
+  sizeof(SlsLogs__SlsLogPackageList),
+  1,
+  sls_logs__sls_log_package_list__field_descriptors,
+  sls_logs__sls_log_package_list__field_indices_by_name,
+  1,  sls_logs__sls_log_package_list__number_ranges,
+  (ProtobufCMessageInit) sls_logs__sls_log_package_list__init,
+  NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor sls_logs__log_group_list__field_descriptors[1] =
+{
+  {
+    "logGroupList",
+    1,
+    PROTOBUF_C_LABEL_REPEATED,
+    PROTOBUF_C_TYPE_MESSAGE,
+    offsetof(SlsLogs__LogGroupList, n_loggrouplist),
+    offsetof(SlsLogs__LogGroupList, loggrouplist),
+    &sls_logs__log_group__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+};
+static const unsigned sls_logs__log_group_list__field_indices_by_name[] = {
+  0,   /* field[0] = logGroupList */
+};
+static const ProtobufCIntRange sls_logs__log_group_list__number_ranges[1 + 1] =
+{
+  { 1, 0 },
+  { 0, 1 }
+};
+const ProtobufCMessageDescriptor sls_logs__log_group_list__descriptor =
+{
+  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
+  "sls_logs.LogGroupList",
+  "LogGroupList",
+  "SlsLogs__LogGroupList",
+  "sls_logs",
+  sizeof(SlsLogs__LogGroupList),
+  1,
+  sls_logs__log_group_list__field_descriptors,
+  sls_logs__log_group_list__field_indices_by_name,
+  1,  sls_logs__log_group_list__number_ranges,
+  (ProtobufCMessageInit) sls_logs__log_group_list__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

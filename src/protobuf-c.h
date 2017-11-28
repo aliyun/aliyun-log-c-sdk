@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008-2016, Dave Benson and the protobuf-c authors.
+ * Copyright (c) 2008-2017, Dave Benson and the protobuf-c authors.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -139,7 +139,7 @@ Foo__Bar__BazBah *
 ~~~
  *
  * - `free_unpacked()`. Frees a message object obtained with the `unpack()`
- *   method.
+ *   method. Freeing `NULL` is allowed (the same as with `free()`).
  *
 ~~~{.c}
 void   foo__bar__baz_bah__free_unpacked
@@ -237,6 +237,9 @@ PROTOBUF_C__BEGIN_DECLS
 #define PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC    0x28aaeef9
 #define PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC       0x114315af
 
+/* Empty string used for initializers */
+extern const char protobuf_c_empty_string[];
+
 /**
  * \defgroup api Public API
  *
@@ -284,6 +287,12 @@ typedef enum {
 	 * preserved.
 	 */
 	PROTOBUF_C_LABEL_REPEATED,
+
+	/**
+	 * This field has no label. This is valid only in proto3 and is
+	 * equivalent to OPTIONAL but no "has" quantifier will be consulted.
+	 */
+	PROTOBUF_C_LABEL_NONE,
 } ProtobufCLabel;
 
 /**
@@ -781,13 +790,13 @@ protobuf_c_version_number(void);
  * The version of the protobuf-c headers, represented as a string using the same
  * format as protobuf_c_version().
  */
-#define PROTOBUF_C_VERSION		"1.2.1"
+#define PROTOBUF_C_VERSION		"1.3.0"
 
 /**
  * The version of the protobuf-c headers, represented as an integer using the
  * same format as protobuf_c_version_number().
  */
-#define PROTOBUF_C_VERSION_NUMBER	1002001
+#define PROTOBUF_C_VERSION_NUMBER	1003000
 
 /**
  * The minimum protoc-c version which works with the current version of the
@@ -956,7 +965,7 @@ protobuf_c_message_unpack(
  * protobuf_c_message_unpack().
  *
  * \param message
- *      The message object to free.
+ *      The message object to free. May be NULL.
  * \param allocator
  *      `ProtobufCAllocator` to use for memory deallocation. May be NULL to
  *      specify the default allocator.
