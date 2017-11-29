@@ -5,12 +5,49 @@
 #include "log_producer_client.h"
 #include "log_producer_manager.h"
 #include "aos_log.h"
+#include "aos_http_io.h"
+#include "apr_atomic.h"
+
+#define C_PRODUCER_VERSION "c-producer-0.1.0"
+
+static apr_uint32_t s_init_flag = 0;
+static log_producer_result s_last_result = 0;
 
 typedef struct _producer_client_private {
     apr_pool_t * root;
     log_producer_manager * producer_manager;
     log_producer_config * producer_config;
 }producer_client_private ;
+
+
+log_producer_result log_producer_env_init()
+{
+    // if already init, just return s_last_result
+    if (apr_atomic_xchg32(&s_init_flag, 1))
+    {
+        return s_last_result;
+    }
+    if (AOSE_OK != aos_http_io_initialize(C_PRODUCER_VERSION, 0))
+    {
+        s_last_result = LOG_PRODUCER_INVALID;
+    }
+    else
+    {
+        s_last_result = LOG_PRODUCER_OK;
+    }
+    return s_last_result;
+}
+
+void log_producer_env_destroy()
+{
+    // if already init, just return s_last_result
+    if (!apr_atomic_xchg32(&s_init_flag, 0))
+    {
+        return;
+    }
+    aos_http_io_deinitialize();
+}
+
 
 log_producer_client * create_log_producer_client(log_producer_config * config, on_log_producer_send_done_function send_done_function)
 {

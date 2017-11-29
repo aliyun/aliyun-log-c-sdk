@@ -171,7 +171,7 @@ void * write_log_thread(apr_thread_t* thread_id, void* param)
 void log_producer_multi_thread(const char * fileName, int logsPerSecond)
 {
     logsPerSecond *= 100;
-    if (aos_http_io_initialize("c-producer", 0) != AOSE_OK) {
+    if (log_producer_env_init() != LOG_PRODUCER_OK) {
         exit(1);
     }
 
@@ -205,14 +205,14 @@ void log_producer_multi_thread(const char * fileName, int logsPerSecond)
 
     destroy_log_producer_client(client);
 
-    aos_http_io_deinitialize();
+    log_producer_env_destroy();
 
 }
 
 void log_producer_post_logs(const char * fileName, int logsPerSecond)
 {
     //aos_log_level = AOS_LOG_DEBUG;
-    if (aos_http_io_initialize("c-producer", 0) != AOSE_OK) {
+    if (log_producer_env_init() != LOG_PRODUCER_OK) {
         exit(1);
     }
 
@@ -261,13 +261,13 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
 
     destroy_log_producer_client(client);
 
-    aos_http_io_deinitialize();
+    log_producer_env_destroy();
 }
 
 int main(int argc, char *argv[])
 {
     const char * filePath = "./log_config.json";
-    int logsPerSec = 10000;
+    int logsPerSec = 100;
     if (argc == 3)
     {
         filePath = argv[1];

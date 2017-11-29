@@ -25,6 +25,21 @@ typedef struct _log_producer_client
 }log_producer_client;
 
 /**
+ * init log producer environment
+ * @note should been called before create any log producer client
+ * @note no multi thread safe
+ * @return OK if success, others the error code
+ */
+extern log_producer_result log_producer_env_init();
+
+/**
+ * destroy log producer environment
+ * @note should been called after all log producer clients destroyed
+ * @note no multi thread safe
+ */
+extern void log_producer_env_destroy();
+
+/**
  * create log producer client with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
@@ -44,6 +59,7 @@ extern log_producer_client * create_log_producer_client_by_config_file(const cha
 /**
  * destroy log producer client
  * @param client
+ * @note no multi thread safe
  */
 extern void destroy_log_producer_client(log_producer_client * client);
 
@@ -53,6 +69,7 @@ extern void destroy_log_producer_client(log_producer_client * client);
  *
  * @example  log_producer_client_add_log(client, 4, "key_1", "value_1", "key_2", "value_2")
  * @note log param ... must be const char * or char *
+ * @note multi thread safe
  * @param client
  * @param kv_count key value count
  * @param ... log params : key, value pairs, must be const char * or char *
@@ -95,6 +112,7 @@ extern log_producer_result log_producer_client_add_log(log_producer_client * cli
  * macro for add log
  * @example LOG_PRODUCER_DEBUG(login_logger, "user", "jack", "user_id", "123456", "action", "login")
  * @note log params must be const char * or char *
+ * @note multi thread safe
  */
 #define LOG_PRODUCER_DEBUG(client, ...) LOG_PRODUCER_ADD_LOG(client, LOG_PRODUCER_LEVEL_DEBUG, __VA_ARGS__)
 #define LOG_PRODUCER_INFO(client, ...) LOG_PRODUCER_ADD_LOG(client, LOG_PRODUCER_LEVEL_INFO, __VA_ARGS__)
