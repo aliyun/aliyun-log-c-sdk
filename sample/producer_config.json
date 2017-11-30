@@ -1,0 +1,29 @@
+{
+    "endpoint" : "http://your_region_endpoint",
+    "project" : "your_project",
+    "logstore" : "your_logstore",
+    "access_id" : "your_access_id",
+    "access_key" : "your_access_key_secret",
+    "name" : "test_config",
+    "topic" : "topic_test",
+    "tags" : {
+        "a" : "b",
+        "c" : "d",
+        "tag_key" : "tag_value",
+        "1": "2",
+        "3" : 4,
+        "5" : "6"
+    },
+    "level" : "INFO",
+    "package_timeout_ms" : 3000,
+    "log_count_per_package" : 4096,
+    "log_bytes_per_package" : 3000000,
+    "retry_times" : 10,
+    "send_thread_count" : 4,
+    "max_buffer_bytes" : 10000000,
+    "debug_open" : 0,
+    "debug_stdout" : 0,
+    "debug_log_path" : "./log_debug.log",
+    "max_debug_logfile_count" : 5,
+    "max_debug_logfile_size" : 1000000
+}

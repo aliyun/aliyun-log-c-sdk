@@ -36,7 +36,7 @@ void post_logs_with_json_with_option()
     cJSON_AddItemToArray(logs, log2);
     s = log_post_logs_with_option(p, LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, PROJECT_NAME, LOGSTORE_NAME, root, &g_log_option);
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -71,7 +71,7 @@ void post_logs_with_json()
     cJSON_AddItemToArray(logs, log2);
     s = log_post_logs(p, LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, PROJECT_NAME, LOGSTORE_NAME, root);
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -149,6 +149,59 @@ double test_build_speed_second(const char* path){
     
 }
 
+void post_logs_with_http_cont_lz4_log_option(){
+
+    if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
+        exit(1);
+    }
+
+    aos_status_t *s = NULL;
+    log_group_builder* bder = log_group_create();
+    add_source(bder,"mSource",sizeof("mSource"));
+    add_topic(bder,"post_logs_with_http_cont_lz4_log_option", sizeof("post_logs_with_http_cont_lz4_log_option"));
+
+
+    add_tag(bder, "taga_key", strlen("taga_key"), "taga_value", strlen("taga_value"));
+    add_tag(bder, "tagb_key", strlen("tagb_key"), "tagb_value", strlen("tagb_value"));
+    add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
+
+    g_log_option.interface = "eth0";
+    int i;
+    for(i=0;i<3;i++){
+        add_log(bder);
+        int j;
+        for(j=0;j<5;j++){
+            char k[] = {i*j + 'a'};
+            char v[] = {2*j + 'a'} ;
+            add_log_key_value(bder, k, 1, v, 1);
+        }
+    }
+    lz4_log_buf * pLZ4Buf = serialize_to_proto_buf_with_malloc_lz4(bder);
+    if (pLZ4Buf == NULL)
+    {
+        printf("serialize_to_proto_buf_with_malloc_lz4 failed\n");
+        exit(1);
+    }
+
+    log_http_cont* cont =  log_create_http_cont_with_lz4_data(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET, NULL, PROJECT_NAME, LOGSTORE_NAME, pLZ4Buf, bder->root);
+    s =  log_post_logs_from_http_cont_with_option(cont, &g_log_option);
+    if (aos_status_is_ok(s)) {
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
+    } else {
+        printf("%d\n",s->code);
+        printf("%s\n",s->error_code);
+        printf("%s\n",s->error_msg);
+        printf("%s\n",s->req_id);
+        printf("put logs failed\n");
+    }
+
+    free_lz4_log_buf(pLZ4Buf);
+
+    log_clean_http_cont(cont);
+
+    aos_http_io_deinitialize();
+}
+
 void post_logs_with_http_cont_log_option(){
 
     if (aos_http_io_initialize("linux-x86_64", 0) != AOSE_OK) {
@@ -160,6 +213,11 @@ void post_logs_with_http_cont_log_option(){
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
 
+
+    add_tag(bder, "taga_key", strlen("taga_key"), "taga_value", strlen("taga_value"));
+    add_tag(bder, "tagb_key", strlen("tagb_key"), "tagb_value", strlen("tagb_value"));
+    add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
+
     g_log_option.interface = "eth0";
     int i;
     for(i=0;i<3;i++){
@@ -168,13 +226,13 @@ void post_logs_with_http_cont_log_option(){
         for(j=0;j<5;j++){
             char k[] = {i*j + 'a'};
             char v[] = {2*j + 'a'} ;
-            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+            add_log_key_value(bder, k, 1, v, 1);
         }
     }
     log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
     s =  log_post_logs_from_http_cont_with_option(cont, &g_log_option);
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -206,13 +264,13 @@ void post_logs_with_http_cont(){
         for(j=0;j<5;j++){
             char k[] = {i*j + 'a'};
             char v[] = {2*j + 'a'} ;
-            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+            add_log_key_value(bder, k, 1, v, 1);
         }
     }
     log_http_cont* cont =  log_create_http_cont(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
     s =  log_post_logs_from_http_cont(cont);
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -235,7 +293,12 @@ void post_logs_with_proto_buffer_with_option(){
     log_group_builder* bder = log_group_create();
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
-    
+    add_tag(bder, "taga_key", strlen("taga_key"), "taga_value", strlen("taga_value"));
+    add_tag(bder, "tagb_key", strlen("tagb_key"), "tagb_value", strlen("tagb_value"));
+    add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
+
+
+
     int i;
     for(i=0;i<3;i++){
         add_log(bder);
@@ -243,14 +306,14 @@ void post_logs_with_proto_buffer_with_option(){
         for(j=0;j<5;j++){
             char k[] = {i*j + 'a'};
             char v[] = {2*j + 'a'} ;
-            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+            add_log_key_value(bder, k, 1, v, 1);
         }
     }
     g_log_option.interface = "eth0";
     s = log_post_logs_from_proto_buf_with_option(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder, &g_log_option);
     
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -275,6 +338,10 @@ void post_logs_with_proto_buffer(){
     log_group_builder* bder = log_group_create();
     add_source(bder,"mSource",sizeof("mSource"));
     add_topic(bder,"mTopic", sizeof("mTopic"));
+
+    add_tag(bder, "taga_key", strlen("taga_key"), "taga_value", strlen("taga_value"));
+    add_tag(bder, "tagb_key", strlen("tagb_key"), "tagb_value", strlen("tagb_value"));
+    add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
     
     int i;
     for(i=0;i<3;i++){
@@ -283,14 +350,14 @@ void post_logs_with_proto_buffer(){
         for(j=0;j<5;j++){
             char k[] = {i*j + 'a'};
             char v[] = {2*j + 'a'} ;
-            add_log_key_value(bder, k, strlen(k), v, strlen(v));
+            add_log_key_value(bder, k, 1, v, 1);
         }
     }
     
     s = log_post_logs_from_proto_buf(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,NULL, PROJECT_NAME, LOGSTORE_NAME, bder);
     
     if (aos_status_is_ok(s)) {
-        printf("post logs succeeded\n");
+        printf("post logs succeeded, req_id: %s \n", s->req_id);
     } else {
         printf("%d\n",s->code);
         printf("%s\n",s->error_code);
@@ -304,9 +371,9 @@ void post_logs_with_proto_buffer(){
     aos_http_io_deinitialize();
 }
 
-
 int main(int argc, char *argv[])
 {
+    post_logs_with_http_cont_lz4_log_option();
     post_logs_with_proto_buffer_with_option();
     post_logs_with_http_cont_log_option();
     return 0;

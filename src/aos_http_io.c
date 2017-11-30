@@ -303,10 +303,11 @@ void aos_http_io_deinitialize()
         curl_easy_cleanup(requestStackG[requestStackCountG]);
     }
 
-    if (aos_stderr_file != NULL) {
-        apr_file_close(aos_stderr_file);
-        aos_stderr_file = NULL;
-    }
+    // can not close aos_stderr_file, otherwise stderr do not work
+    //if (aos_stderr_file != NULL) {
+    //    apr_file_close(aos_stderr_file);
+    //    aos_stderr_file = NULL;
+    //}
     if (aos_global_pool != NULL) {
         aos_pool_destroy(aos_global_pool);
         aos_global_pool = NULL;
