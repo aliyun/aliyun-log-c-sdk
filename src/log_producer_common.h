@@ -38,7 +38,7 @@ typedef int log_producer_result;
  * @param compressed_bytes lz4 compressed bytes
  * @param error_message if send result is not ok, error message is set. must check if is NULL when use it
  */
-typedef void (*on_log_producer_send_done_function)(log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * error_message);
+typedef void (*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message);
 
 extern log_producer_result LOG_PRODUCER_OK;
 extern log_producer_result LOG_PRODUCER_INVALID;
@@ -50,6 +50,15 @@ extern log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED;
 extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 
+
+
+typedef int log_producer_priority;
+
+#define LOG_PRODUCER_PRIORITY_LOWEST (1)
+#define LOG_PRODUCER_PRIORITY_LOW (2)
+#define LOG_PRODUCER_PRIORITY_NORMAL (3)
+#define LOG_PRODUCER_PRIORITY_HIGH (4)
+#define LOG_PRODUCER_PRIORITY_HIGHEST (5)
 
 /**
  * check if rst if ok

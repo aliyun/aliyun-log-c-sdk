@@ -24,6 +24,8 @@ typedef struct _log_producer_client
     void * private_data;
 }log_producer_client;
 
+typedef struct _log_producer log_producer;
+
 /**
  * init log producer environment
  * @note should been called before create any log producer client
@@ -40,42 +42,64 @@ extern log_producer_result log_producer_env_init();
 extern void log_producer_env_destroy();
 
 /**
- * create log producer client with a producer config
+ * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
- * @return client ptr, NULL if create fail
+ * @return producer client ptr, NULL if create fail
  */
-extern log_producer_client * create_log_producer_client(log_producer_config * config, on_log_producer_send_done_function send_done_function);
+extern log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function);
 
 /**
- * create log producer client from config file
+ * create log producer from config file
  * @param configFilePath config file path
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
- * @return client ptr, NULL if create fail
- * @return
+ * @return producer ptr, NULL if create fail
  */
-extern log_producer_client * create_log_producer_client_by_config_file(const char * configFilePath, on_log_producer_send_done_function send_done_function);
+extern log_producer * create_log_producer_by_config_file(const char * configFilePath, on_log_producer_send_done_function send_done_function);
 
 /**
- * destroy log producer client
- * @param client
+ * destroy log producer
+ * @param producer
  * @note no multi thread safe
  */
-extern void destroy_log_producer_client(log_producer_client * client);
+extern void destroy_log_producer(log_producer * producer);
+
+/**
+ * get client from producer
+ * @param producer
+ * @param config_name
+ * @return the specific producer client, root client if config_name is NULL or no specific config,
+ */
+extern log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name);
 
 /**
  * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.
  * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
  *
  * @example  log_producer_client_add_log(client, 4, "key_1", "value_1", "key_2", "value_2")
- * @note log param ... must be const char * or char *
+ * @note log param ... must be const char * or char * with '\0' ended
  * @note multi thread safe
  * @param client
  * @param kv_count key value count
  * @param ... log params : key, value pairs, must be const char * or char *
- * @return ok if success, LOG_PRODUCER_DROP_ERROR if fail.
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
  */
 extern log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...);
+
+/**
+ * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.
+ * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
+ *
+ * @param client
+ * @param pair_count key value pair count
+ * @note pair_count not kv_count
+ * @param keys the key array
+ * @param key_lens the key len array
+ * @param values the value array
+ * @param value_lens the value len array
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
+ */
+extern log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens);
 
 
 /**

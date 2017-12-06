@@ -15,6 +15,7 @@ LOG_CPP_START
 #include "log_builder.h"
 #include "apr_thread_proc.h"
 #include "apr_thread_cond.h"
+#include "apr_tables.h"
 
 
 typedef struct _log_producer_manager
@@ -38,6 +39,7 @@ typedef struct _log_producer_manager
     char * pack_prefix;
     volatile uint32_t pack_index;
     on_log_producer_send_done_function send_done_function;
+    apr_table_t * sub_managers;
 }log_producer_manager;
 
 extern log_producer_manager * create_log_producer_manager(apr_pool_t * root, log_producer_config * producer_config);
@@ -46,6 +48,7 @@ extern void destroy_log_producer_manager(log_producer_manager * manager);
 // lock
 extern log_producer_result log_producer_manager_add_log_start(log_producer_manager * producer_manager);
 extern log_producer_result log_producer_manager_add_log_kv(log_producer_manager * producer_manager, const char * key, const char * value);
+extern log_producer_result log_producer_manager_add_log_kv_len(log_producer_manager * producer_manager, const char * key, size_t key_len,  const char * value, size_t value_len);
 // unlock
 extern log_producer_result log_producer_manager_add_log_end(log_producer_manager * producer_manager);
 

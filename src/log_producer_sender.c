@@ -6,6 +6,7 @@
 #include "log_http_cont.h"
 #include "log_api.h"
 #include "log_producer_manager.h"
+#include "apr_atomic.h"
 
 const char* LOGE_SERVER_BUSY = "ServerBusy";
 const char* LOGE_INTERNAL_SERVER_ERROR = "InternalServerError";
@@ -58,7 +59,7 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
         log_http_cont* cont =  log_create_http_cont_with_lz4_data(config->endpoint,
                                                                   config->accessKeyId,
                                                                   config->accessKey,
-                                                                  config->stsToken,
+                                                                  (char *)apr_atomic_casptr((volatile void **)(&config->stsToken), NULL, NULL),
                                                                   config->project,
                                                                   config->logstore,
                                                                   send_param->log_buf,
@@ -115,7 +116,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-        producer_manager->send_done_function(callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->error_msg);
+        producer_manager->send_done_function(producer_manager->producer_config->configName, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->req_id, result->error_msg);
     }
     switch (send_result)
     {

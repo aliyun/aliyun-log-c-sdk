@@ -133,14 +133,14 @@ void builder_speed_test(int32_t logsPerGroup)
     apr_terminate();
 }
 
-void on_log_send_done(log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
 {
     if (result == LOG_PRODUCER_OK)
     {
         return;
     }
-    printf("send fail, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
-           get_log_producer_result_string(result),
+    printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
+           config_name, get_log_producer_result_string(result),
            (int)log_bytes, (int)compressed_bytes, req_id, message);
 }
 
@@ -175,15 +175,36 @@ void log_producer_multi_thread(const char * fileName, int logsPerSecond)
         exit(1);
     }
 
-    log_producer_client * client = create_log_producer_client_by_config_file(fileName, on_log_send_done);
+    log_producer * producer = create_log_producer_by_config_file(fileName, NULL);
+    if (producer == NULL)
+    {
+        printf("create log producer by config file fail \n");
+        exit(1);
+    }
+
+    log_producer_client * client = get_log_producer_client(producer, NULL);
     if (client == NULL)
     {
         printf("create log producer client by config file fail \n");
         exit(1);
     }
-    multi_write_log_param param;
-    param.send_count = logsPerSecond;
-    param.client = client;
+
+    log_producer_client * client2 = get_log_producer_client(producer, "test_sub_config");
+    if (client2 == NULL)
+    {
+        printf("create log producer client by config file fail \n");
+        exit(1);
+    }
+    //assert(client != client2);
+
+
+    multi_write_log_param param[2];
+    param[0].send_count = logsPerSecond;
+    param[0].client = client;
+
+
+    param[1].send_count = logsPerSecond;
+    param[1].client = client2;
 
     apr_thread_t * allThread[MUTLI_THREAD_COUNT];
     apr_pool_t * root;
@@ -191,7 +212,7 @@ void log_producer_multi_thread(const char * fileName, int logsPerSecond)
     int i = 0;
     for (i = 0; i < MUTLI_THREAD_COUNT; ++i)
     {
-        apr_thread_create(allThread + i, NULL, write_log_thread, &param, root);
+        apr_thread_create(allThread + i, NULL, write_log_thread, &param[i % 2], root);
     }
 
 
@@ -203,7 +224,7 @@ void log_producer_multi_thread(const char * fileName, int logsPerSecond)
     aos_error_log("All thread done");
     apr_pool_destroy(root);
 
-    destroy_log_producer_client(client);
+    destroy_log_producer(producer);
 
     log_producer_env_destroy();
 
@@ -216,12 +237,36 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         exit(1);
     }
 
-    log_producer_client * client = create_log_producer_client_by_config_file(fileName, on_log_send_done);
+    log_producer * producer = create_log_producer_by_config_file(fileName, on_log_send_done);
+    if (producer == NULL)
+    {
+        printf("create log producer by config file fail \n");
+        exit(1);
+    }
+
+    log_producer_client * client = get_log_producer_client(producer, NULL);
     if (client == NULL)
     {
         printf("create log producer client by config file fail \n");
         exit(1);
     }
+
+    log_producer_client * client2 = get_log_producer_client(producer, "test_sub_config");
+    if (client2 == NULL)
+    {
+        printf("create log producer client by config file fail \n");
+        exit(1);
+    }
+
+    log_producer_client * client3 = get_log_producer_client(producer, "order.error");
+    if (client3 == NULL)
+    {
+        printf("create log producer client by config file fail \n");
+        exit(1);
+    }
+
+    //assert(client != client2);
+    //assert(client != client3);
 
     int32_t i = 0;
     apr_time_t totalTime = 0;
@@ -242,11 +287,11 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
                                     "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                     "index", "xxxxxxxxxxxxxxxxxxxxx");
 
-        	LOG_PRODUCER_WARN(client, "LogHub", "Real-time log collection and consumption",
+        	LOG_PRODUCER_WARN(client2, "LogHub", "Real-time log collection and consumption",
                               "Search/Analytics", "Query and real-time analysis",
                               "Visualized", "dashboard and report functions",
                               "Interconnection", "Grafana and JDBC/SQL92");
-        	LOG_PRODUCER_DEBUG(client, "a", "v", "c", "a", "v");
+        	LOG_PRODUCER_ERROR(client3, "a", "v", "c", "a", "v");
         }
         apr_time_t endTime = apr_time_now(); 
         aos_error_log("Done : %d  %d time  %f us \n", i, logsPerSecond, (float)(endTime - startTime));
@@ -259,7 +304,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
     aos_error_log("Total done : %f us, avg %f us", (float)totalTime / 180, (float)totalTime / (180 * logsPerSecond * 2));
     //sleep(10);
 
-    destroy_log_producer_client(client);
+    destroy_log_producer(producer);
 
     log_producer_env_destroy();
 }
@@ -273,12 +318,11 @@ int main(int argc, char *argv[])
         filePath = argv[1];
         logsPerSec = atoi(argv[2]);
     }
-    log_producer_multi_thread(filePath, logsPerSec);
-    //return 0;
+    get_log_producer_config(filePath);
+
+    log_producer_multi_thread(filePath, logsPerSec / 10);
     log_producer_post_logs(filePath, logsPerSec);
     post_logs_to_debuger(filePath);
     //builder_speed_test(logsPerSec);
-
-    get_log_producer_config(filePath);
     return 0;
 }

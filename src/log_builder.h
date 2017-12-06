@@ -55,6 +55,7 @@ typedef struct _log_group_builder{
     log_group* grp;
     log_lg* lg;
     size_t loggroup_size;
+    void * private_value;
 }log_group_builder;
 
 typedef struct _log_header_pair{
