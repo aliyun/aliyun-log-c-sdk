@@ -7,6 +7,8 @@ set(POST_LOGS_SOURCE_FILES log_config.c
 
 set(LOG_PRODUCER_FILES log_producer_sample.c)
 
+set(LOG_PRODUCER_BENCHMAARK_FILES log_producer_benchmark.c)
+
 include_directories (${APR_INCLUDE_DIR})
 include_directories (${APR_UTIL_INCLUDE_DIR})
 include_directories (${CURL_INCLUDE_DIR})
@@ -40,3 +42,5 @@ endfunction()
 _TARGET_SAMPLE_LIBRARIES(log_post_logs_sample "${POST_LOGS_SOURCE_FILES}")
 
 _TARGET_SAMPLE_LIBRARIES(log_producer_sample "${LOG_PRODUCER_FILES}")
+
+_TARGET_SAMPLE_LIBRARIES(log_producer_benchmark "${LOG_PRODUCER_BENCHMAARK_FILES}")
