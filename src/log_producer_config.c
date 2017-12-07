@@ -5,6 +5,7 @@
 #include "log_producer_config.h"
 #include "cJSON.h"
 #include "aos_log.h"
+#include "apr_atomic.h"
 
 static void _set_default_producer_config(log_producer_config * pConfig)
 {
@@ -14,6 +15,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->logLevel = LOG_PRODUCER_LEVEL_INFO;
     pConfig->sendThreadCount = 1;
     pConfig->maxBufferBytes = 64 * 1024 * 1024;
+    pConfig->priority = LOG_PRODUCER_PRIORITY_NORMAL;
 }
 
 static void _set_config_string(apr_pool_t * pool, cJSON * obj, const char * key, char ** value, const char * defaultValue)
@@ -78,10 +80,10 @@ static void _copy_config_string(apr_pool_t * pool, const char * value, char ** s
     (*src_value)[strLen] = '\0';
 }
 
-log_producer_config * create_log_producer_config()
+log_producer_config * _create_log_producer_config(apr_pool_t * root)
 {
     apr_pool_t *tmp;
-    apr_pool_create(&tmp, NULL);
+    apr_pool_create(&tmp, root);
     log_producer_config* pConfig = (log_producer_config*)apr_palloc(tmp,sizeof(log_producer_config));
     memset(pConfig, 0, sizeof(log_producer_config));
     pConfig->root = tmp;
@@ -89,9 +91,25 @@ log_producer_config * create_log_producer_config()
     return pConfig;
 }
 
+log_producer_config * create_log_producer_config()
+{
+    return _create_log_producer_config(NULL);
+}
+
+
 void destroy_log_producer_config(log_producer_config * pConfig)
 {
     apr_pool_destroy(pConfig->root);
+}
+
+int log_producer_config_print_sub(void *rec, const char *key,
+                                 const char *value)
+{
+    FILE * file = (FILE*) rec;
+    fprintf(file, "####sub config : %s", key);
+    log_producer_config * producerConfig = (log_producer_config*)value;
+    log_producer_config_print(producerConfig, file);
+    return 1;
 }
 
 void log_producer_config_print(log_producer_config * pConfig, FILE * file)
@@ -124,6 +142,11 @@ void log_producer_config_print(log_producer_config * pConfig, FILE * file)
     for (i = 0; i < pConfig->tagCount; ++i)
     {
         fprintf(file, "tag key : %s, value : %s \n", pConfig->tags[i].key, pConfig->tags[i].value);
+    }
+
+    if (pConfig->subConfigs != NULL)
+    {
+        apr_table_do(log_producer_config_print_sub, file, pConfig->subConfigs, NULL);
     }
 }
 
@@ -161,26 +184,23 @@ log_producer_config * load_log_producer_config_file(const char * filePullPath)
     return producerConfig;
 }
 
-
-log_producer_config * load_log_producer_config_JSON(const char * jsonStr)
+log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool_t * root)
 {
-    cJSON * pJson = cJSON_Parse(jsonStr);
-    if (pJson == NULL)
-    {
-        printf("load log producer config json error, %s.\n", cJSON_GetErrorPtr());
-        return NULL;
-    }
-
-    log_producer_config * producerConfig = create_log_producer_config();
+    log_producer_config * producerConfig = _create_log_producer_config(root);
 
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ENDPOINT, &(producerConfig->endpoint), "default_endpoint");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_PROJECT, &(producerConfig->project), "default_project");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_LOGSTORE, &(producerConfig->logstore), "default_logstore");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ACCESS_ID, &(producerConfig->accessKeyId), "default_id");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ACCESS_KEY, &(producerConfig->accessKey), "default_key");
-    _set_config_string(producerConfig->root, pJson, LOG_CONFIG_TOKEN, &(producerConfig->stsToken), NULL);
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_NAME, &(producerConfig->configName), "default_name");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_TOPIC, &(producerConfig->topic), "default_topic");
+
+    cJSON * stsTokenItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_TOKEN);
+    if (stsTokenItem != NULL && stsTokenItem->type == cJSON_String)
+    {
+        log_producer_config_set_sts_token(producerConfig, stsTokenItem->valuestring);
+    }
 
     _set_config_int(producerConfig->root, pJson, LOG_CONFIG_PACKAGE_TIMEOUT, &(producerConfig->packageTimeoutInMS));
     _set_config_int(producerConfig->root, pJson, LOG_CONFIG_LOG_COUNT_PER_PACKAGE, &(producerConfig->logCountPerPackage));
@@ -199,6 +219,7 @@ log_producer_config * load_log_producer_config_JSON(const char * jsonStr)
     _set_config_tag(producerConfig, cJSON_GetObjectItem(pJson, LOG_CONFIG_TAGS));
 
 
+    // level
     cJSON * valItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_LEVEL);
     if (valItem != NULL && valItem->type == cJSON_String)
     {
@@ -228,8 +249,78 @@ log_producer_config * load_log_producer_config_JSON(const char * jsonStr)
         }
     }
 
-    return producerConfig;
+    cJSON * priorityItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_PRIORITY);
+    if (priorityItem != NULL && priorityItem->type == cJSON_String)
+    {
+        if (apr_strnatcasecmp(priorityItem->valuestring, LOG_CONFIG_PRIORITY_LOWEST) == 0)
+        {
+            producerConfig->priority = LOG_PRODUCER_PRIORITY_LOWEST;
+        }
+        else if (apr_strnatcasecmp(priorityItem->valuestring, LOG_CONFIG_PRIORITY_LOW) == 0)
+        {
+            producerConfig->priority = LOG_PRODUCER_PRIORITY_LOW;
+        }
+        else if (apr_strnatcasecmp(priorityItem->valuestring, LOG_CONFIG_PRIORITY_NORMAL) == 0)
+        {
+            producerConfig->priority = LOG_PRODUCER_PRIORITY_NORMAL;
+        }
+        else if (apr_strnatcasecmp(priorityItem->valuestring, LOG_CONFIG_PRIORITY_HIGH) == 0)
+        {
+            producerConfig->priority = LOG_PRODUCER_PRIORITY_HIGH;
+        }
+        else if (apr_strnatcasecmp(priorityItem->valuestring, LOG_CONFIG_PRIORITY_HIGHEST) == 0)
+        {
+            producerConfig->priority = LOG_PRODUCER_PRIORITY_HIGHEST;
+        }
+    }
 
+    cJSON * subItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_SUB_APPENDER);
+    if (subItem != NULL && (subItem->type == cJSON_Object || subItem->type == cJSON_Array))
+    {
+        producerConfig->subConfigs = apr_table_make(producerConfig->root, 4);
+        cJSON *c=subItem->child;
+        while (c)
+        {
+            log_producer_config * subConfig = _load_log_producer_config_JSON_Obj(c, producerConfig->root);
+            if (subConfig != NULL)
+            {
+                apr_table_setn(producerConfig->subConfigs, subConfig->configName, (const char *)subConfig);
+            }
+            c=c->next;
+        }
+    }
+
+    return producerConfig;
+}
+
+log_producer_config * load_log_producer_config_JSON(const char * jsonStr)
+{
+    cJSON * pJson = cJSON_Parse(jsonStr);
+    if (pJson == NULL)
+    {
+        printf("load log producer config json error, %s.\n", cJSON_GetErrorPtr());
+        return NULL;
+    }
+
+    return _load_log_producer_config_JSON_Obj(pJson, NULL);
+}
+
+log_producer_config * log_producer_config_get_sub(log_producer_config * config, const char * sub_config)
+{
+    if (config->subConfigs == NULL)
+    {
+        return NULL;
+    }
+    return (log_producer_config *)apr_table_get(config->subConfigs, sub_config);
+}
+
+void log_producer_config_set_priority(log_producer_config * config, log_producer_priority priority)
+{
+    if (priority < LOG_PRODUCER_PRIORITY_LOWEST || priority > LOG_PRODUCER_PRIORITY_HIGHEST)
+    {
+        return;
+    }
+    config->priority = priority;
 }
 
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
@@ -308,7 +399,19 @@ void log_producer_config_set_access_key(log_producer_config * config, const char
 
 void log_producer_config_set_sts_token(log_producer_config * config, const char * token)
 {
-    _copy_config_string(config->root, token, &config->stsToken);
+    if (token == NULL)
+    {
+        return;
+    }
+    size_t tokenLen = strlen(token);
+    char * tmpBuf = (char *)malloc(tokenLen + 1);
+    strncpy(tmpBuf, token, tokenLen);
+    tmpBuf[tokenLen] = '\0';
+    char * oldToken = (char *)apr_atomic_xchgptr((volatile void **)&config->stsToken, tmpBuf);
+    if (oldToken != NULL)
+    {
+        free(oldToken);
+    }
 }
 
 void log_producer_config_set_name(log_producer_config * config, const char * config_name)

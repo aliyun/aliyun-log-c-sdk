@@ -7,6 +7,7 @@
 
 #include "log_define.h"
 #include "log_producer_common.h"
+#include "apr_tables.h"
 LOG_CPP_START
 
 
@@ -28,6 +29,13 @@ LOG_CPP_START
 #define LOG_CONFIG_LEVEL_ERROR "ERROR"
 #define LOG_CONFIG_LEVEL_FATAL "FATAL"
 
+#define LOG_CONFIG_PRIORITY "priority"
+#define LOG_CONFIG_PRIORITY_LOWEST "LOWEST"
+#define LOG_CONFIG_PRIORITY_LOW "LOW"
+#define LOG_CONFIG_PRIORITY_NORMAL "NORMAL"
+#define LOG_CONFIG_PRIORITY_HIGH "HIGH"
+#define LOG_CONFIG_PRIORITY_HIGHEST "HIGHEST"
+
 #define LOG_CONFIG_PACKAGE_TIMEOUT "package_timeout_ms"
 #define LOG_CONFIG_LOG_COUNT_PER_PACKAGE "log_count_per_package"
 #define LOG_CONFIG_LOG_BYTES_PER_PACKAGE "log_bytes_per_package"
@@ -42,6 +50,7 @@ LOG_CPP_START
 #define LOG_CONFIG_DEBUG_MAX_LOGFILE_COUNT "max_debug_logfile_count"
 #define LOG_CONFIG_DEBUG_MAX_LOGFILE_SIZE "max_debug_logfile_size"
 
+#define LOG_CONFIG_SUB_APPENDER "sub_appenders"
 
 // log producer config file sample
 //{
@@ -86,7 +95,7 @@ typedef struct _log_producer_config
     char * logstore;
     char * accessKeyId;
     char * accessKey;
-    char * stsToken;
+    volatile char * stsToken;
     char * configName;
     char * topic;
     log_producer_config_tag * tags;
@@ -105,8 +114,13 @@ typedef struct _log_producer_config
     int32_t maxDebugLogFileCount;
     int32_t maxDebugLogFileSize;
     int32_t logLevel;
+    log_producer_priority priority;
+
 
     apr_pool_t *root;
+
+    apr_table_t * subConfigs;
+
 }log_producer_config;
 
 
@@ -126,9 +140,24 @@ log_producer_config * load_log_producer_config_file(const char * filePullPath);
 /**
  * create producer config from a JSON string
  * @param jsonStr a valid json string
- * @return NULL if fails, otherwise the config
+ * @return NULL if fail, otherwise the config
  */
 log_producer_config * load_log_producer_config_JSON(const char * jsonStr);
+
+/**
+ * get sub config
+ * @param config
+ * @param sub_config
+ * @return NULL if fail, otherwise the sub config
+ */
+log_producer_config * log_producer_config_get_sub(log_producer_config * config, const char * sub_config);
+
+/**
+ * set config priority
+ * @param config
+ * @param priority
+ */
+void log_producer_config_set_priority(log_producer_config * config, log_producer_priority priority);
 
 /**
  * set producer config endpoint

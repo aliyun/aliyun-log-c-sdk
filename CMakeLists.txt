@@ -91,7 +91,7 @@ include_directories(${CURL_INCLUDE_DIR})
 
 aux_source_directory(src SRC_LIST)
 
-add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST}) 
+add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
 add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
