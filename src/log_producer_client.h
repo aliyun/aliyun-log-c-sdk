@@ -118,7 +118,7 @@ extern log_producer_result log_producer_client_add_log_with_len(log_producer_cli
 #define LOG_PRODUCER_ADD_LOG(client, level, ...)  \
     do                                      \
     {                                       \
-        if (level < client->log_level) \
+        if (client == NULL || level < client->log_level) \
             break;  \
         int32_t n = LOG_PRODUCER_GET_ARG_COUNT(__VA_ARGS__) + 10; \
         char threadStr[12]; \

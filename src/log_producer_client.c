@@ -143,6 +143,10 @@ int _log_producer_set_invalid_sub(void *rec, const char *key,
 
 void destroy_log_producer(log_producer * producer)
 {
+    if (producer == NULL)
+    {
+        return;
+    }
     log_producer_client * client = producer->root_client;
     client->valid_flag = 0;
     if (producer->sub_clients != NULL)
@@ -157,6 +161,10 @@ void destroy_log_producer(log_producer * producer)
 
 extern log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name)
 {
+    if (producer == NULL)
+    {
+        return NULL;
+    }
     if (producer->sub_clients == NULL || config_name == NULL)
     {
         return producer->root_client;
@@ -172,7 +180,7 @@ extern log_producer_client * get_log_producer_client(log_producer * producer, co
 
 log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...)
 {
-    if (!client->valid_flag)
+    if (client == NULL || !client->valid_flag)
     {
         return LOG_PRODUCER_INVALID;
     }
@@ -209,7 +217,7 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
 
 log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
 {
-    if (!client->valid_flag)
+    if (client == NULL || !client->valid_flag)
     {
         return LOG_PRODUCER_INVALID;
     }
