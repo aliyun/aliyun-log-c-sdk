@@ -95,7 +95,7 @@ typedef struct _log_producer_config
     char * logstore;
     char * accessKeyId;
     char * accessKey;
-    volatile char * stsToken;
+    char * stsToken;
     char * configName;
     char * topic;
     log_producer_config_tag * tags;

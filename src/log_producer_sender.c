@@ -56,10 +56,11 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
     }
     do
     {
+        void * stsTokenPtr = (void *)&config->stsToken;
         log_http_cont* cont =  log_create_http_cont_with_lz4_data(config->endpoint,
                                                                   config->accessKeyId,
                                                                   config->accessKey,
-                                                                  (char *)apr_atomic_casptr((volatile void **)(&config->stsToken), NULL, NULL),
+                                                                  (char *)apr_atomic_casptr(stsTokenPtr, NULL, NULL),
                                                                   config->project,
                                                                   config->logstore,
                                                                   send_param->log_buf,

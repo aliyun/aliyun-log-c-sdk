@@ -407,7 +407,8 @@ void log_producer_config_set_sts_token(log_producer_config * config, const char 
     char * tmpBuf = (char *)malloc(tokenLen + 1);
     strncpy(tmpBuf, token, tokenLen);
     tmpBuf[tokenLen] = '\0';
-    char * oldToken = (char *)apr_atomic_xchgptr((volatile void **)&config->stsToken, tmpBuf);
+    void * stsTokenPtr = (void *)&config->stsToken;
+    char * oldToken = (char *)apr_atomic_xchgptr(stsTokenPtr, tmpBuf);
     if (oldToken != NULL)
     {
         free(oldToken);
