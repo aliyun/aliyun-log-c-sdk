@@ -159,19 +159,26 @@ index:  xxxxxxxxxxxxxxxxxxxxx
 
 ## 测试代码
 ```
+//
+// Created by ZhangCheng on 24/11/2017.
+//
+
 #include "aos_log.h"
-#include "aos_util.h"
-#include "aos_string.h"
-#include "aos_status.h"
-#include "log_auth.h"
-#include "log_util.h"
-#include "log_api.h"
-#include "log_config.h"
-#include "log_producer_config.h"
-#include "log_producer_debug_flusher.h"
 #include "log_producer_client.h"
-#include <time.h>
-#include <stdlib.h>
+
+
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+{
+    if (result == LOG_PRODUCER_OK)
+    {
+        return;
+    }
+    printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
+           config_name, get_log_producer_result_string(result),
+           (int)log_bytes, (int)compressed_bytes, req_id, message);
+}
+
+
 
 void log_producer_post_logs(const char * fileName, int logsPerSecond)
 {
@@ -180,7 +187,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         exit(1);
     }
 
-    log_producer * producer = create_log_producer_by_config_file(fileName, NULL);
+    log_producer * producer = create_log_producer_by_config_file(fileName, on_log_send_done);
     if (producer == NULL)
     {
         printf("create log producer by config file fail \n");
@@ -218,31 +225,31 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         apr_time_t startTime = apr_time_now();
         int j = 0;
         for (; j < logsPerSecond; ++j)
-        { 
-        	log_producer_client_add_log(client, 20, "content_key_1", "1abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_2", "2abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_3", "3abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_4", "4abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_5", "5abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_6", "6abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_7", "7abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_8", "8abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                    "index", "xxxxxxxxxxxxxxxxxxxxx");
+        {
+            log_producer_client_add_log(client, 20, "content_key_1", "1abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_2", "2abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_3", "3abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_4", "4abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_5", "5abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_6", "6abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_7", "7abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_8", "8abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+                                        "index", "xxxxxxxxxxxxxxxxxxxxx");
 
-        	LOG_PRODUCER_WARN(client2, "LogHub", "Real-time log collection and consumption",
+            LOG_PRODUCER_WARN(client2, "LogHub", "Real-time log collection and consumption",
                               "Search/Analytics", "Query and real-time analysis",
                               "Visualized", "dashboard and report functions",
                               "Interconnection", "Grafana and JDBC/SQL92");
-        	LOG_PRODUCER_ERROR(client3, "a", "v", "c", "a", "v");
+            LOG_PRODUCER_ERROR(client3, "a", "v", "c", "a", "v");
         }
-        apr_time_t endTime = apr_time_now(); 
+        apr_time_t endTime = apr_time_now();
         aos_error_log("Done : %d  %d time  %f us \n", i, logsPerSecond, (float)(endTime - startTime));
         totalTime += endTime - startTime;
         if (endTime - startTime < 1000000)
         {
-            usleep(1000000 - endTime+startTime); 
-        } 
+            usleep(1000000 - endTime+startTime);
+        }
     }
     aos_error_log("Total done : %f us, avg %f us", (float)totalTime / 180, (float)totalTime / (180 * logsPerSecond * 2));
     //sleep(10);
@@ -251,7 +258,6 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
 
     log_producer_env_destroy();
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -262,7 +268,9 @@ int main(int argc, char *argv[])
         filePath = argv[1];
         logsPerSec = atoi(argv[2]);
     }
+
     log_producer_post_logs(filePath, logsPerSec);
     return 0;
 }
+
 ``` 

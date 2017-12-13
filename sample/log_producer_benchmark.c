@@ -318,11 +318,11 @@ int main(int argc, char *argv[])
         filePath = argv[1];
         logsPerSec = atoi(argv[2]);
     }
-    get_log_producer_config(filePath);
+    //get_log_producer_config(filePath);
 
-    log_producer_multi_thread(filePath, logsPerSec / 10);
+    //log_producer_multi_thread(filePath, logsPerSec / 10);
     log_producer_post_logs(filePath, logsPerSec);
-    post_logs_to_debuger(filePath);
+    //post_logs_to_debuger(filePath);
     //builder_speed_test(logsPerSec);
     return 0;
 }
