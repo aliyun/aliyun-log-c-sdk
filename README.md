@@ -110,6 +110,9 @@ LOG C SDK并没有带上这几个外部库，您需要确认这些库已经安�
  - 如果要指定安装目录，则需要在cmake时增加： -DCMAKE_INSTALL_PREFIX=/your/install/path/usr/local/
 
 ## 使用
+一个应用可创建多个producer，每个producer共享一个发送线程池；一个producer可包含多个client，每个client可单独配置目的地址、日志level、是否本地调试、缓存大小、自定义标识、topic等信息。
+
+![image.png](http://ata2-img.cn-hangzhou.img-pub.aliyun-inc.com/955c4d62349b893f2bff22a9f5308a48.png)
 ### 自定义配置文件
 配置文件为JSON格式，样例配置如下，详细参数含义以及默认值见本文档中参数说明部分。
 ```json
