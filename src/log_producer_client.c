@@ -29,10 +29,11 @@ struct _log_producer {
 log_producer_result log_producer_env_init()
 {
     // if already init, just return s_last_result
-    if (apr_atomic_xchg32(&s_init_flag, 1))
+    if (s_init_flag == 1)
     {
         return s_last_result;
     }
+    s_init_flag = 1;
     if (AOSE_OK != aos_http_io_initialize(C_PRODUCER_VERSION, 0))
     {
         s_last_result = LOG_PRODUCER_INVALID;

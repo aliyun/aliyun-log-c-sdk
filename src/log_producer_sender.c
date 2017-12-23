@@ -221,6 +221,15 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
 log_producer_result log_producer_send_data(log_producer_send_param * send_param)
 {
     log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
+    // if thread pool is null, send data directly
+    if (producer_manager->sender->thread_pool == NULL)
+    {
+        apr_atomic_inc32(&(producer_manager->sender->send_queue_count));
+        apr_atomic_add32(&(producer_manager->sender->send_queue_size), send_param->log_buf->length);
+        apr_atomic_add32(&(producer_manager->totalBufferSize), send_param->log_buf->length);
+        log_producer_send_fun(NULL, send_param);
+        return LOG_PRODUCER_OK;
+    }
     apr_status_t result = apr_thread_pool_push(producer_manager->sender->thread_pool,
                                                log_producer_send_fun,
                                                send_param,
@@ -285,13 +294,18 @@ log_producer_sender * create_log_producer_sender(log_producer_config * producer_
     if (status != APR_SUCCESS)
     {
         aos_fatal_log("create thread pool error, config : %s, thread count : %d, error code : %d", producer_config->configName, producer_config->sendThreadCount, status);
-        return NULL;
+        // if create thread pool fail, just return producer_sender, and send data directly
+        return producer_sender;
     }
     return producer_sender;
 }
 
 void destroy_log_producer_sender(log_producer_sender * producer_sender)
 {
+    if (producer_sender->thread_pool == NULL)
+    {
+        return;
+    }
     int waitCount = 0;
     while (apr_thread_pool_tasks_count(producer_sender->thread_pool) != 0)
     {
