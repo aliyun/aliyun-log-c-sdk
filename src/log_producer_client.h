@@ -57,6 +57,7 @@ extern log_producer * create_log_producer(log_producer_config * config, on_log_p
  */
 extern log_producer * create_log_producer_by_config_file(const char * configFilePath, on_log_producer_send_done_function send_done_function);
 
+
 /**
  * destroy log producer
  * @param producer
@@ -71,6 +72,13 @@ extern void destroy_log_producer(log_producer * producer);
  * @return the specific producer client, root client if config_name is NULL or no specific config,
  */
 extern log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name);
+
+
+/**
+ * force send data when network recover
+ * @param client
+ */
+extern void log_producer_client_network_recover(log_producer_client * client);
 
 /**
  * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.

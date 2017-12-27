@@ -178,6 +178,15 @@ extern log_producer_client * get_log_producer_client(log_producer * producer, co
     return client;
 }
 
+void log_producer_client_network_recover(log_producer_client * client)
+{
+    if (client == NULL)
+    {
+        return;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    manager->networkRecover = 1;
+}
 
 log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...)
 {

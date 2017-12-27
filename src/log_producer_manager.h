@@ -24,6 +24,7 @@ typedef struct _log_producer_manager
     apr_pool_t * send_pool;
     log_producer_config * producer_config;
     volatile uint32_t shutdown;
+    volatile uint32_t networkRecover;
     volatile apr_uint32_t totalBufferSize;
     log_producer_sender * sender;
     apr_byte_t priority;

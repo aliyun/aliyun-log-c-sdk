@@ -14,11 +14,11 @@ const char* LOGE_UNAUTHORIZED = "Unauthorized";
 const char* LOGE_WRITE_QUOTA_EXCEED = "WriteQuotaExceed";
 const char* LOGE_SHARD_WRITE_QUOTA_EXCEED = "ShardWriteQuotaExceed";
 
-#define SEND_SLEEP_INTERVAL_MS 30
+#define SEND_SLEEP_INTERVAL_MS 100
 #define MAX_NETWORK_ERROR_SLEEP_MS 3600000
-#define BASE_NETWORK_ERROR_SLEEP_MS 10000
+#define BASE_NETWORK_ERROR_SLEEP_MS 1000
 #define MAX_QUOTA_ERROR_SLEEP_MS 60000
-#define BASE_QUOTA_ERROR_SLEEP_MS 30000
+#define BASE_QUOTA_ERROR_SLEEP_MS 3000
 
 #define DROP_FAIL_DATA_TIME_SECOND (3600 * 6)
 
@@ -80,7 +80,7 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
         for (i = 0; i < sleepMs; i += SEND_SLEEP_INTERVAL_MS)
         {
             apr_sleep(SEND_SLEEP_INTERVAL_MS * 1000);
-            if (producer_manager->shutdown)
+            if (producer_manager->shutdown || producer_manager->networkRecover)
             {
                 break;
             }
@@ -91,6 +91,10 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
             //continue;
             aos_info_log("send fail but shutdown signal received, force exit");
             break;
+        }
+        if (producer_manager->networkRecover)
+        {
+            producer_manager->networkRecover = 0;
         }
 
     }while(1);
