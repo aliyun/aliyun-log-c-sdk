@@ -48,7 +48,7 @@ typedef struct _log_producer_send_param
     apr_pool_t * send_pool;
 }log_producer_send_param;
 
-extern void * log_producer_send_fun(apr_thread_t * thread, void * send_param);
+extern void * APR_THREAD_FUNC log_producer_send_fun(apr_thread_t * thread, void * send_param);
 
 extern log_producer_result log_producer_send_data(log_producer_send_param * send_param);
 

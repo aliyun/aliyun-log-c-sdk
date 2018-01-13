@@ -2,8 +2,6 @@
 //  log_http_cont.h
 //  log-c-sdk-new
 //
-//  Created by 王佳玮 on 16/8/31.
-//  Copyright © 2016年 wangjwchn. All rights reserved.
 //
 
 #ifndef log_http_cont_h

@@ -3,10 +3,16 @@
 //
 
 #include "log_producer_common.h"
+#ifndef WIN32
+
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+
+#endif // WIN32
+
 
 log_producer_result LOG_PRODUCER_OK = 0;
 log_producer_result LOG_PRODUCER_INVALID = 1;

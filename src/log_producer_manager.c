@@ -98,7 +98,7 @@ int _log_producer_manager_flush_sub(void *rec, const char *key,
 }
 
 
-void * log_producer_flush_thread(apr_thread_t * thread, void * param)
+void * APR_THREAD_FUNC log_producer_flush_thread(apr_thread_t * thread, void * param)
 {
     log_producer_manager * root_producer_manager = (log_producer_manager*)param;
     aos_info_log("start run flusher thread, config : %s", root_producer_manager->producer_config->configName);
@@ -384,7 +384,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     int waitCount = 0;
     while (apr_queue_size(manager->loggroup_queue) > 0)
     {
-        usleep(10 * 1000);
+        apr_sleep(10 * 1000);
         if (++waitCount == 100)
         {
             break;
@@ -433,7 +433,7 @@ log_producer_result log_producer_manager_add_log_start(log_producer_manager * pr
     }
 
     add_log(producer_manager->builder);
-    add_log_time(producer_manager->builder, (u_int32_t)time(NULL));
+    add_log_time(producer_manager->builder, (uint32_t)time(NULL));
     return LOG_PRODUCER_OK;
 }
 

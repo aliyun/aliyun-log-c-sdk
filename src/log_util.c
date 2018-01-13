@@ -1,4 +1,8 @@
+#ifndef WIN32
 #include <arpa/inet.h>
+
+#endif // !WIN32
+
 #include "aos_log.h"
 #include "aos_util.h"
 #include "aos_string.h"

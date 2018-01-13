@@ -150,7 +150,7 @@ typedef struct _multi_write_log_param
     int32_t send_count;
 }multi_write_log_param;
 
-void * write_log_thread(apr_thread_t* thread_id, void* param)
+void * APR_THREAD_FUNC write_log_thread(apr_thread_t* thread_id, void* param)
 {
     aos_error_log("Thread start");
     multi_write_log_param * write_log_param = (multi_write_log_param *)param;
@@ -298,7 +298,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         totalTime += endTime - startTime;
         if (endTime - startTime < 1000000)
         {
-            usleep(1000000 - endTime+startTime);
+            apr_sleep(1000000 - endTime+startTime);
         }
     }
     aos_error_log("Total done : %f us, avg %f us", (float)totalTime / 180, (float)totalTime / (180 * logsPerSecond * 2));

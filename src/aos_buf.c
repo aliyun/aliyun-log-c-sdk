@@ -43,7 +43,7 @@ int64_t aos_buf_list_len(aos_list_t *list)
     aos_buf_t *b;
     int64_t len = 0;
 
-    aos_list_for_each_entry(b, list, node) {
+    aos_list_for_each_entry_with_type(b, aos_buf_t, list, node, aos_list_t) {
         len += aos_buf_size(b);
     }
 
@@ -61,7 +61,7 @@ char *aos_buf_list_content(aos_pool_t *p, aos_list_t *list)
     body_len = aos_buf_list_len(list);
     buf = aos_pcalloc(p, (size_t)(body_len + 1));
     buf[body_len] = '\0';
-    aos_list_for_each_entry(content, list, node) {
+    aos_list_for_each_entry_with_type(content, aos_buf_t, list, node, aos_list_t) {
         size = aos_buf_size(content);
         memcpy(buf + pos, content->pos, (size_t)(size));
         pos += size;

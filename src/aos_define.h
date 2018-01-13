@@ -7,7 +7,11 @@
 #include <inttypes.h>
 #include <string.h>
 #include <ctype.h>
+#ifndef WIN32
 #include <unistd.h>
+#endif // !WIN32
+
+
 #include <time.h>
 
 

@@ -22,7 +22,7 @@ int aos_parse_json_body(aos_list_t *bc, cJSON **root)
         int nsize = 0;
         char *buffer = (char*)malloc(sizeof(char)*(len+1));
         memset(buffer, 0, len + 1);
-        aos_list_for_each_entry(b, bc, node) {
+        aos_list_for_each_entry_with_type(b, aos_buf_t, bc, node, aos_list_t) {
             memcpy(buffer + nsize, (char *)b->pos, aos_buf_size(b));
             nsize += aos_buf_size(b);
         }

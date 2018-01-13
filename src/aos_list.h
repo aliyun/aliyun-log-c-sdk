@@ -75,10 +75,20 @@ static inline void aos_list_movelist(aos_list_t *list, aos_list_t *new_list)
             const typeof( ((type *)0)->member ) *__mptr = (ptr);        \
             (type *)( (char *)__mptr - APR_OFFSETOF(type,member) );})
 
+#define aos_list_entry_with_type(ptr, t, member, memberType)(\
+            (t *)( (char *)((const memberType *)(ptr)) - APR_OFFSETOF(t,member) ))
+
+
+
 #define aos_list_for_each_entry(pos, head, member)                      \
     for (pos = aos_list_entry((head)->next, typeof(*pos), member);      \
          &pos->member != (head);                                        \
          pos = aos_list_entry(pos->member.next, typeof(*pos), member))
+
+#define aos_list_for_each_entry_with_type(pos, posType, head, member, memberType)                      \
+    for (pos = aos_list_entry_with_type((head)->next, posType, member, memberType);      \
+         &pos->member != (head);                                        \
+         pos = aos_list_entry_with_type(pos->member.next, posType, member, memberType))
 
 #define aos_list_for_each_entry_reverse(pos, head, member)              \
     for (pos = aos_list_entry((head)->prev, typeof(*pos), member);      \
@@ -90,6 +100,12 @@ static inline void aos_list_movelist(aos_list_t *list, aos_list_t *new_list)
                  n = aos_list_entry(pos->member.next, typeof(*pos), member); \
          &pos->member != (head);                                        \
          pos = n, n = aos_list_entry(n->member.next, typeof(*n), member))
+
+#define aos_list_for_each_entry_safe_with_type(pos, posType, n, nType, head, member, memberType)              \
+    for (pos = aos_list_entry_with_type((head)->next, posType, member, memberType),      \
+                 n = aos_list_entry_with_type(pos->member.next, posType, member, memberType); \
+         &pos->member != (head);                                        \
+         pos = n, n = aos_list_entry_with_type(n->member.next, nType, member, memberType))
 
 #define aos_list_for_each_entry_safe_reverse(pos, n, head, member)      \
     for (pos = aos_list_entry((head)->prev, typeof(*pos), member),      \

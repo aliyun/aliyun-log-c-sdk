@@ -31,7 +31,7 @@ typedef struct _send_error_info
 
 int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_status_t * result, send_error_info * error_info);
 
-void * log_producer_send_fun(apr_thread_t * thread, void * param)
+void * APR_THREAD_FUNC log_producer_send_fun(apr_thread_t * thread, void * param)
 {
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
@@ -313,7 +313,7 @@ void destroy_log_producer_sender(log_producer_sender * producer_sender)
     int waitCount = 0;
     while (apr_thread_pool_tasks_count(producer_sender->thread_pool) != 0)
     {
-        usleep(10 * 1000);
+        apr_sleep(10 * 1000);
         if (++waitCount == 100)
         {
             break;

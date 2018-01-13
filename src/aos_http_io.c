@@ -1,7 +1,9 @@
 #include "aos_log.h"
 #include "aos_http_io.h"
 #include "aos_define.h"
-#include <pthread.h>
+#include "apr.h"
+
+
 #include <apr_file_io.h>
 
 aos_pool_t *aos_global_pool = NULL;
@@ -13,7 +15,7 @@ aos_http_transport_options_t *aos_default_http_transport_options = NULL;
 aos_http_transport_create_pt aos_http_transport_create = aos_curl_http_transport_create;
 aos_http_transport_perform_pt aos_http_transport_perform = aos_curl_http_transport_perform;
 
-static pthread_mutex_t requestStackMutexG;
+static apr_thread_mutex_t * requestStackMutexG;
 static CURL *requestStackG[AOS_REQUEST_STACK_SIZE];
 static int requestStackCountG;
 static char aos_user_agent[256];
@@ -25,11 +27,11 @@ CURL *aos_request_get()
 {
     CURL *request = NULL;
     // Try to get one from the request stack.  We hold the lock for the shortest time possible here.
-    pthread_mutex_lock(&requestStackMutexG);
+    apr_thread_mutex_lock(requestStackMutexG);
     if (requestStackCountG > 0) {
         request = requestStackG[--requestStackCountG];
     }
-    pthread_mutex_unlock(&requestStackMutexG);
+    apr_thread_mutex_unlock(requestStackMutexG);
 
     // If we got one, deinitialize it for re-use
     if (request) {
@@ -44,7 +46,7 @@ CURL *aos_request_get()
 
 void request_release(CURL *request)
 {
-    pthread_mutex_lock(&requestStackMutexG);
+    apr_thread_mutex_lock(requestStackMutexG);
 
     // If the request stack is full, destroy this one
     // else put this one at the front of the request stack; we do this because
@@ -52,12 +54,12 @@ void request_release(CURL *request)
     // request, to maximize our chances of re-using a TCP connection before it
     // times out
     if (requestStackCountG == AOS_REQUEST_STACK_SIZE) {
-        pthread_mutex_unlock(&requestStackMutexG);
+        apr_thread_mutex_unlock(requestStackMutexG);;
         curl_easy_cleanup(request);
     }
     else {
         requestStackG[requestStackCountG++] = request;
-        pthread_mutex_unlock(&requestStackMutexG);
+        apr_thread_mutex_unlock(requestStackMutexG);
     }
 }
 
@@ -149,7 +151,7 @@ int aos_read_http_body_memory(aos_http_request_t *req, char *buffer, int len)
     aos_buf_t *b;
     aos_buf_t *n;
     
-    aos_list_for_each_entry_safe(b, n, &req->body, node) {
+    aos_list_for_each_entry_safe_with_type(b, aos_buf_t, n, aos_buf_t, &req->body, node, aos_list_t) {
         wsize = aos_buf_size(b);
         if (wsize == 0) {
             aos_list_del(&b->node);
@@ -255,8 +257,7 @@ int aos_http_io_initialize(const char *user_agent_info, int flags)
     aos_http_request_options_t *req_options;
     aos_http_transport_options_t *trans_options;
 
-    pthread_mutex_init(&requestStackMutexG, 0);
-    requestStackCountG = 0;
+    
 
     if ((ecode = curl_global_init(CURL_GLOBAL_ALL &
            ~((flags & AOS_INIT_WINSOCK) ? 0: CURL_GLOBAL_WIN32))) != CURLE_OK) 
@@ -278,6 +279,8 @@ int aos_http_io_initialize(const char *user_agent_info, int flags)
         aos_error_log("aos_pool_create failure, code:%d %s.\n", s, apr_strerror(s, buf, sizeof(buf)));
         return AOSE_INTERNAL_ERROR;
     }
+    apr_thread_mutex_create(&requestStackMutexG, APR_THREAD_MUTEX_DEFAULT, aos_global_pool);
+    requestStackCountG = 0;
     apr_snprintf(aos_user_agent, sizeof(aos_user_agent)-1, "%s(Compatible %s)", 
                  AOS_VER, user_agent_info);
 
@@ -298,7 +301,7 @@ int aos_http_io_initialize(const char *user_agent_info, int flags)
 
 void aos_http_io_deinitialize()
 {
-    pthread_mutex_destroy(&requestStackMutexG);
+    apr_thread_mutex_destroy(requestStackMutexG);
     while (requestStackCountG--) {
         curl_easy_cleanup(requestStackG[requestStackCountG]);
     }
