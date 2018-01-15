@@ -24,12 +24,15 @@ typedef int32_t log_producer_send_result;
 #define LOG_SEND_UNAUTHORIZED 3
 #define LOG_SEND_SERVER_ERROR 4
 #define LOG_SEND_DISCARD_ERROR 5
+#define LOG_SEND_TIME_ERROR 6
 
 extern const char* LOGE_SERVER_BUSY;//= "ServerBusy";
 extern const char* LOGE_INTERNAL_SERVER_ERROR;//= "InternalServerError";
 extern const char* LOGE_UNAUTHORIZED;//= "Unauthorized";
 extern const char* LOGE_WRITE_QUOTA_EXCEED;//="WriteQuotaExceed";
 extern const char* LOGE_SHARD_WRITE_QUOTA_EXCEED;//= "ShardWriteQuotaExceed";
+extern const char* LOGE_TIME_EXPIRED;//= "RequestTimeExpired";
+
 
 typedef struct _log_producer_sender
 {
@@ -46,6 +49,7 @@ typedef struct _log_producer_send_param
     lz4_log_buf * log_buf;
     uint32_t magic_num;
     apr_pool_t * send_pool;
+    uint32_t builder_time;
 }log_producer_send_param;
 
 extern void * log_producer_send_fun(apr_thread_t * thread, void * send_param);
@@ -61,7 +65,8 @@ extern void destroy_log_producer_sender(log_producer_sender * producer_sender);
 extern log_producer_send_param * create_log_producer_send_param(log_producer_config * producer_config,
                                                                 void * producer_manager,
                                                                 lz4_log_buf * log_buf,
-                                                                apr_pool_t * send_pool);
+                                                                apr_pool_t * send_pool,
+                                                                uint32_t builder_time);
 
 LOG_CPP_END
 

@@ -7,18 +7,22 @@
 #include "log_api.h"
 #include "log_producer_manager.h"
 #include "apr_atomic.h"
+#include "lz4.h"
 
 const char* LOGE_SERVER_BUSY = "ServerBusy";
 const char* LOGE_INTERNAL_SERVER_ERROR = "InternalServerError";
 const char* LOGE_UNAUTHORIZED = "Unauthorized";
 const char* LOGE_WRITE_QUOTA_EXCEED = "WriteQuotaExceed";
 const char* LOGE_SHARD_WRITE_QUOTA_EXCEED = "ShardWriteQuotaExceed";
+const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_SLEEP_INTERVAL_MS 100
 #define MAX_NETWORK_ERROR_SLEEP_MS 3600000
 #define BASE_NETWORK_ERROR_SLEEP_MS 1000
 #define MAX_QUOTA_ERROR_SLEEP_MS 60000
 #define BASE_QUOTA_ERROR_SLEEP_MS 3000
+#define INVALID_TIME_TRY_INTERVAL 3000
+#define SEND_TIME_INVALID_RETRY
 
 #define DROP_FAIL_DATA_TIME_SECOND (3600 * 6)
 
@@ -30,6 +34,34 @@ typedef struct _send_error_info
 }send_error_info;
 
 int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_status_t * result, send_error_info * error_info);
+
+void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
+{
+    aos_debug_log("rebuild log.");
+    char * buf = (char *)malloc(lz4_buf->raw_length);
+    if (LZ4_decompress_safe((const char* )lz4_buf->data, buf, lz4_buf->length, lz4_buf->raw_length) <= 0)
+    {
+        free(buf);
+        aos_fatal_log("LZ4_decompress_safe error");
+        return;
+    }
+    log_group_builder builder;
+    builder.grp = sls_logs__log_group__unpack(NULL, lz4_buf->raw_length, (const uint8_t *)buf);
+    free(buf);
+    if (builder.grp == NULL)
+    {
+        aos_fatal_log("sls_logs__log_group__unpack error");
+        return;
+    }
+    int i = 0;
+    uint32_t nowTime = time(NULL);
+    for(i = 0; i < builder.grp->n_logs; ++i)
+    {
+        builder.grp->logs[i]->time = nowTime;
+    }
+    *new_lz4_buf = serialize_to_proto_buf_with_malloc_lz4(&builder);
+    sls_logs__log_group__free_unpacked(builder.grp, NULL);
+}
 
 void * log_producer_send_fun(apr_thread_t * thread, void * param)
 {
@@ -57,17 +89,30 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
     do
     {
         void * stsTokenPtr = (void *)&config->stsToken;
+        lz4_log_buf * send_buf = send_param->log_buf;
+        uint32_t nowTime = time(NULL);
+        if (nowTime - send_param->builder_time > 600 || send_param->builder_time > nowTime)
+        {
+            _rebuild_time(send_param->log_buf, &send_buf);
+            send_param->builder_time = nowTime;
+        }
         log_http_cont* cont =  log_create_http_cont_with_lz4_data(config->endpoint,
                                                                   config->accessKeyId,
                                                                   config->accessKey,
                                                                   (char *)apr_atomic_casptr(stsTokenPtr, NULL, NULL),
                                                                   config->project,
                                                                   config->logstore,
-                                                                  send_param->log_buf,
+                                                                  send_buf,
                                                                   send_pool);
         aos_status_t * status =  log_post_logs_from_http_cont_with_option(cont, NULL);
 
         int32_t sleepMs = log_producer_on_send_done(send_param, status, &error_info);
+
+        // tmp buffer, free
+        if (send_buf != send_param->log_buf)
+        {
+            free(send_buf);
+        }
 
         apr_pool_clear(send_pool);
         if (sleepMs <= 0)
@@ -127,6 +172,15 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
     {
         case LOG_SEND_OK:
             break;
+        case LOG_SEND_TIME_ERROR:
+            // if no this marco, drop data
+#ifdef SEND_TIME_INVALID_RETRY
+            error_info->last_send_error = LOG_SEND_TIME_ERROR;
+            error_info->last_sleep_ms = INVALID_TIME_TRY_INTERVAL;
+            return error_info->last_sleep_ms;
+#else
+            break;
+#endif
         case LOG_SEND_QUOTA_EXCEED:
             if (error_info->last_send_error != LOG_SEND_QUOTA_EXCEED)
             {
@@ -206,7 +260,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
     }
     else
     {
-        aos_warn_log("send fail, discard data, project : %s, logstore : %s, config : %s, buffer len : %d, raw len : %d, send queue count: %d, send queue size: %d, total buffer : %d,code : %d, error msg : %s",
+        aos_warn_log("send fail, discard data, project : %s, logstore : %s, config : %s, buffer len : %d, raw len : %d, send queue count: %d, send queue size: %d, total buffer : %d,code : %d, code msg: %s, error msg : %s, req id : %s",
                       send_param->producer_config->project,
                       send_param->producer_config->logstore,
                       send_param->producer_config->configName,
@@ -216,7 +270,9 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
                       (int)producer_manager->sender->send_queue_size,
                       (int)producer_manager->totalBufferSize,
                       result->code,
-                      result->error_msg);
+                      result->error_code,
+                      result->error_msg,
+                      result->req_id);
     }
 
     return 0;
@@ -284,6 +340,10 @@ log_producer_send_result AosStatusToResult(aos_status_t * result)
     {
         return LOG_SEND_UNAUTHORIZED;
     }
+    if (strcmp(result->error_code, LOGE_TIME_EXPIRED) == 0)
+    {
+        return LOG_SEND_TIME_ERROR;
+    }
     return LOG_SEND_DISCARD_ERROR;
 
 }
@@ -334,7 +394,8 @@ void destroy_log_producer_sender(log_producer_sender * producer_sender)
 log_producer_send_param * create_log_producer_send_param(log_producer_config * producer_config,
                                                          void * producer_manager,
                                                          lz4_log_buf * log_buf,
-                                                         apr_pool_t * send_pool)
+                                                         apr_pool_t * send_pool,
+                                                         uint32_t builder_time)
 {
     log_producer_send_param * param = (log_producer_send_param *)malloc(sizeof(log_producer_send_param));
     param->producer_config = producer_config;
@@ -342,6 +403,7 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
     param->log_buf = log_buf;
     param->magic_num = LOG_PRODUCER_SEND_MAGIC_NUM;
     param->send_pool = send_pool;
+    param->builder_time = builder_time;
     return param;
 }
 

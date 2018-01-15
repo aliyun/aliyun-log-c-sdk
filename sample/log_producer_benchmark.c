@@ -276,6 +276,8 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         int j = 0;
         for (; j < logsPerSecond; ++j)
         {
+            char indexStr[32];
+            sprintf(indexStr, "%d", i * logsPerSecond + j);
             log_producer_client_add_log(client, 20, "content_key_1", "1abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_2", "2abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_3", "3abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
@@ -285,7 +287,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
                                         "content_key_7", "7abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_8", "8abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
-                                        "index", "xxxxxxxxxxxxxxxxxxxxx");
+                                        "index", indexStr);
 
             LOG_PRODUCER_WARN(client2, "LogHub", "Real-time log collection and consumption",
                               "Search/Analytics", "Query and real-time analysis",

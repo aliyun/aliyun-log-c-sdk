@@ -18,6 +18,7 @@ log_group_builder* log_group_create()
     bder->grp = (log_group*)apr_palloc(bder->root,sizeof(log_group));
     *bder->grp = (log_group)log_group_init;
     bder->loggroup_size = sizeof(log_group) + sizeof(log_group_builder);
+    bder->builder_time = time(NULL);
     return bder;
 }
 
@@ -47,6 +48,10 @@ void add_log(log_group_builder* bder)
 
 void add_log_time(log_group_builder* bder,uint32_t time)
 {
+    if (time < 1263563523)
+    {
+        time = 1263563523;
+    }
     bder->lg->time = (uint32_t)time;
 }
 

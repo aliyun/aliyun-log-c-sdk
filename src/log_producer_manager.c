@@ -160,7 +160,7 @@ void * log_producer_flush_thread(apr_thread_t * thread, void * param)
                     // if use multi thread, should change producer_manager->send_pool to NULL
                     //apr_pool_t * pool = config->sendThreadCount == 1 ? producer_manager->send_pool : NULL;
                     apr_pool_t * pool = NULL;
-                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, pool);
+                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, pool, builder->builder_time);
                     log_producer_send_data(send_param);
                 }
 
