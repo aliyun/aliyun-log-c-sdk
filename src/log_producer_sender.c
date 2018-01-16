@@ -22,7 +22,7 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 #define MAX_QUOTA_ERROR_SLEEP_MS 60000
 #define BASE_QUOTA_ERROR_SLEEP_MS 3000
 #define INVALID_TIME_TRY_INTERVAL 3000
-#define SEND_TIME_INVALID_RETRY
+#define SEND_TIME_INVALID_FIX
 
 #define DROP_FAIL_DATA_TIME_SECOND (3600 * 6)
 
@@ -34,6 +34,8 @@ typedef struct _send_error_info
 }send_error_info;
 
 int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_status_t * result, send_error_info * error_info);
+
+#ifdef SEND_TIME_INVALID_FIX
 
 void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 {
@@ -63,6 +65,8 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
     sls_logs__log_group__free_unpacked(builder.grp, NULL);
 }
 
+#endif
+
 void * log_producer_send_fun(apr_thread_t * thread, void * param)
 {
     log_producer_send_param * send_param = (log_producer_send_param *)param;
@@ -90,12 +94,14 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
     {
         void * stsTokenPtr = (void *)&config->stsToken;
         lz4_log_buf * send_buf = send_param->log_buf;
+#ifdef SEND_TIME_INVALID_FIX
         uint32_t nowTime = time(NULL);
         if (nowTime - send_param->builder_time > 600 || send_param->builder_time > nowTime)
         {
             _rebuild_time(send_param->log_buf, &send_buf);
             send_param->builder_time = nowTime;
         }
+#endif
         log_http_cont* cont =  log_create_http_cont_with_lz4_data(config->endpoint,
                                                                   config->accessKeyId,
                                                                   config->accessKey,
@@ -174,7 +180,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
             break;
         case LOG_SEND_TIME_ERROR:
             // if no this marco, drop data
-#ifdef SEND_TIME_INVALID_RETRY
+#ifdef SEND_TIME_INVALID_FIX
             error_info->last_send_error = LOG_SEND_TIME_ERROR;
             error_info->last_sleep_ms = INVALID_TIME_TRY_INTERVAL;
             return error_info->last_sleep_ms;
