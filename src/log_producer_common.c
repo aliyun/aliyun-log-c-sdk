@@ -17,6 +17,7 @@ log_producer_result LOG_PRODUCER_SEND_QUOTA_ERROR = 5;
 log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED = 6;
 log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR = 7;
 log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR = 8;
+log_producer_result LOG_PRODUCER_SEND_TIME_ERROR = 9;
 
 const char * log_producer_result_string[] = {
         "LOG_PRODUCER_OK",
@@ -27,7 +28,8 @@ const char * log_producer_result_string[] = {
         "LOG_PRODUCER_SEND_QUOTA_ERROR",
         "LOG_PRODUCER_SEND_UNAUTHORIZED",
         "LOG_PRODUCER_SEND_SERVER_ERROR",
-        "LOG_PRODUCER_SEND_DISCARD_ERROR"
+        "LOG_PRODUCER_SEND_DISCARD_ERROR",
+        "LOG_PRODUCER_SEND_TIME_ERROR"
 };
 
 const char * log_producer_level_string[] = {
@@ -47,6 +49,10 @@ int is_log_producer_result_ok(log_producer_result rst)
 
 const char * get_log_producer_result_string(log_producer_result rst)
 {
+    if ((int)rst < 0 || (int)rst >= sizeof(log_producer_result_string) / sizeof(char *))
+    {
+        return log_producer_result_string[1];
+    }
     return log_producer_result_string[rst];
 }
 

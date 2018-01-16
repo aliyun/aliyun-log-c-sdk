@@ -49,6 +49,7 @@ extern log_producer_result LOG_PRODUCER_SEND_QUOTA_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED;
 extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
+extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
 
 
 
