@@ -4,13 +4,13 @@
 
 #include "log_producer_client.h"
 #include "log_producer_manager.h"
-#include "aos_log.h"
-#include "aos_http_io.h"
-#include "apr_atomic.h"
+#include "inner_log.h"
+#include "log_api.h"
+#include <stdarg.h>
+#include <string.h>
 
-#define C_PRODUCER_VERSION "c-producer-0.1.0"
 
-static apr_uint32_t s_init_flag = 0;
+static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
 
 typedef struct _producer_client_private {
@@ -20,11 +20,8 @@ typedef struct _producer_client_private {
 }producer_client_private ;
 
 struct _log_producer {
-    apr_pool_t * root;
     log_producer_client * root_client;
-    apr_table_t * sub_clients;
 };
-
 
 log_producer_result log_producer_env_init()
 {
@@ -34,7 +31,7 @@ log_producer_result log_producer_env_init()
         return s_last_result;
     }
     s_init_flag = 1;
-    if (AOSE_OK != aos_http_io_initialize(C_PRODUCER_VERSION, 0))
+    if (0 != sls_log_init())
     {
         s_last_result = LOG_PRODUCER_INVALID;
     }
@@ -47,38 +44,12 @@ log_producer_result log_producer_env_init()
 
 void log_producer_env_destroy()
 {
-    // if already init, just return s_last_result
-    if (!apr_atomic_xchg32(&s_init_flag, 0))
+    if (s_init_flag == 0)
     {
         return;
     }
-    aos_http_io_deinitialize();
-}
-
-
-
-int _log_producer_create_client_sub(void *rec, const char *key,
-                                  const char *value)
-{
-    log_producer_manager * manager = (log_producer_manager *)value;
-    log_producer * producer = (log_producer *)rec;
-
-    log_producer_manager * root_manager = ((producer_client_private *)producer->root_client->private_data)->producer_manager;
-
-    log_producer_client * producer_client = (log_producer_client *)apr_palloc(producer->root, sizeof(log_producer_client));
-    producer_client_private * client_private = (producer_client_private *)apr_palloc(producer->root, sizeof(producer_client_private));
-    producer_client->private_data = client_private;
-    producer_client->log_level = manager->producer_config->logLevel;
-    client_private->producer_config = manager->producer_config;
-    client_private->producer_manager = manager;
-    client_private->producer_manager->send_done_function = root_manager->send_done_function;
-
-    aos_debug_log("create sub producer client success, config : %s", key);
-    producer_client->valid_flag = 1;
-
-    apr_table_setn(producer->sub_clients, key, (const char *)producer_client);
-
-    return 1;
+    s_init_flag = 0;
+    sls_log_destroy();
 }
 
 log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function)
@@ -87,60 +58,28 @@ log_producer * create_log_producer(log_producer_config * config, on_log_producer
     {
         return NULL;
     }
-    apr_pool_t * tmp_pool = NULL;
-    apr_status_t status = apr_pool_create(&tmp_pool, NULL);
-    if (tmp_pool == NULL)
-    {
-        aos_error_log("create log producer client error, can not create pool, error code : %d", status);
-        return NULL;
-    }
-    log_producer * producer = (log_producer *)apr_palloc(tmp_pool, sizeof(log_producer));
-    producer->root = tmp_pool;
-    log_producer_client * producer_client = (log_producer_client *)apr_palloc(tmp_pool, sizeof(log_producer_client));
-    producer_client_private * client_private = (producer_client_private *)apr_palloc(tmp_pool, sizeof(producer_client_private));
+    log_producer * producer = (log_producer *)malloc(sizeof(log_producer));
+    log_producer_client * producer_client = (log_producer_client *)malloc(sizeof(log_producer_client));
+    producer_client_private * client_private = (producer_client_private *)malloc(sizeof(producer_client_private));
     producer_client->private_data = client_private;
-    producer_client->log_level = config->logLevel;
     client_private->producer_config = config;
-    client_private->producer_manager = create_log_producer_manager(tmp_pool, config);
+    client_private->producer_manager = create_log_producer_manager(config);
     client_private->producer_manager->send_done_function = send_done_function;
 
     if(client_private->producer_manager == NULL)
     {
-        apr_pool_destroy(tmp_pool);
+        // free
+        free(producer_client);
+        free(client_private);
+        free(producer);
         return NULL;
     }
-    aos_debug_log("create producer client success, config : %s", config->configName);
+    aos_debug_log("create producer client success, config : %s", config->logstore);
     producer_client->valid_flag = 1;
     producer->root_client = producer_client;
-
-    if (client_private->producer_manager->sub_managers != NULL)
-    {
-        producer->sub_clients = apr_table_make(producer->root, 4);
-        apr_table_do(_log_producer_create_client_sub, producer, client_private->producer_manager->sub_managers, NULL);
-    }
-
     return producer;
 }
 
-log_producer * create_log_producer_by_config_file(const char * configFilePath, on_log_producer_send_done_function send_done_function)
-{
-    log_producer_config * config = load_log_producer_config_file(configFilePath);
-    if (config == NULL)
-    {
-        aos_error_log("create config from file %s error.", configFilePath);
-        return NULL;
-    }
-    //log_producer_config_print(config, stdout);
-    return create_log_producer(config, send_done_function);
-}
-
-int _log_producer_set_invalid_sub(void *rec, const char *key,
-                                      const char *value)
-{
-    log_producer_client * client = (log_producer_client *)value;
-    client->valid_flag = 0;
-    return 1;
-}
 
 void destroy_log_producer(log_producer * producer)
 {
@@ -150,14 +89,12 @@ void destroy_log_producer(log_producer * producer)
     }
     log_producer_client * client = producer->root_client;
     client->valid_flag = 0;
-    if (producer->sub_clients != NULL)
-    {
-        apr_table_do(_log_producer_set_invalid_sub, NULL, producer->sub_clients, NULL);
-    }
     producer_client_private * client_private = (producer_client_private *)client->private_data;
     destroy_log_producer_manager(client_private->producer_manager);
     destroy_log_producer_config(client_private->producer_config);
-    apr_pool_destroy(producer->root);
+    free(client_private);
+    free(client);
+    free(producer);
 }
 
 extern log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name)
@@ -166,18 +103,18 @@ extern log_producer_client * get_log_producer_client(log_producer * producer, co
     {
         return NULL;
     }
-    if (producer->sub_clients == NULL || config_name == NULL)
-    {
-        return producer->root_client;
-    }
-    log_producer_client * client = (log_producer_client *)apr_table_get(producer->sub_clients, config_name);
-    if (client == NULL)
-    {
-        return producer->root_client;
-    }
-    return client;
+    return producer->root_client;
 }
 
+void log_producer_client_network_recover(log_producer_client * client)
+{
+    if (client == NULL)
+    {
+        return;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    manager->networkRecover = 1;
+}
 
 log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...)
 {
@@ -188,32 +125,32 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
     va_list argp;
     va_start(argp, kv_count);
 
-    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    int32_t pairs = kv_count / 2;
 
-    log_producer_result rst = log_producer_manager_add_log_start(manager);
-    if (!is_log_producer_result_ok(rst))
-    {
-        aos_debug_log("create buffer fail, drop this log.");
-        return rst;
-    }
+    char ** keys = (char **)malloc(pairs * sizeof(char *));
+    char ** values = (char **)malloc(pairs * sizeof(char *));
+    size_t * key_lens = (size_t *)malloc(pairs * sizeof(size_t));
+    size_t * val_lens = (size_t *)malloc(pairs * sizeof(size_t));
 
     int32_t i = 0;
-    int32_t tail = kv_count & 0x01;
-    kv_count = (kv_count >> 1)<< 1;
-    for (; i < kv_count; i += 2)
-    {
-        const char * key = va_arg(argp, const char *);                 /*    取出当前的参数，类型为char *. */
-        const char * value = va_arg(argp, const char *);
-        log_producer_manager_add_log_kv(manager, key, value);
-    }
-    if (tail)
+    for (; i < pairs; ++i)
     {
         const char * key = va_arg(argp, const char *);
-        log_producer_manager_add_log_kv(manager, key, "");
+        const char * value = va_arg(argp, const char *);
+        keys[i] = (char *)key;
+        values[i] = (char *)value;
+        key_lens[i] = strlen(key);
+        val_lens[i] = strlen(value);
     }
-    va_end(argp);
-    log_producer_manager_add_log_end(manager);
-    return LOG_PRODUCER_OK;
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens);
+    free(keys);
+    free(values);
+    free(key_lens);
+    free(val_lens);
+    return rst;
 }
 
 log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
@@ -225,18 +162,5 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
-    log_producer_result rst = log_producer_manager_add_log_start(manager);
-    if (!is_log_producer_result_ok(rst))
-    {
-        aos_debug_log("create buffer fail, drop this log.");
-        return rst;
-    }
-
-    int32_t i = 0;
-    for (; i < pair_count; ++i)
-    {
-        log_producer_manager_add_log_kv_len(manager, keys[i], key_lens[i], values[i], val_lens[i]);
-    }
-    log_producer_manager_add_log_end(manager);
-    return LOG_PRODUCER_OK;
+    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens);
 }

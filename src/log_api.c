@@ -1,233 +1,233 @@
-#include "lz4.h"
-#include "aos_log.h"
-#include "aos_util.h"
-#include "aos_string.h"
-#include "aos_status.h"
-#include "log_auth.h"
 #include "log_util.h"
 #include "log_api.h"
+#include <curl/curl.h>
+#include <string.h>
+#include "sds.h"
+#include "inner_log.h"
 
-aos_status_t* log_post_logs_from_http_cont_with_option(log_http_cont* cont, log_post_option * logPostOption){
-    
-    aos_http_request_t *req = (aos_http_request_t*)apr_palloc(cont->root, sizeof(aos_http_request_t));
-    req->pool = cont->root;
-    req->headers = cont->headers;
-    req->body_len = cont->body.length;
-    req->method = HTTP_POST;
-    req->signed_url = cont->url;
-    req->file_path = NULL;
-    req->file_buf = NULL;
-    
-    log_request_options_t *options = log_request_options_create(cont->root);
-    
-    options->ctl = aos_http_controller_create(cont->root, 0);
-    options->ctl->pool = cont->root;
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }    
-    aos_list_t buffer;
-    aos_list_init(&buffer);
-    
-    aos_buf_t *content = aos_buf_pack(cont->root, cont->body.data, (int)cont->body.length);
-    aos_list_add_tail(&content->node, &buffer);
-    log_write_request_body_from_buffer(&buffer, req);
-    
-    aos_http_response_t *resp = aos_http_response_create(options->pool);
-    
-    req->read_body = aos_read_http_body_memory;
-    aos_status_t* s = log_send_request(options->ctl, req, resp);
-    
-    return s;
+log_status_t sls_log_init()
+{
+    CURLcode ecode;
+    if ((ecode = curl_global_init(CURL_GLOBAL_NOTHING)) != CURLE_OK)
+    {
+        aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
+        return -1;
+    }
+    return 0;
+}
+void sls_log_destroy()
+{
+    curl_global_cleanup();
 }
 
-aos_status_t *log_post_logs_from_proto_buf_with_option(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder, log_post_option * logPostOption)
+static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    aos_pool_t *p = bder->root;
-    aos_string_t project_name, logstore_name;
-    aos_table_t *headers = NULL;
-    aos_table_t *resp_headers = NULL;
-    log_request_options_t *options = NULL;
-    aos_list_t buffer;
-    unsigned char *md5 = NULL;
-    char *buf = NULL;
-    int64_t buf_len;
-    char *b64_value = NULL;
-    aos_buf_t *content = NULL;
-    aos_status_t *s = NULL;
-    
-    options = log_request_options_create(p);
-    options->config = log_config_create(options->pool);
-    aos_str_set(&(options->config->endpoint), endpoint);
-    aos_str_set(&(options->config->access_key_id), accesskeyId);
-    aos_str_set(&(options->config->access_key_secret), accessKey);
-    if(stsToken != NULL)
+    size_t totalLen = size * nmemb;
+    //printf("body  ---->  %d  %s \n", (int) (totalLen, (const char*) ptr);
+    sds * buffer = (sds *)stream;
+    if (*buffer == NULL)
     {
-        aos_str_set(&(options->config->sts_token), stsToken);
+        *buffer = sdsnewEmpty(256);
     }
-    options->ctl = aos_http_controller_create(options->pool, 0);
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }
-    headers = aos_table_make(p, 5);
-    apr_table_set(headers, LOG_API_VERSION, "0.6.0");
-    apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
-    apr_table_set(headers, LOG_SIGNATURE_METHOD, "hmac-sha1");
-    apr_table_set(headers, LOG_CONTENT_TYPE, "application/x-protobuf");
-    aos_str_set(&project_name, project);
-    aos_str_set(&logstore_name, logstore);
-    
-    aos_list_init(&buffer);
-    
-    log_buf* buff = serialize_to_proto_buf(bder);
-    
-    char *body = buff->data;
-    
-    if(body == NULL)
-    {
-        s = aos_status_create(options->pool);
-        aos_status_set(s, 400, AOS_CLIENT_ERROR_CODE, "fail to format proto buffer data");
-        return s;
-    }
-    int org_body_size = (int)buff->length;
-    apr_table_set(headers, LOG_BODY_RAW_SIZE, apr_itoa(options->pool, org_body_size));
-    int compress_bound = LZ4_compressBound(org_body_size);
-    char *compress_data = aos_pcalloc(options->pool, compress_bound);
-    int compressed_size = LZ4_compress(body, compress_data, org_body_size);
-    if(compressed_size <= 0)
-    {
-        s = aos_status_create(options->pool);
-        aos_status_set(s, 400, AOS_CLIENT_ERROR_CODE, "fail to compress json data");
-        return s;
-    }
-    content = aos_buf_pack(options->pool, compress_data, compressed_size);
-    aos_list_add_tail(&content->node, &buffer);
-    
-    //add Content-MD5
-    buf_len = aos_buf_list_len(&buffer);
-    buf = aos_buf_list_content(options->pool, &buffer);
-    md5 = aos_md5(options->pool, buf, (apr_size_t)buf_len);
-    b64_value = aos_pcalloc(options->pool, 50);
-    int loop = 0;
-    for(; loop < 16; ++loop)
-    {
-        unsigned char a = ((*md5)>>4) & 0xF, b = (*md5) & 0xF;
-        b64_value[loop<<1] = a > 9 ? (a - 10 + 'A') : (a + '0');
-        b64_value[(loop<<1)|1] = b > 9 ? (b - 10 + 'A') : (b + '0');
-        ++md5;
-    }
-    b64_value[loop<<1] = '\0';
-    apr_table_set(headers, LOG_CONTENT_MD5, b64_value);
-    
-    s = log_post_logs_from_buffer(options, &project_name, &logstore_name,
-                                  &buffer, headers, &resp_headers);
-    return s;
-    
+    *buffer = sdscpylen(*buffer, ptr, totalLen);
+    return totalLen;
 }
 
-aos_status_t *log_post_logs_with_sts_token_with_option(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, cJSON *root, log_post_option * logPostOption)
+static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream)
 {
-    aos_string_t project_name, logstore_name;
-    aos_table_t *headers = NULL;
-    aos_table_t *resp_headers = NULL;
-    log_request_options_t *options = NULL;
-    aos_list_t buffer;
-    unsigned char *md5 = NULL;
-    char *buf = NULL;
-    int64_t buf_len;
-    char *b64_value = NULL;
-    aos_buf_t *content = NULL;
-    aos_status_t *s = NULL;
-
-    options = log_request_options_create(p);
-    options->config = log_config_create(options->pool);
-    aos_str_set(&(options->config->endpoint), endpoint);
-    aos_str_set(&(options->config->access_key_id), accesskeyId);
-    aos_str_set(&(options->config->access_key_secret), accessKey);
-    if(stsToken != NULL)
+    size_t totalLen = size * nmemb;
+    //printf("header  ---->  %d  %s \n", (int) (totalLen), (const char*) ptr);
+    sds * buffer = (sds *)stream;
+    // only copy header start with x-log-
+    if (totalLen > 6 && memcmp(ptr, "x-log-", 6) == 0)
     {
-        aos_str_set(&(options->config->sts_token), stsToken);
+        *buffer = sdscpylen(*buffer, ptr, totalLen);
     }
-    options->ctl = aos_http_controller_create(options->pool, 0);
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }
-    headers = aos_table_make(p, 5);
-    apr_table_set(headers, LOG_API_VERSION, "0.6.0");
-    apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
-    apr_table_set(headers, LOG_SIGNATURE_METHOD, "hmac-sha1");
-    apr_table_set(headers, LOG_CONTENT_TYPE, "application/json");
-    aos_str_set(&project_name, project);
-    aos_str_set(&logstore_name, logstore);
+    return totalLen;
+}
 
-    aos_list_init(&buffer);
-    char *body = cJSON_PrintUnformatted(root);
-    if(body == NULL)
+void get_now_time_str(char * buffer, int bufLen)
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+    time (&rawtime);
+    timeinfo = gmtime(&rawtime);
+    strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+}
+
+void post_log_result_destroy(post_log_result * result)
+{
+    if (result != NULL)
     {
-        s = aos_status_create(options->pool);
-        aos_status_set(s, 400, AOS_CLIENT_ERROR_CODE, "fail to format cJSON data");
-        return s;
+        if (result->errorMessage != NULL)
+        {
+            sdsfree(result->errorMessage);
+        }
+        if (result->requestID != NULL)
+        {
+            sdsfree(result->requestID);
+        }
+        free(result);
     }
-    int org_body_size = strlen(body);
-    apr_table_set(headers, LOG_BODY_RAW_SIZE, apr_itoa(options->pool, org_body_size));
-    int compress_bound = LZ4_compressBound(org_body_size);
-    char *compress_data = aos_pcalloc(options->pool, compress_bound);
-    int compressed_size = LZ4_compress(body, compress_data, org_body_size);
-    if(compressed_size <= 0)
+}
+
+post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer)
+{
+    post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
+    memset(result, 0, sizeof(post_log_result));
+    CURL *curl = curl_easy_init();
+    if (curl != NULL)
     {
-        s = aos_status_create(options->pool);
-        aos_status_set(s, 400, AOS_CLIENT_ERROR_CODE, "fail to compress json data");
-        return s;
+        // url
+        sds url = sdsnew("http://");
+        url = sdscat(url, project);
+        url = sdscat(url, ".");
+        url = sdscat(url, endpoint);
+        url = sdscat(url, "/logstores/");
+        url = sdscat(url, logstore);
+        url = sdscat(url, "/shards/lb");
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+
+        char nowTime[64];
+        get_now_time_str(nowTime, 64);
+
+        char md5Buf[33];
+        md5Buf[32] = '\0';
+        md5_to_string((const char *)buffer->data, buffer->length, (char *)md5Buf);
+
+
+        //puts(md5Buf);
+        //puts(nowTime);
+
+        struct curl_slist* headers = NULL;
+
+        headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
+        headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
+        headers=curl_slist_append(headers, "x-log-compresstype:lz4");
+        headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
+        sds headerTime = sdsnew("Date:");
+        headerTime = sdscat(headerTime, nowTime);
+        headers=curl_slist_append(headers, headerTime);
+        sds headerMD5 = sdsnew("Content-MD5:");
+        headerMD5 = sdscat(headerMD5, md5Buf);
+        headers=curl_slist_append(headers, headerMD5);
+
+        sds headerLen= sdsnewEmpty(64);
+        headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+        headers=curl_slist_append(headers, headerLen);
+
+        sds headerRawLen = sdsnewEmpty(64);
+        headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+        headers=curl_slist_append(headers, headerRawLen);
+
+        sds headerHost = sdsnewEmpty(128);
+        headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+        headers=curl_slist_append(headers, headerHost);
+
+        char sha1Buf[65];
+        sha1Buf[64] = '\0';
+
+        sds sigContent = sdsnewEmpty(512);
+        sigContent = sdscatprintf(sigContent,
+                                  "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                  md5Buf, nowTime, (int)buffer->raw_length, logstore);
+
+        //puts("#######################");
+        //puts(sigContent);
+
+        int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
+        sha1Buf[destLen] = '\0';
+        //puts(sha1Buf);
+        sds headerSig = sdsnewEmpty(256);
+        headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
+        //puts(headerSig);
+        headers=curl_slist_append(headers, headerSig);
+
+
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buffer->data);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, buffer->length);
+
+
+        curl_easy_setopt(curl, CURLOPT_FILETIME, 1);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
+        curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1);
+        curl_easy_setopt(curl, CURLOPT_NETRC, CURL_NETRC_IGNORED);
+
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "log-c-lite_0.1.0");
+
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15);
+
+
+        sds header = sdsnewEmpty(64);
+        sds body = NULL;
+
+
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
+
+        //curl_easy_setopt(curl,CURLOPT_VERBOSE,1); //打印调试信息
+
+        CURLcode res = curl_easy_perform(curl);
+        //printf("result : %s \n", curl_easy_strerror(res));
+        long http_code;
+        if (res == CURLE_OK)
+        {
+            if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code)) != CURLE_OK)
+            {
+                printf("get info result : %s \n", curl_easy_strerror(res));
+                result->statusCode = -2;
+            } else {
+                result->statusCode = http_code;
+            }
+        }
+        else
+        {
+            if (body == NULL)
+            {
+                body = sdsnew(curl_easy_strerror(res));
+            }
+            else
+            {
+                body = sdscpy(body, curl_easy_strerror(res));
+            }
+            result->statusCode = -1 * (int)res;
+        }
+        // header and body 's pointer may be modified in callback (size > 256)
+        if (sdslen(header) > 0)
+        {
+            result->requestID = header;
+        }
+        else
+        {
+            sdsfree(header);
+            header = NULL;
+        }
+        // body will be NULL or a error string(net error or request error)
+        result->errorMessage = body;
+
+
+        curl_slist_free_all(headers); /* free the list again */
+        sdsfree(url);
+        sdsfree(headerTime);
+        sdsfree(headerMD5);
+        sdsfree(headerLen);
+        sdsfree(headerRawLen);
+        sdsfree(headerHost);
+        sdsfree(sigContent);
+        sdsfree(headerSig);
+        /* always cleanup */
+        curl_easy_cleanup(curl);
     }
-    content = aos_buf_pack(options->pool, compress_data, compressed_size);
-    aos_list_add_tail(&content->node, &buffer);
-
-    //add Content-MD5
-    buf_len = aos_buf_list_len(&buffer);
-    buf = aos_buf_list_content(options->pool, &buffer);
-    md5 = aos_md5(options->pool, buf, (apr_size_t)buf_len);
-    b64_value = aos_pcalloc(options->pool, 50);
-    int loop = 0;
-    for(; loop < 16; ++loop)
-    {
-        unsigned char a = ((*md5)>>4) & 0xF, b = (*md5) & 0xF;
-        b64_value[loop<<1] = a > 9 ? (a - 10 + 'A') : (a + '0');
-        b64_value[(loop<<1)|1] = b > 9 ? (b - 10 + 'A') : (b + '0');
-        ++md5;
-    }
-    b64_value[loop<<1] = '\0';
-    apr_table_set(headers, LOG_CONTENT_MD5, b64_value);
-
-    s = log_post_logs_from_buffer(options, &project_name, &logstore_name,
-				   &buffer, headers, &resp_headers);
-    free(body);
-    return s;
-}
-
-aos_status_t *log_post_logs_with_option(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *project, const char *logstore, cJSON *root, log_post_option * logPostOption)
-{
-    return log_post_logs_with_sts_token_with_option(p, endpoint, accesskeyId, accessKey, NULL, project, logstore, root, logPostOption);
-}
 
 
-
-
-aos_status_t *log_post_logs_with_sts_token(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, cJSON *root)
-{
-    return log_post_logs_with_sts_token_with_option(p, endpoint, accesskeyId, accessKey, stsToken, project, logstore, root, NULL);
-
-}
-
-aos_status_t *log_post_logs_from_proto_buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, log_group_builder* bder)
-{
-    return log_post_logs_from_proto_buf_with_option(endpoint, accesskeyId, accessKey, stsToken, project, logstore, bder, NULL);
-}
-
-aos_status_t* log_post_logs_from_http_cont(log_http_cont* cont)
-{
-    return log_post_logs_from_http_cont_with_option(cont, NULL);
-}
-
-aos_status_t *log_post_logs(aos_pool_t *p, const char *endpoint, const char * accesskeyId, const char *accessKey, const char *project, const char *logstore, cJSON *root)
-{
-    return log_post_logs_with_option(p, endpoint, accesskeyId, accessKey, project, logstore, root, NULL);
+    return result;
 }

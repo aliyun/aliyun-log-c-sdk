@@ -6,6 +6,8 @@
 #define LOG_C_SDK_LOG_PRODUCER_COMMON_H_H
 
 #include "log_define.h"
+#include <stdint.h>
+#include <stddef.h>
 LOG_CPP_START
 
 /**
@@ -49,6 +51,7 @@ extern log_producer_result LOG_PRODUCER_SEND_QUOTA_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED;
 extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
+extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
 
 
 
@@ -65,16 +68,14 @@ typedef int log_producer_priority;
  * @param rst
  * @return 1 if ok, 0 not ok
  */
-extern int is_log_producer_result_ok(log_producer_result rst);
+LOG_EXPORT int is_log_producer_result_ok(log_producer_result rst);
 
 /**
  * get string value of log producer operation result
  * @param rst
  * @return
  */
-extern const char * get_log_producer_result_string(log_producer_result rst);
-
-extern char * get_ip_by_host_name(apr_pool_t * pool);
+LOG_EXPORT const char * get_log_producer_result_string(log_producer_result rst);
 
 extern void log_producer_atoi(char * buffer, int32_t v);
 
