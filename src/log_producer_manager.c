@@ -119,7 +119,6 @@ void * log_producer_flush_thread(void * param)
                 }
 
                 lz4_log_buf * lz4_buf = serialize_to_proto_buf_with_malloc_lz4(builder);
-                log_group_destroy(builder);
 
                 if (lz4_buf == NULL)
                 {
@@ -138,6 +137,7 @@ void * log_producer_flush_thread(void * param)
                     log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, builder->builder_time);
                     root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_write++ % root_producer_manager->send_param_queue_size] = send_param;
                 }
+                log_group_destroy(builder);
                 continue;
             }
             break;
