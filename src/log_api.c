@@ -148,7 +148,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POST, 1);
 
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buffer->data);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)buffer->data);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, buffer->length);
 
 

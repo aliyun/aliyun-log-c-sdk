@@ -278,7 +278,7 @@ log_producer_send_result AosStatusToResult(post_log_result * result)
     {
         return LOG_SEND_NETWORK_ERROR;
     }
-    if (result->statusCode >= 500)
+    if (result->statusCode >= 500 || result->requestID == NULL)
     {
         return LOG_SEND_SERVER_ERROR;
     }
@@ -290,7 +290,7 @@ log_producer_send_result AosStatusToResult(post_log_result * result)
     {
         return LOG_SEND_UNAUTHORIZED;
     }
-    if (strstr(result->errorMessage, LOGE_TIME_EXPIRED) != NULL)
+    if (result->errorMessage != NULL && strstr(result->errorMessage, LOGE_TIME_EXPIRED) != NULL)
     {
         return LOG_SEND_TIME_ERROR;
     }
