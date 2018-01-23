@@ -10,23 +10,6 @@
 #include <stddef.h>
 LOG_CPP_START
 
-/**
- * log producer level
- */
-typedef int log_producer_level;
-
-#define LOG_PRODUCER_LEVEL_NONE (0)
-#define LOG_PRODUCER_LEVEL_DEBUG (1)
-#define LOG_PRODUCER_LEVEL_INFO (2)
-#define LOG_PRODUCER_LEVEL_WARN (3)
-#define LOG_PRODUCER_LEVEL_ERROR (4)
-#define LOG_PRODUCER_LEVEL_FATAL (5)
-#define LOG_PRODUCER_LEVEL_MAX (6)
-
-/**
- * log producer level string array, use this to cast level to string
- */
-extern const char * log_producer_level_string[];
 
 /**
  * log producer result for all operation
@@ -54,15 +37,6 @@ extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
 
 
-
-typedef int log_producer_priority;
-
-#define LOG_PRODUCER_PRIORITY_LOWEST (1)
-#define LOG_PRODUCER_PRIORITY_LOW (2)
-#define LOG_PRODUCER_PRIORITY_NORMAL (3)
-#define LOG_PRODUCER_PRIORITY_HIGH (4)
-#define LOG_PRODUCER_PRIORITY_HIGHEST (5)
-
 /**
  * check if rst if ok
  * @param rst
@@ -77,7 +51,6 @@ LOG_EXPORT int is_log_producer_result_ok(log_producer_result rst);
  */
 LOG_EXPORT const char * get_log_producer_result_string(log_producer_result rst);
 
-extern void log_producer_atoi(char * buffer, int32_t v);
 
 LOG_CPP_END
 

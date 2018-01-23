@@ -96,14 +96,14 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
 {
     if (result == LOG_PRODUCER_OK)
     {
-        printf("send success, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s \n",
-               config_name, get_log_producer_result_string(result),
+        printf("send success, config : %s, result : %d, log bytes : %d, compressed bytes : %d, request id : %s \n",
+               config_name, (result),
                (int)log_bytes, (int)compressed_bytes, req_id);
     }
     else
     {
-        printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
-               config_name, get_log_producer_result_string(result),
+        printf("send fail, config : %s, result : %d, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
+               config_name, (result),
                (int)log_bytes, (int)compressed_bytes, req_id, message);
     }
 
