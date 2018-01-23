@@ -8,7 +8,89 @@
 #include "log_producer_client.h"
 #include <pthread.h>
 #include <unistd.h>
+#include <string.h>
 
+
+void builder_speed_test(int32_t logsPerGroup)
+{
+    int32_t startTime = time(NULL);
+    int32_t lastTime = time(NULL);
+    int32_t count = 0;
+    for (; count < 1000000; ++count)
+    {
+        log_group_builder* bder = log_group_create();
+        add_source(bder,"mSource",sizeof("mSource"));
+        add_topic(bder,"mTopic", sizeof("mTopic"));
+
+        add_tag(bder, "taga_key", strlen("taga_key"), "taga_value", strlen("taga_value"));
+        add_tag(bder, "tagb_key", strlen("tagb_key"), "tagb_value", strlen("tagb_value"));
+        add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
+
+        int i = 0;
+        for (; i < logsPerGroup; ++i)
+        {
+            char * keys[] = {
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1",
+                    "content_key_1"
+            };
+            char * vals[] = {
+                    "1abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "2abcdefghijklmnopqrstuvwxyz0123456789",
+                    "xxxxxxxxxxxxxxxxxxxxx"
+            };
+            size_t key_lens[] = {
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("content_key_1"),
+                    strlen("index")
+            };
+            size_t val_lens[] = {
+                    strlen("1abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz01234567891abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("2abcdefghijklmnopqrstuvwxyz0123456789"),
+                    strlen("xxxxxxxxxxxxxxxxxxxxx")
+            };
+            add_log_full(bder, (uint32_t)time(NULL), 10, (char **)keys, (size_t *)key_lens, (char **)vals, (size_t *)val_lens);
+        }
+        log_buf buf = serialize_to_proto_buf_with_malloc(bder);
+
+        if (count % 1000 == 0)
+        {
+            int32_t nowTime = time(NULL);
+            aos_error_log("Done : %d %d %d %d\n", count, logsPerGroup, nowTime - startTime, (int32_t)buf.n_buffer);
+            lastTime = nowTime;
+        }
+        log_group_destroy(bder);
+    }
+    aos_error_log("total time sec  %d ", (time(NULL) - startTime));
+}
 
 void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
 {
@@ -171,7 +253,7 @@ void log_producer_create_destroy()
 
 void log_producer_post_logs(int logsPerSecond, int sendSec)
 {
-    //aos_log_level = AOS_LOG_DEBUG;
+    aos_log_level = AOS_LOG_DEBUG;
     if (log_producer_env_init() != LOG_PRODUCER_OK) {
         exit(1);
     }

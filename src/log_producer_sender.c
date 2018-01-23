@@ -50,22 +50,26 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
         aos_fatal_log("LZ4_decompress_safe error");
         return;
     }
-    log_group_builder builder;
-    builder.grp = sls_logs__log_group__unpack(NULL, lz4_buf->raw_length, (const uint8_t *)buf);
-    free(buf);
-    if (builder.grp == NULL)
+    uint32_t nowTime = time(NULL);
+    fix_log_group_time(buf, lz4_buf->raw_length, nowTime);
+
+    int compress_bound = LZ4_compressBound(lz4_buf->raw_length);
+    char *compress_data = (char *)malloc(compress_bound);
+    int compressed_size = LZ4_compress_default((char *)buf, compress_data, lz4_buf->raw_length, compress_bound);
+    if(compressed_size <= 0)
     {
-        aos_fatal_log("sls_logs__log_group__unpack error");
+        aos_fatal_log("LZ4_compress_default error");
+        free(buf);
+        free(compress_data);
         return;
     }
-    int i = 0;
-    uint32_t nowTime = time(NULL);
-    for(i = 0; i < builder.grp->n_logs; ++i)
-    {
-        builder.grp->logs[i]->time = nowTime;
-    }
-    *new_lz4_buf = serialize_to_proto_buf_with_malloc_lz4(&builder);
-    sls_logs__log_group__free_unpacked(builder.grp, NULL);
+    *new_lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_size);
+    (*new_lz4_buf)->length = compressed_size;
+    (*new_lz4_buf)->raw_length = lz4_buf->raw_length;
+    memcpy((*new_lz4_buf)->data, compress_data, compressed_size);
+    free(buf);
+    free(compress_data);
+    return;
 }
 
 #endif

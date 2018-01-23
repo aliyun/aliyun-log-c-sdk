@@ -1,21 +1,108 @@
-//
-//  log_builder.c
-//  log-c-sdk-new
-//
-//  Created by 王佳玮 on 16/8/24.
-//  Copyright © 2016年 wangjwchn. All rights reserved.
-//
-
 #include "log_builder.h"
 #include "lz4.h"
+#include "sds.h"
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
+
+#define INIT_TAG_NUMBER_IN_LOGGROUP 8
+#define INIT_LOG_NUMBER_IN_LOGGROUP 8
+
+/**
+ * Return the number of bytes required to store a variable-length unsigned
+ * 32-bit integer in base-128 varint encoding.
+ *
+ * \param v
+ *      Value to encode.
+ * \return
+ *      Number of bytes required.
+ */
+static inline size_t uint32_size(uint32_t v)
+{
+    if (v < (1UL << 7)) {
+        return 1;
+    } else if (v < (1UL << 14)) {
+        return 2;
+    } else if (v < (1UL << 21)) {
+        return 3;
+    } else if (v < (1UL << 28)) {
+        return 4;
+    } else {
+        return 5;
+    }
+}
+
+/**
+ * Pack an unsigned 32-bit integer in base-128 varint encoding and return the
+ * number of bytes written, which must be 5 or less.
+ *
+ * \param value
+ *      Value to encode.
+ * \param[out] out
+ *      Packed value.
+ * \return
+ *      Number of bytes written to `out`.
+ */
+static inline size_t uint32_pack(uint32_t value, uint8_t *out)
+{
+    unsigned rv = 0;
+
+    if (value >= 0x80) {
+        out[rv++] = value | 0x80;
+        value >>= 7;
+        if (value >= 0x80) {
+            out[rv++] = value | 0x80;
+            value >>= 7;
+            if (value >= 0x80) {
+                out[rv++] = value | 0x80;
+                value >>= 7;
+                if (value >= 0x80) {
+                    out[rv++] = value | 0x80;
+                    value >>= 7;
+                }
+            }
+        }
+    }
+    /* assert: value<128 */
+    out[rv++] = value;
+    return rv;
+}
+
+static inline uint32_t parse_uint32(unsigned len, const uint8_t *data)
+{
+    uint32_t rv = data[0] & 0x7f;
+    if (len > 1) {
+        rv |= ((uint32_t) (data[1] & 0x7f) << 7);
+        if (len > 2) {
+            rv |= ((uint32_t) (data[2] & 0x7f) << 14);
+            if (len > 3) {
+                rv |= ((uint32_t) (data[3] & 0x7f) << 21);
+                if (len > 4)
+                    rv |= ((uint32_t) (data[4]) << 28);
+            }
+        }
+    }
+    return rv;
+}
+
+static unsigned scan_varint(unsigned len, const uint8_t *data)
+{
+    unsigned i;
+    if (len > 10)
+        len = 10;
+    for (i = 0; i < len; i++)
+        if ((data[i] & 0x80) == 0)
+            break;
+    if (i == len)
+        return 0;
+    return i + 1;
+}
 
 log_group_builder* log_group_create()
 {
     log_group_builder* bder = (log_group_builder*)malloc(sizeof(log_group_builder)+sizeof(log_group));
+    memset(bder, 0, sizeof(log_group_builder)+sizeof(log_group));
     bder->grp = (log_group*)((char *)(bder) + sizeof(log_group_builder));
-    *bder->grp = (log_group)log_group_init;
     bder->loggroup_size = sizeof(log_group) + sizeof(log_group_builder);
     bder->builder_time = time(NULL);
     return bder;
@@ -24,138 +111,119 @@ log_group_builder* log_group_create()
 void log_group_destroy(log_group_builder* bder)
 {
     // free tag
-    size_t i = 0;
     log_group* group = bder->grp;
-    if (group->logtags != NULL)
+    if (group->tags.buffer != NULL)
     {
-        for (i = 0; i < group->n_logtags; ++i)
-        {
-            // use 1 free
-            //free(group->logtags[i]->key);
-            //free(group->logtags[i]->value);
-            free(group->logtags[i]);
-        }
-        free(group->logtags);
+        free(group->tags.buffer);
     }
     // free log
-    if (group->logs != NULL)
+    if (group->logs.buffer != NULL)
     {
-        for (i = 0; i < group->n_logs; ++i)
-        {
-            log_lg * log = group->logs[i];
-            if (log->contents != NULL)
-            {
-                //size_t j = 0;
-                //for (; j < log->n_contents; ++j)
-                //{
-                //    // use 1 free
-                //    //free(log->contents[j]->key);
-                //    //free(log->contents[j]->value);
-                //    free(log->contents[j]);
-                //}
-                free(log->contents);
-            }
-            free(log);
-        }
-        free(group->logs);
+        free(group->logs.buffer);
     }
     if (group->topic != NULL)
     {
-        free(group->topic);
+        sdsfree(group->topic);
     }
     if (group->source != NULL)
     {
-        free(group->source);
-    }
-    if (group->category != NULL)
-    {
-        free(group->category);
-    }
-    if (group->machineuuid != NULL)
-    {
-        free(group->machineuuid);
+        sdsfree(group->source);
     }
     // free self
     free(bder);
 }
 
-void _add_log(log_group_builder* bder)
+
+
+void _adjust_buffer(log_tag * tag, uint32_t new_len)
 {
-    if(!bder->grp->logs){
-        bder->grp->logs = (log_lg**)malloc(sizeof(log_lg*)*INIT_LOG_NUMBER_IN_LOGGROUP);
-        bder->grp->n_logs = 0;
+    if (tag->buffer == NULL)
+    {
+        tag->buffer = (char *)malloc(new_len << 2);
+        tag->max_buffer_len = new_len << 2;
+        tag->now_buffer = tag->buffer;
+        tag->now_buffer_len = 0;
+        return;
     }
-    bder->grp->logs[bder->grp->n_logs] = (log_lg*)malloc(sizeof(log_lg));
-    bder->loggroup_size += sizeof(log_lg);
-    *bder->grp->logs[bder->grp->n_logs] = (log_lg)log_lg_init;
-    bder->lg = bder->grp->logs[bder->grp->n_logs];
-    bder->grp->n_logs++;
-    if((bder->grp->n_logs & (bder->grp->n_logs - 1)) == 0
-       &&bder->grp->n_logs>=INIT_LOG_NUMBER_IN_LOGGROUP){
-        log_lg** tmp = malloc(sizeof(log_lg*)*(bder->grp->n_logs<<1));
-        memcpy(tmp, bder->grp->logs,sizeof(log_lg*)*bder->grp->n_logs);
-        free(bder->grp->logs);
-        bder->grp->logs = tmp;
+    uint32_t new_buffer_len = tag->max_buffer_len << 1;
+
+    if (new_buffer_len < tag->now_buffer_len + new_len)
+    {
+        new_buffer_len = tag->now_buffer_len + new_len;
     }
+
+    tag->buffer = (char *)realloc(tag->buffer, new_buffer_len);
+    tag->now_buffer = tag->buffer + tag->now_buffer_len;
+    tag->max_buffer_len = new_buffer_len;
 }
 
-void add_log_full(log_group_builder* bder, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
+void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
 {
-    // use only 1 malloc
-    _add_log(bder);
+    ++bder->grp->n_logs;
+    if (logTime < 1263563523)
+    {
+        logTime = 1263563523;
+    }
+
     int32_t i = 0;
-    int32_t totalBufferSize = pair_count * (sizeof(log_content*) + 2 * sizeof(char) + sizeof(log_content));
+    int32_t logSize = 6;
     for (; i < pair_count; ++i)
     {
-        totalBufferSize += sizeof(char) * (key_lens[i] + val_lens[i]);
+        uint32_t contSize = uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + key_lens[i] + val_lens[i] + 2;
+        logSize += 1 + uint32_size(contSize) + contSize;
     }
-    void * totalBuf = malloc(totalBufferSize);
-    bder->loggroup_size += totalBufferSize;
-    log_lg * log = bder->lg;
-    log->n_contents = pair_count;
-    log->contents = (log_content **)totalBuf;
-    log_content * contents = (log_content *)((uint8_t *)totalBuf + pair_count * (sizeof(log_content*)));
-    char * keyValBuf = (char *)((uint8_t *)totalBuf + pair_count * (sizeof(log_content*) + sizeof(log_content)));
-    for (i = 0; i < pair_count; ++i)
+    int32_t totalBufferSize = logSize + 1 + uint32_size(logSize);
+
+    log_tag * log = &(bder->grp->logs);
+
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + totalBufferSize)
     {
-        log->contents[i] = &contents[i];
-        contents[i] = (log_content)log_content_init;
-        contents[i].key = keyValBuf;
-        memcpy(contents[i].key, keys[i], key_lens[i]);
-        contents[i].key[key_lens[i]] = '\0';
-        keyValBuf += key_lens[i] + 1;
-        contents[i].value = keyValBuf;
-        memcpy(contents[i].value, values[i], val_lens[i]);
-        contents[i].value[val_lens[i]] = '\0';
-        keyValBuf += val_lens[i] + 1;
+        _adjust_buffer(log, totalBufferSize);
     }
+
+
+    bder->loggroup_size += totalBufferSize;
+    uint8_t * buf = (uint8_t*)log->now_buffer;
+
+    *buf++ = 0x0A;
+    buf += uint32_pack(logSize, buf);
+
+    // time
+    *buf++=0x08;
+    buf += uint32_pack(logTime, buf);
+
+    // Content
+    // header
+    i = 0;
+    for (; i < pair_count; ++i)
+    {
+        *buf++ = 0x12;
+        buf += uint32_pack(uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + 2 + key_lens[i] + val_lens[i], buf);
+        *buf++ = 0x0A;
+        buf += uint32_pack(key_lens[i], buf);
+        memcpy(buf, keys[i], key_lens[i]);
+        buf += key_lens[i];
+        *buf++ = 0x12;
+        buf += uint32_pack(val_lens[i], buf);
+        memcpy(buf, values[i], val_lens[i]);
+        buf += val_lens[i];
+    }
+    assert(buf - (uint8_t*)log->now_buffer == totalBufferSize);
+    log->now_buffer_len += totalBufferSize;
+    log->now_buffer = (char *)buf;
 }
 
-void add_log_time(log_group_builder* bder,uint32_t time)
-{
-    if (time < 1263563523)
-    {
-        time = 1263563523;
-    }
-    bder->lg->time = (uint32_t)time;
-}
 
 void add_source(log_group_builder* bder,const char* src,size_t len)
 {
-    char* source = (char*)malloc( sizeof(char)*(len+1));
-    bder->loggroup_size += sizeof(char)*(len+1) + 2;
-    memcpy(source, src, len);
-    source[len] = '\0';
-    bder->grp->source = source;
+    bder->loggroup_size += sizeof(char)*(len) + uint32_size((uint32_t)len) + 1;
+    bder->grp->source = sdsnewlen(src, len);
 }
 
 void add_topic(log_group_builder* bder,const char* tpc,size_t len)
 {
-    char* topic = (char*)malloc(sizeof(char)*(len+1));
-    bder->loggroup_size += sizeof(char)*(len+1) + 2;
-    memcpy(topic, tpc, len);
-    topic[len] = '\0';
-    bder->grp->topic = topic;
+    bder->loggroup_size += sizeof(char)*(len) + uint32_size((uint32_t)len) + 1;
+    bder->grp->topic = sdsnewlen(tpc, len);
 }
 
 void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum)
@@ -166,96 +234,142 @@ void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, siz
     add_tag(bder, "__pack_id__", strlen("__pack_id__"), packStr, strlen(packStr));
 }
 
-void add_tag(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len)
+
+void add_tag(log_group_builder* bder, const char* k, size_t k_len, const char* v, size_t v_len)
 {
     // use only 1 malloc
-    char * totalBuf = (char*)malloc(sizeof(char)*(k_len+2+v_len+sizeof(log_tag)));
-    char* key = totalBuf + sizeof(log_tag);
-    bder->loggroup_size += sizeof(char)*(k_len+1);
-    char* value = key+k_len+1;
-    bder->loggroup_size += sizeof(char)*(v_len+1);
-    bder->loggroup_size += 5;
-    memcpy(key, k, k_len);
-    memcpy(value, v, v_len);
-    key[k_len]   = '\0';
-    value[v_len] = '\0';
-
-    log_tag* tag = (log_tag*)totalBuf;
-    bder->loggroup_size += sizeof(log_tag);
-    *tag = (log_tag)log_tag_init;
-    tag->key = key;
-    tag->value = value;
-
-    if(!bder->grp->logtags){
-        bder->grp->logtags = (log_tag**)malloc(sizeof(log_tag*)*INIT_TAG_NUMBER_IN_LOGGROUP);
-        bder->loggroup_size += sizeof(log_tag*)*INIT_TAG_NUMBER_IN_LOGGROUP;
-        bder->grp->n_logtags = 0;
+    uint32_t tag_size = sizeof(char) * (k_len + v_len) + uint32_size((uint32_t)k_len) + uint32_size((uint32_t)v_len) + 2;
+    uint32_t n_buffer = 1 + uint32_size(tag_size) + tag_size;
+    log_tag * tag = &(bder->grp->tags);
+    if (tag->now_buffer == NULL || tag->now_buffer_len + n_buffer > tag->max_buffer_len)
+    {
+        _adjust_buffer(tag, n_buffer);
     }
-    bder->grp->logtags[bder->grp->n_logtags] = tag;
-    bder->grp->n_logtags++;
-    if((bder->grp->n_logtags & (bder->grp->n_logtags- 1)) == 0
-       && bder->grp->n_logtags>=INIT_TAG_NUMBER_IN_LOGGROUP){
-        log_tag** tmp = (log_tag**)malloc(sizeof(log_tag*)*(bder->grp->n_logtags << 1));
-        bder->loggroup_size += sizeof(log_tag*)*(bder->grp->n_logtags << 1);
-        memcpy(tmp, bder->grp->logtags,sizeof(log_tag*)*bder->grp->n_logtags);
-        free(bder->grp->logtags);
-        bder->grp->logtags = tmp;
-    }
+    uint8_t * buf = (uint8_t *)tag->now_buffer;
+    *buf++ = 0x32;
+    buf += uint32_pack(tag_size, buf);
+    *buf++ = 0x0A;
+    buf += uint32_pack((uint32_t)k_len, buf);
+    memcpy(buf, k, k_len);
+    buf += k_len;
+    *buf++ = 0x12;
+    buf += uint32_pack((uint32_t)v_len, buf);
+    memcpy(buf, v, v_len);
+    buf += v_len;
+    assert((uint8_t *)tag->now_buffer + n_buffer == buf);
+    tag->now_buffer = (char *)buf;
+    tag->now_buffer_len += n_buffer;
+    bder->loggroup_size += n_buffer;
 }
 
-/*
-void add_log_key_value(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len)
+static uint32_t _log_pack(log_group * grp, uint8_t * buf)
 {
-    // use 1 malloc
-    char * totalBuf = (char*)malloc(sizeof(char)*(k_len+2+v_len+sizeof(log_content)));
-    char* key   = totalBuf + sizeof(log_content);
-    bder->loggroup_size += sizeof(char)*(k_len+1);
-    char* value = key+k_len+1;
-    bder->loggroup_size += sizeof(char)*(v_len+1);
-    bder->loggroup_size += 5;
+    uint8_t * start_buf = buf;
 
-    memcpy(key  , k, k_len);
-    memcpy(value, v, v_len);
-    key[k_len]   = '\0';
-    value[v_len] = '\0';
-    
-    log_content* con = (log_content*)totalBuf;
-    *con = (log_content)log_content_init;
-    con->key = key;
-    con->value = value;
-    
-    if(!bder->lg->contents){
-        time_t rawtime;
-        time(&rawtime);
-        bder->lg->time = (uint32_t)rawtime;
-        bder->lg->contents = (log_content**)malloc(sizeof(log_content*)*INIT_KVPAIR_NUMBER_IN_LOG);
-        bder->lg->n_contents = 0;
+    if (grp->logs.buffer != NULL)
+    {
+        buf += grp->logs.now_buffer_len;
     }
-    bder->lg->contents[bder->lg->n_contents] = con;
-    bder->lg->n_contents++;
-    if((bder->lg->n_contents & (bder->lg->n_contents - 1)) == 0
-       &&bder->lg->n_contents>=INIT_KVPAIR_NUMBER_IN_LOG){
-        log_content** tmp = malloc(sizeof(log_content*)*(bder->lg->n_contents<<1));
-        memcpy(tmp, bder->lg->contents,sizeof(log_content*)*bder->lg->n_contents);
-        free(bder->lg->contents);
-        bder->lg->contents = tmp;  //memory usage issue
-        
+    else
+    {
+        return 0;
     }
+
+    if (grp->topic != NULL)
+    {
+        *buf++ = 0x1A;
+        buf+= uint32_pack((uint32_t)sdslen(grp->topic), buf);
+        memcpy(buf, grp->topic, sdslen(grp->topic));
+        buf += sdslen(grp->topic);
+    }
+
+    if (grp->source != NULL)
+    {
+        *buf++ = 0x22;
+        buf+= uint32_pack((uint32_t)sdslen(grp->source), buf);
+        memcpy(buf, grp->source, sdslen(grp->source));
+        buf += sdslen(grp->source);
+    }
+
+    if (grp->tags.buffer != NULL)
+    {
+        memcpy(buf, grp->tags.buffer, grp->tags.now_buffer_len);
+        buf += grp->tags.now_buffer_len;
+    }
+
+    return buf - start_buf;
 }
- */
 
+void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
+{
+    if (len == 0 || pb_buffer == NULL || new_time < 1263563523)
+    {
+        return;
+    }
+    if (pb_buffer[0] != 0x0A)
+    {
+        return;
+    }
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    uint8_t * startBuf = (uint8_t *)pb_buffer;
+    while (buf - startBuf < len && *buf == 0x0A)
+    {
+        ++buf;
+        unsigned logSizeLen = scan_varint(5, buf);
+        uint32_t logSize = parse_uint32(logSizeLen, buf);
+        buf += logSizeLen;
+        // time
+        if (*buf == 0x08)
+        {
+            uint32_pack(new_time, buf + 1);
+        }
+        buf += logSize;
+    }
+
+}
+
+
+log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
+{
+    log_buf buf;
+    buf.buffer = NULL;
+    buf.n_buffer = 0;
+    log_tag * log = &(bder->grp->logs);
+    if (log->buffer == NULL)
+    {
+        return buf;
+    }
+    if (log->max_buffer_len < bder->loggroup_size)
+    {
+        _adjust_buffer(log, bder->loggroup_size - log->now_buffer_len);
+    }
+    buf.n_buffer = _log_pack(bder->grp, (uint8_t *)log->buffer);
+    buf.buffer = log->buffer;
+    return buf;
+}
 
 lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
 {
-    size_t length = log_get_packed_size(bder->grp);
-    unsigned char * buf = (unsigned char *)malloc(length);
-    log_pack(bder->grp, buf);
+    log_tag * log = &(bder->grp->logs);
+    if (log->buffer == NULL)
+    {
+        return NULL;
+    }
+    if (log->max_buffer_len < bder->loggroup_size)
+    {
+        _adjust_buffer(log, bder->loggroup_size - log->now_buffer_len);
+    }
+    size_t length = _log_pack(bder->grp, (uint8_t *)log->buffer);
+    // @debug
+    //FILE * pFile = fopen("dump.dat", "wb+");
+    //fwrite(log->buffer, 1, length, pFile);
+    //fclose(pFile);
+    // @debug end
     int compress_bound = LZ4_compressBound(length);
     char *compress_data = (char *)malloc(compress_bound);
-    int compressed_size = LZ4_compress_default((char *)buf, compress_data, length, compress_bound);
+    int compressed_size = LZ4_compress_default((char *)log->buffer, compress_data, length, compress_bound);
     if(compressed_size <= 0)
     {
-        free(buf);
         free(compress_data);
         return NULL;
     }
@@ -263,7 +377,6 @@ lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
     pLogbuf->length = compressed_size;
     pLogbuf->raw_length = length;
     memcpy(pLogbuf->data, compress_data, compressed_size);
-    free(buf);
     free(compress_data);
     return pLogbuf;
 }

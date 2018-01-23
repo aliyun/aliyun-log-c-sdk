@@ -219,7 +219,7 @@ void _push_last_loggroup(log_producer_manager * manager)
     if (builder != NULL)
     {
         int32_t status = log_queue_push(manager->loggroup_queue, builder);
-        aos_debug_log("try push loggroup to flusher, size : %d, log count %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->n_logs, status);
+        aos_debug_log("try push loggroup to flusher, size : %d, log size %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->logs.now_buffer_len, status);
         if (status != 0)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -295,8 +295,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
         producer_manager->builder->private_value = producer_manager;
     }
 
-    add_log_full(producer_manager->builder, pair_count, keys, key_lens, values, val_lens);
-    add_log_time(producer_manager->builder, (u_int32_t)time(NULL));
+    add_log_full(producer_manager->builder, (uint32_t)time(NULL), pair_count, keys, key_lens, values, val_lens);
 
     log_group_builder * builder = producer_manager->builder;
 

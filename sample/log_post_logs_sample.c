@@ -46,8 +46,7 @@ void post_logs_with_http_cont_lz4_log_option()
                 key_lens[j] = strlen(keys[j]);
                 val_lens[j] = strlen(values[j]);
             }
-            add_log_full(bder, POST_LOG_CONTENT_PAIRS, keys, key_lens, values, val_lens);
-            add_log_time(bder, time(NULL));
+            add_log_full(bder, time(NULL), POST_LOG_CONTENT_PAIRS, keys, key_lens, values, val_lens);
             for (j = 0; j < POST_LOG_CONTENT_PAIRS; j++)
             {
                 free(keys[j]);
