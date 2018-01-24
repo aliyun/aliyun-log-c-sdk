@@ -56,7 +56,7 @@ LOG_EXPORT void destroy_log_producer(log_producer * producer);
 /**
  * get client from producer
  * @param producer
- * @param config_name
+ * @param config_name  useless now, set NULL
  * @return the specific producer client, root client if config_name is NULL or no specific config,
  */
 LOG_EXPORT log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name);

@@ -14,7 +14,6 @@
 void builder_speed_test(int32_t logsPerGroup)
 {
     int32_t startTime = time(NULL);
-    int32_t lastTime = time(NULL);
     int32_t count = 0;
     for (; count < 1000000; ++count)
     {
@@ -85,7 +84,6 @@ void builder_speed_test(int32_t logsPerGroup)
         {
             int32_t nowTime = time(NULL);
             aos_error_log("Done : %d %d %d %d\n", count, logsPerGroup, nowTime - startTime, (int32_t)buf.n_buffer);
-            lastTime = nowTime;
         }
         log_group_destroy(bder);
     }
@@ -131,7 +129,7 @@ void * write_log_thread(void* param)
     return NULL;
 }
 
-log_producer * create_log_producer_by_config_file(on_log_producer_send_done_function on_send_done)
+log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on_send_done)
 {
     log_producer_config * config = create_log_producer_config();
     log_producer_config_set_endpoint(config, "http://{your_endpoint}");
@@ -157,7 +155,7 @@ void log_producer_multi_thread(int logsPerSecond)
         exit(1);
     }
 
-    log_producer * producer = create_log_producer_by_config_file(on_log_send_done);
+    log_producer * producer = create_log_producer_wrapper(on_log_send_done);
     if (producer == NULL)
     {
         printf("create log producer by config file fail \n");
@@ -217,7 +215,7 @@ void log_producer_create_destroy()
             exit(1);
         }
 
-        log_producer * producer = create_log_producer_by_config_file(on_log_send_done);
+        log_producer * producer = create_log_producer_wrapper(on_log_send_done);
         if (producer == NULL)
         {
             printf("create log producer by config file fail \n");
@@ -231,19 +229,6 @@ void log_producer_create_destroy()
             exit(1);
         }
 
-        log_producer_client * client2 = get_log_producer_client(producer, "test_sub_config");
-        if (client2 == NULL)
-        {
-            printf("create log producer client by config file fail \n");
-            exit(1);
-        }
-
-        log_producer_client * client3 = get_log_producer_client(producer, "order.error");
-        if (client3 == NULL)
-        {
-            printf("create log producer client by config file fail \n");
-            exit(1);
-        }
         destroy_log_producer(producer);
 
         log_producer_env_destroy();
@@ -258,7 +243,7 @@ void log_producer_post_logs(int logsPerSecond, int sendSec)
         exit(1);
     }
 
-    log_producer * producer = create_log_producer_by_config_file(on_log_send_done);
+    log_producer * producer = create_log_producer_wrapper(on_log_send_done);
     if (producer == NULL)
     {
         printf("create log producer by config file fail \n");
@@ -272,22 +257,6 @@ void log_producer_post_logs(int logsPerSecond, int sendSec)
         exit(1);
     }
 
-    log_producer_client * client2 = get_log_producer_client(producer, "test_sub_config");
-    if (client2 == NULL)
-    {
-        printf("create log producer client by config file fail \n");
-        exit(1);
-    }
-
-    log_producer_client * client3 = get_log_producer_client(producer, "order.error");
-    if (client3 == NULL)
-    {
-        printf("create log producer client by config file fail \n");
-        exit(1);
-    }
-
-    //assert(client != client2);
-    //assert(client != client3);
 
     int32_t i = 0;
     int32_t totalTime = 0;
@@ -310,7 +279,7 @@ void log_producer_post_logs(int logsPerSecond, int sendSec)
                                         "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "index", indexStr);
 
-            log_producer_client_add_log(client2, 8, "LogHub", "Real-time log collection and consumption",
+            log_producer_client_add_log(client, 8, "LogHub", "Real-time log collection and consumption",
                               "Search/Analytics", "Query and real-time analysis",
                               "Visualized", "dashboard and report functions",
                               "Interconnection", "Grafana and JDBC/SQL92");
@@ -342,7 +311,6 @@ int main(int argc, char *argv[])
         sendSec = atoi(argv[2]);
     }
     //log_producer_create_destroy();
-
     //log_producer_multi_thread(logsPerSec / 10);
     log_producer_post_logs(logsPerSec, sendSec);
     //post_logs_to_debuger(filePath);

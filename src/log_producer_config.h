@@ -103,8 +103,6 @@ LOG_EXPORT void log_producer_config_set_access_id(log_producer_config * config, 
  */
 LOG_EXPORT void log_producer_config_set_access_key(log_producer_config * config, const char * access_id);
 
-
-
 /**
  * set producer config topic
  * @param config
@@ -113,14 +111,14 @@ LOG_EXPORT void log_producer_config_set_access_key(log_producer_config * config,
 LOG_EXPORT void log_producer_config_set_topic(log_producer_config * config, const char * topic);
 
 /**
- * set producer source
+ * set producer source, this source will been set to every loggroup's "source" field
  * @param config
  * @param source
  */
 LOG_EXPORT void log_producer_config_set_source(log_producer_config * config, const char * source);
 
 /**
- * add tag
+ * add tag, this tag will beem set to every loggroup's "tag" field
  * @param config
  * @param key
  * @param value
