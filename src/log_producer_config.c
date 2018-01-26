@@ -112,6 +112,39 @@ void log_producer_config_print(log_producer_config * pConfig, FILE * file)
 }
 #endif
 
+void log_producer_config_set_packet_timeout(log_producer_config * config, int32_t time_out_ms)
+{
+    if (config == NULL || time_out_ms < 0)
+    {
+        return;
+    }
+    config->packageTimeoutInMS = time_out_ms;
+}
+void log_producer_config_set_packet_log_count(log_producer_config * config, int32_t log_count)
+{
+    if (config == NULL || log_count < 0)
+    {
+        return;
+    }
+    config->logCountPerPackage = log_count;
+}
+void log_producer_config_set_packet_log_bytes(log_producer_config * config, int32_t log_bytes)
+{
+    if (config == NULL || log_bytes < 0)
+    {
+        return;
+    }
+    config->logBytesPerPackage = log_bytes;
+}
+void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes)
+{
+    if (config == NULL || max_buffer_bytes < 0)
+    {
+        return;
+    }
+    config->maxBufferBytes = max_buffer_bytes;
+}
+
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
 {
     if(key == NULL || value == NULL)

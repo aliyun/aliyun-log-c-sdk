@@ -125,6 +125,14 @@ LOG_EXPORT void log_producer_config_set_source(log_producer_config * config, con
  */
 LOG_EXPORT void log_producer_config_add_tag(log_producer_config * config, const char * key, const char * value);
 
+
+LOG_EXPORT void log_producer_config_set_packet_timeout(log_producer_config * config, int32_t time_out_ms);
+LOG_EXPORT void log_producer_config_set_packet_log_count(log_producer_config * config, int32_t log_count);
+LOG_EXPORT void log_producer_config_set_packet_log_bytes(log_producer_config * config, int32_t log_bytes);
+LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes);
+
+
+
 /**
  * destroy config, this will free all memory allocated by config's apr pool
  * @param config

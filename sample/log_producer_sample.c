@@ -137,12 +137,22 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_logstore(config, "{your_logstore}");
     log_producer_config_set_access_id(config, "{your_access_key}");
     log_producer_config_set_access_key(config, "{your_access_key_secret}");
+
+    // if you do not need topic or tag, comment it
     log_producer_config_set_topic(config, "test_topic");
     log_producer_config_add_tag(config, "tag_1", "val_1");
     log_producer_config_add_tag(config, "tag_2", "val_2");
     log_producer_config_add_tag(config, "tag_3", "val_3");
     log_producer_config_add_tag(config, "tag_4", "val_4");
     log_producer_config_add_tag(config, "tag_5", "val_5");
+
+    // set resource params
+    log_producer_config_set_packet_log_bytes(config, 1024*1024*3);
+    log_producer_config_set_packet_log_count(config, 2048);
+    log_producer_config_set_packet_timeout(config, 3000);
+    log_producer_config_set_max_buffer_limit(config, 64*1024*1024);
+
+
     return create_log_producer(config, on_send_done);
 }
 
