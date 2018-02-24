@@ -26,6 +26,6 @@ log_producer_result log_producer_debug_flusher_write(log_producer_debug_flusher 
 log_producer_result log_producer_debug_flusher_flush(log_producer_debug_flusher * producer_debug_flusher);
 int log_producer_print_log(log_lg * log, FILE * pFile);
 
-LOG_CPP_START
+LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_DEBUG_FLUSHER_H

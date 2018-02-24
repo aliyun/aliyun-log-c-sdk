@@ -290,6 +290,8 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
         }
     }
 
+    cJSON_Delete(pJson);
+
     return producerConfig;
 }
 
