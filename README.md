@@ -1,6 +1,8 @@
 # Aliyun LOG C Producer 
 日志服务C Producer Library是用纯C编写的日志采集客户端，为各类应用程序提供便捷、高性能、低资源占用的一站式数据采集方案，降低数据采集的开发与运维代价。
 
+* 日志服务还提供Producer Lite版本，不依赖APR相关库且资源占用大大降低，具体请参见[Lite分支](https://github.com/aliyun/aliyun-log-c-sdk/tree/lite)
+
 ## 功能特点
 * 异步
     * 异步写入，客户端线程无阻塞
@@ -38,6 +40,8 @@
 LOG C SDK使用curl进行网络操作，无论是作为客户端还是服务器端，都需要依赖curl。
 另外，LOG C SDK使用apr/apr-util库解决内存管理以及跨平台问题。
 LOG C SDK并没有带上这几个外部库，您需要确认这些库已经安装，并且将它们的头文件目录和库文件目录都加入到了项目中。
+
+* 日志服务还提供Producer Lite版本，不依赖APR相关库且资源占用大大降低，具体请参见[Lite分支](https://github.com/aliyun/aliyun-log-c-sdk/tree/lite)
 
 #### 第三方库下载以及安装
 
