@@ -13,6 +13,7 @@
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
+void * log_producer_send_thread(void * param);
 
 char * _get_pack_id(const char * configName, const char * ip)
 {
@@ -147,7 +148,16 @@ void * log_producer_flush_thread(void * param)
         _try_flush_loggroup(root_producer_manager);
 
         // send data
-        if (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read)
+        if (root_producer_manager->send_threads != NULL)
+        {
+            while (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read && !log_queue_isfull(root_producer_manager->sender_data_queue))
+            {
+                log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
+                // push always success
+                log_queue_push(root_producer_manager->sender_data_queue, send_param);
+            }
+        }
+        else if (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read)
         {
             log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
             log_producer_send_data(send_param);
@@ -156,8 +166,6 @@ void * log_producer_flush_thread(void * param)
     aos_info_log("exit flusher thread, config : %s", root_producer_manager->producer_config->logstore);
     return NULL;
 }
-
-
 
 log_producer_manager * create_log_producer_manager(log_producer_config * producer_config)
 {
@@ -181,13 +189,25 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
     producer_manager->send_param_queue_size = base_queue_size * 2;
     producer_manager->send_param_queue = malloc(sizeof(log_producer_send_param*) * producer_manager->send_param_queue_size);
 
+    if (producer_config->sendThreadCount > 0)
+    {
+        producer_manager->send_threads = (THREAD *)malloc(sizeof(THREAD) * producer_config->sendThreadCount);
+        producer_manager->sender_data_queue = log_queue_create(base_queue_size * 2);
+        int32_t threadId = 0;
+        for (; threadId < producer_manager->producer_config->sendThreadCount; ++threadId)
+        {
+            THREAD_INIT(producer_manager->send_threads[threadId], log_producer_send_thread, producer_manager);
+        }
+    }
+
+
     producer_manager->triger_cond = CreateCond();
     producer_manager->lock = CreateCriticalSection();
     THREAD_INIT(producer_manager->flush_thread, log_producer_flush_thread, producer_manager);
 
     if (producer_config->source != NULL)
     {
-        producer_manager->source =  sdsnew(producer_config->source);
+        producer_manager->source = sdsnew(producer_config->source);
     }
     else
     {
@@ -258,8 +278,21 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     // destroy root resources
     COND_SIGNAL(manager->triger_cond);
     THREAD_JOIN(manager->flush_thread);
+    if (manager->send_threads != NULL)
+    {
+        int32_t  threadId = 0;
+        for (; threadId < manager->producer_config->sendThreadCount; ++threadId)
+        {
+            THREAD_JOIN(manager->send_threads[threadId]);
+        }
+        free(manager->send_threads);
+    }
     DeleteCond(manager->triger_cond);
     log_queue_destroy(manager->loggroup_queue);
+    if (manager->sender_data_queue != NULL)
+    {
+        log_queue_destroy(manager->sender_data_queue);
+    }
     DeleteCriticalSection(manager->lock);
     if (manager->pack_prefix != NULL)
     {

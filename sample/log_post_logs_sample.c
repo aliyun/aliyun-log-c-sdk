@@ -1,10 +1,10 @@
 #include "log_util.h"
 #include "log_api.h"
 #include "log_config.h"
-#include <time.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+// just for developer
 
 #define POST_LOG_COUNT 10
 #define POST_LOG_CONTENT_PAIRS 15
@@ -84,6 +84,7 @@ void post_logs_with_http_cont_lz4_log_option()
 
 int main(int argc, char *argv[])
 {
+    // for developer
     post_logs_with_http_cont_lz4_log_option();
     return 0;
 }

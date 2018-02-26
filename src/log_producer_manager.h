@@ -21,6 +21,8 @@ typedef struct _log_producer_manager
     volatile uint32_t networkRecover;
     volatile uint32_t totalBufferSize;
     log_queue * loggroup_queue;
+    log_queue * sender_data_queue;
+    THREAD * send_threads;
     THREAD flush_thread;
     CRITICALSECTION lock;
     COND triger_cond;

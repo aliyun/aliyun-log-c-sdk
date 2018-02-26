@@ -191,6 +191,12 @@ static inline COND_WAIT_T COND_WAIT_TIME(COND cond, CRITICALSECTION cs, int32_t 
     return pthread_cond_timedwait(cond, cs, &outTime);
 }
 
+static inline int64_t GET_TIME_US() {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    return (int64_t)now.tv_sec * 1000000 + now.tv_usec;
+}
+
 
 #define MUTEX pthread_mutex_t
 #define SEMA sem_t

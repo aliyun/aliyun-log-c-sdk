@@ -74,7 +74,28 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 
 #endif
 
-void * log_producer_send_fun(void * thread, void * param)
+void * log_producer_send_thread(void * param)
+{
+    log_producer_manager * producer_manager = (log_producer_manager *)param;
+
+    if (producer_manager->sender_data_queue == NULL)
+    {
+        return NULL;
+    }
+
+    while (!producer_manager->shutdown)
+    {
+        void * send_param = log_queue_pop(producer_manager->sender_data_queue, 30);
+        if (send_param != NULL)
+        {
+            log_producer_send_fun(send_param);
+        }
+    }
+
+    return NULL;
+}
+
+void * log_producer_send_fun(void * param)
 {
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
@@ -268,7 +289,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
 
 log_producer_result log_producer_send_data(log_producer_send_param * send_param)
 {
-    log_producer_send_fun(NULL, send_param);
+    log_producer_send_fun(send_param);
     return LOG_PRODUCER_OK;
 }
 

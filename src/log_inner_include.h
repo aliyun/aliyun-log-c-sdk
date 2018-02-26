@@ -60,6 +60,7 @@ typedef int socklen_t;
 #include <semaphore.h>
 #include <assert.h>
 #include <sys/time.h>
+#include <stdint.h>
 
 #endif
 

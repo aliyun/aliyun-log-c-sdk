@@ -145,6 +145,15 @@ void log_producer_config_set_max_buffer_limit(log_producer_config * config, int6
     config->maxBufferBytes = max_buffer_bytes;
 }
 
+void log_producer_config_set_send_thread_count(log_producer_config * config, int32_t thread_count)
+{
+    if (config == NULL || thread_count < 0)
+    {
+        return;
+    }
+    config->sendThreadCount = thread_count;
+}
+
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
 {
     if(key == NULL || value == NULL)

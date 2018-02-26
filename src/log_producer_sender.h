@@ -40,7 +40,7 @@ typedef struct _log_producer_send_param
     uint32_t builder_time;
 }log_producer_send_param;
 
-extern void * log_producer_send_fun(void * thread, void * send_param);
+extern void * log_producer_send_fun(void * send_param);
 
 extern log_producer_result log_producer_send_data(log_producer_send_param * send_param);
 

@@ -13,28 +13,6 @@
 LOG_CPP_START
 
 
-
-// log producer config file sample
-//{
-//  "endpoint" : "http://{endpoint}",
-//  "project" : "{"your_project"}",
-//  "logstore" : "{your_logstore}",
-//  "access_id" : "{your_access_key_id}",
-//  "access_key" : "{your_access_key}",
-//  "topic" : "topic_test",
-//  "tags" : {
-//      "tag_key" : "tag_value",
-//      "1": "2"
-//  },
-//  "package_timeout_ms" : 3000,
-//  "log_count_per_package" : 4096,
-//  "log_bytes_per_package" : 3000000,
-//  "max_buffer_bytes" : 10000000,
-//}
-//
-
-
-
 typedef struct _log_producer_config_tag
 {
     char * key;
@@ -53,6 +31,8 @@ typedef struct _log_producer_config
     log_producer_config_tag * tags;
     int32_t tagAllocSize;
     int32_t tagCount;
+
+    int32_t sendThreadCount;
 
     int32_t packageTimeoutInMS;
     int32_t logCountPerPackage;
@@ -118,23 +98,52 @@ LOG_EXPORT void log_producer_config_set_topic(log_producer_config * config, cons
 LOG_EXPORT void log_producer_config_set_source(log_producer_config * config, const char * source);
 
 /**
- * add tag, this tag will beem set to every loggroup's "tag" field
+ * add tag, this tag will been set to every loggroup's "tag" field
  * @param config
  * @param key
  * @param value
  */
 LOG_EXPORT void log_producer_config_add_tag(log_producer_config * config, const char * key, const char * value);
 
-
+/**
+ * set loggroup timeout, if delta time from first log's time >= time_out_ms, current loggroup will been flushed out
+ * @param config
+ * @param time_out_ms
+ */
 LOG_EXPORT void log_producer_config_set_packet_timeout(log_producer_config * config, int32_t time_out_ms);
-LOG_EXPORT void log_producer_config_set_packet_log_count(log_producer_config * config, int32_t log_count);
-LOG_EXPORT void log_producer_config_set_packet_log_bytes(log_producer_config * config, int32_t log_bytes);
-LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes);
-
-
 
 /**
- * destroy config, this will free all memory allocated by config's apr pool
+ * set loggroup max log count, if loggoup's logs count  >= log_count, current loggroup will been flushed out
+ * @param config
+ * @param log_count
+ */
+LOG_EXPORT void log_producer_config_set_packet_log_count(log_producer_config * config, int32_t log_count);
+
+/**
+ * set loggroup max log bytes, if loggoup's log bytes  >= log_bytes, current loggroup will been flushed out
+ * @param config
+ * @param log_bytes
+ */
+LOG_EXPORT void log_producer_config_set_packet_log_bytes(log_producer_config * config, int32_t log_bytes);
+
+/**
+ * set max buffer size, if total buffer size > max_buffer_bytes, all send will fail immediately
+ * @param config
+ * @param max_buffer_bytes
+ */
+LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes);
+
+/**
+ * set send thread count, default is 0.
+ * @note if thread count is 0, flusher thread is in the charge of send logs.
+ * @note if thread count > 1, then producer will create $(thread_count) threads to send logs.
+ * @param config
+ * @param thread_count
+ */
+LOG_EXPORT void log_producer_config_set_send_thread_count(log_producer_config * config, int32_t thread_count);
+
+/**
+ * destroy config, this will free all memory allocated by this config
  * @param config
  */
 LOG_EXPORT void destroy_log_producer_config(log_producer_config * config);

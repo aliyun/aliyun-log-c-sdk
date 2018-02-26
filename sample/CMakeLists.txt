@@ -8,6 +8,8 @@ set(POST_LOGS_SOURCE_FILES log_config.c
 
 set(PRODUCER_SAMPLE_SOURCE_FILES log_producer_sample.c)
 
+set(PRODUCER_BENCHMARK_SOURCE_FILES log_producer_benchmark.c)
+
 include_directories (${CURL_INCLUDE_DIR})
 include_directories ("${CMAKE_SOURCE_DIR}/src")
 
@@ -36,3 +38,4 @@ _TARGET_SAMPLE_LIBRARIES(log_producer_sample "${PRODUCER_SAMPLE_SOURCE_FILES}")
 
 _TARGET_SAMPLE_LIBRARIES(log_post_logs_sample "${POST_LOGS_SOURCE_FILES}")
 
+_TARGET_SAMPLE_LIBRARIES(log_producer_benchmark "${PRODUCER_BENCHMARK_SOURCE_FILES}")
