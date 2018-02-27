@@ -34,8 +34,8 @@ typedef struct _log_producer_manager
     on_log_producer_send_done_function send_done_function;
     log_producer_send_param ** send_param_queue;
     uint64_t send_param_queue_size;
-    uint64_t send_param_queue_read;
-    uint64_t send_param_queue_write;
+    volatile uint64_t send_param_queue_read;
+    volatile uint64_t send_param_queue_write;
 }log_producer_manager;
 
 extern log_producer_manager * create_log_producer_manager(log_producer_config * producer_config);

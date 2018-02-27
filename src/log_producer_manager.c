@@ -261,7 +261,9 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     _push_last_loggroup(manager);
 
     int waitCount = 0;
-    while (log_queue_size(manager->loggroup_queue) > 0)
+    while (log_queue_size(manager->loggroup_queue) > 0 ||
+            manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
+            (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
         usleep(10 * 1000);
         if (++waitCount == 100)
