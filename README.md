@@ -45,6 +45,12 @@
 * 编译后的动态库仅有65KB（strip后）
 
 ## 安装方法
+### 下载Producer Lite代码
+Producer Lite代码在lite分支，您可以使用如下命令获取代码：
+```shell
+git clone https://github.com/aliyun/aliyun-log-c-sdk.git -b lite
+```
+
 ### 环境依赖
 C Producer Lite使用curl进行网络操作，您需要确认这些库已经安装，并且将它们的头文件目录和库文件目录都加入到了项目中。
 
