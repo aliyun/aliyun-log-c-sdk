@@ -168,9 +168,10 @@ void post_frame(log_producer_client * client, video_frame * frame)
             int try_time = 0;
             for (; try_time < 10; ++try_time)
             {
-                if (log_producer_client_add_log_with_len(client, 6, g_frame_keys, g_frame_keys_len, values, values_len) != LOG_PRODUCER_OK)
+                usleep(10000);
+                if (log_producer_client_add_log_with_len(client, 6, g_frame_keys, g_frame_keys_len, values, values_len) == LOG_PRODUCER_OK)
                 {
-                    usleep(10000);
+                    break;
                 }
             }
             if (try_time == 10)
