@@ -290,8 +290,6 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
         }
     }
 
-    cJSON_Delete(pJson);
-
     return producerConfig;
 }
 
@@ -304,7 +302,9 @@ log_producer_config * load_log_producer_config_JSON(const char * jsonStr)
         return NULL;
     }
 
-    return _load_log_producer_config_JSON_Obj(pJson, NULL);
+    log_producer_config * producerConfig = _load_log_producer_config_JSON_Obj(pJson, NULL);
+    cJSON_Delete(pJson);
+    return producerConfig;
 }
 
 log_producer_config * log_producer_config_get_sub(log_producer_config * config, const char * sub_config)
