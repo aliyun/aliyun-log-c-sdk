@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define INIT_TAG_NUMBER_IN_LOGGROUP 8
-#define INIT_LOG_NUMBER_IN_LOGGROUP 8
+// 1+3( 1 --->  header;  3 ---> 128 * 128 * 128 = 2MB)
+#define INIT_LOG_SIZE_BYTES 4
 
 /**
  * Return the number of bytes required to store a variable-length unsigned
@@ -160,6 +160,8 @@ void _adjust_buffer(log_tag * tag, uint32_t new_len)
 void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
 {
     ++bder->grp->n_logs;
+
+    // limit logTime's min value, ensure varint size is 5
     if (logTime < 1263563523)
     {
         logTime = 1263563523;
@@ -385,4 +387,103 @@ void free_lz4_log_buf(lz4_log_buf* pBuf)
 {
     free(pBuf);
 }
+
+#ifdef LOG_KEY_VALUE_FLAG
+
+void add_log_begin(log_group_builder * bder)
+{
+    log_tag * logs = &bder->grp->logs;
+    if (logs->buffer == NULL || logs->now_buffer_len + INIT_LOG_SIZE_BYTES > logs->max_buffer_len)
+    {
+        _adjust_buffer(logs, INIT_LOG_SIZE_BYTES);
+    }
+    bder->grp->log_now_buffer = logs->now_buffer + INIT_LOG_SIZE_BYTES;
+}
+
+void add_log_time(log_group_builder * bder, uint32_t logTime)
+{
+    log_tag * logs = &bder->grp->logs;
+    // 1 header and 5 time
+    if (bder->grp->log_now_buffer - logs->buffer + 6 > logs->max_buffer_len)
+    {
+        // reset log_now_buffer
+        size_t delta = bder->grp->log_now_buffer - logs->buffer;
+        _adjust_buffer(logs, 2);
+        bder->grp->log_now_buffer = logs->buffer + delta;
+    }
+
+    uint8_t * buf = (uint8_t *)bder->grp->log_now_buffer;
+    // time
+    *buf++=0x08;
+    buf += uint32_pack(logTime, buf);
+    bder->grp->log_now_buffer = (char *)buf;
+}
+
+void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len)
+{
+    // sum total size
+    uint32_t kv_size = sizeof(char) * (key_len + value_len) + uint32_size((uint32_t)key_len) + uint32_size((uint32_t)value_len) + 2;
+    kv_size += 1 + uint32_size(kv_size);
+    log_tag * logs = &bder->grp->logs;
+    // ensure buffer size
+    if (bder->grp->log_now_buffer - logs->buffer + kv_size > logs->max_buffer_len )
+    {
+        // reset log_now_buffer
+        size_t delta = bder->grp->log_now_buffer - logs->buffer;
+        _adjust_buffer(logs, kv_size);
+        bder->grp->log_now_buffer = logs->buffer + delta;
+    }
+    uint8_t * buf = (uint8_t *)bder->grp->log_now_buffer;
+    // key_value header
+    *buf++ = 0x12;
+    buf += uint32_pack(uint32_size(key_len) + uint32_size(value_len) + 2 + key_len + value_len, buf);
+    // key len
+    *buf++ = 0x0A;
+    buf += uint32_pack(key_len, buf);
+    // key
+    memcpy(buf, key, key_len);
+    buf += key_len;
+    // value len
+    *buf++ = 0x12;
+    buf += uint32_pack(value_len, buf);
+    // value
+    memcpy(buf, value, value_len);
+    buf += value_len;
+    bder->grp->log_now_buffer = (char *)buf;
+}
+
+void add_log_end(log_group_builder * bder)
+{
+    log_tag * logs = &bder->grp->logs;
+    uint32_t log_size = bder->grp->log_now_buffer - logs->now_buffer - INIT_LOG_SIZE_BYTES;
+    // check total size and uint32_size(total size)
+
+    int32_t header_size = uint32_size(log_size) + 1;
+
+    if (header_size != INIT_LOG_SIZE_BYTES)
+    {
+        int32_t delta_header_size = header_size - (int32_t)INIT_LOG_SIZE_BYTES;
+        // need check buffer size
+        if (delta_header_size > 0 && bder->grp->log_now_buffer - logs->buffer +  delta_header_size > logs->max_buffer_len)
+        {
+            // reset log_now_buffer
+            size_t delta = bder->grp->log_now_buffer - logs->buffer;
+            _adjust_buffer(logs, delta_header_size);
+            bder->grp->log_now_buffer = logs->buffer + delta;
+        }
+        // move buffer
+        memmove(logs->now_buffer + header_size, logs->now_buffer + INIT_LOG_SIZE_BYTES, log_size);
+    }
+    // set log header
+    uint8_t * buf = (uint8_t *)logs->now_buffer;
+    *buf++ = 0x0A;
+    buf += uint32_pack(log_size, buf);
+    // do not need to add header_size
+    logs->now_buffer = (char *)buf + log_size;
+    logs->now_buffer_len += header_size + log_size;
+    // update loggroup size
+    bder->loggroup_size += header_size + log_size;
+}
+
+#endif
 

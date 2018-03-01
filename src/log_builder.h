@@ -15,6 +15,9 @@
 #include "log_define.h"
 LOG_CPP_START
 
+//#define LOG_KEY_VALUE_FLAG
+
+
 typedef struct _log_tag{
     char * buffer;
     char * now_buffer;
@@ -29,6 +32,9 @@ typedef struct _log_group{
     log_tag tags;
     log_tag logs;
     size_t n_logs;
+#ifdef LOG_KEY_VALUE_FLAG
+    char * log_now_buffer;
+#endif
 }log_group;
 
 typedef struct _lz4_log_buf{
@@ -60,8 +66,40 @@ extern void add_topic(log_group_builder* bder,const char* tpc,size_t len);
 extern void add_tag(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
 extern void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum);
 extern void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time);
-//extern void add_log_key_value(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
 
+#ifdef LOG_KEY_VALUE_FLAG
+
+/**
+ * call it when you want to add a new log
+ * @note sequence must be : add_log_begin -> add_log_time/add_log_key_value..... -> add_log_end
+ * @param bder
+ */
+extern void add_log_begin(log_group_builder * bder);
+
+/**
+ * set log's time, must been called only once in one log
+ * @param bder
+ * @param logTime
+ */
+extern void add_log_time(log_group_builder * bder, uint32_t logTime);
+
+/**
+ * add key&value pair to log tail
+ * @param bder
+ * @param key
+ * @param key_len
+ * @param value
+ * @param value_len
+ */
+extern void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len);
+
+/**
+ * add log end, call it when you add time and key&value done
+ * @param bder
+ */
+extern void add_log_end(log_group_builder * bder);
+
+#endif
 
 LOG_CPP_END
 #endif /* log_builder_h */

@@ -15,7 +15,7 @@ void post_logs_with_http_cont_lz4_log_option()
     sls_log_init();
 
     int i = 0;
-    for (i = 0; 1; ++i)
+    for (i = 0; i < 10; ++i)
     {
         log_group_builder *bder = log_group_create();
         add_source(bder, "10.230.201.117", sizeof("10.230.201.117"));
@@ -53,6 +53,29 @@ void post_logs_with_http_cont_lz4_log_option()
                 free(values[j]);
             }
         }
+
+#ifdef LOG_KEY_VALUE_FLAG
+        for (x = 0; x < POST_LOG_COUNT; x++)
+        {
+            int j = 0;
+            add_log_begin(bder);
+            for (j = 0; j < POST_LOG_CONTENT_PAIRS; j++)
+            {
+                char key[64];
+                sprintf(key, "add_key_%d", x * j);
+                char value[64];
+                sprintf(value, "add_value_%d", 2 * j);
+                add_log_key_value(bder, key, strlen(key), value, strlen(value));
+                if (j == POST_LOG_CONTENT_PAIRS / 2)
+                {
+                    add_log_time(bder, time(NULL));
+                }
+            }
+
+            add_log_end(bder);
+        }
+
+#endif
 
         lz4_log_buf *pLZ4Buf = serialize_to_proto_buf_with_malloc_lz4(bder);
         log_group_destroy(bder);
