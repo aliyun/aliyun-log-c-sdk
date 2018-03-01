@@ -54,6 +54,7 @@ void post_logs_with_http_cont_lz4_log_option()
             }
         }
 
+        // if you want to use this functions, add `-DADD_LOG_KEY_VALUE_FUN=ON` for cmake. eg `cmake . -DADD_LOG_KEY_VALUE_FUN=ON`
 #ifdef LOG_KEY_VALUE_FLAG
         for (x = 0; x < POST_LOG_COUNT; x++)
         {

@@ -15,9 +15,6 @@
 #include "log_define.h"
 LOG_CPP_START
 
-//#define LOG_KEY_VALUE_FLAG
-
-
 typedef struct _log_tag{
     char * buffer;
     char * now_buffer;
@@ -67,8 +64,8 @@ extern void add_tag(log_group_builder* bder,const char* k,size_t k_len,const cha
 extern void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum);
 extern void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time);
 
+// if you want to use this functions, add `-DADD_LOG_KEY_VALUE_FUN=ON` for cmake. eg `cmake . -DADD_LOG_KEY_VALUE_FUN=ON`
 #ifdef LOG_KEY_VALUE_FLAG
-
 /**
  * call it when you want to add a new log
  * @note sequence must be : add_log_begin -> add_log_time/add_log_key_value..... -> add_log_end
