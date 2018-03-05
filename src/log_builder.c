@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-// 1+3( 1 --->  header;  3 ---> 128 * 128 * 128 = 2MB)
-#define INIT_LOG_SIZE_BYTES 4
+// 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
+#define INIT_LOG_SIZE_BYTES 3
 
 /**
  * Return the number of bytes required to store a variable-length unsigned
@@ -134,7 +134,11 @@ void log_group_destroy(log_group_builder* bder)
 }
 
 
-
+/**
+ * adjust buffer, this function will ensure tag's buffer size >= tag->now_buffer_len + new_len
+ * @param tag
+ * @param new_len new buffer len
+ */
 void _adjust_buffer(log_tag * tag, uint32_t new_len)
 {
     if (tag->buffer == NULL)
@@ -408,7 +412,7 @@ void add_log_time(log_group_builder * bder, uint32_t logTime)
     {
         // reset log_now_buffer
         size_t delta = bder->grp->log_now_buffer - logs->buffer;
-        _adjust_buffer(logs, 2);
+        _adjust_buffer(logs, delta + 6);
         bder->grp->log_now_buffer = logs->buffer + delta;
     }
 
@@ -430,7 +434,7 @@ void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char
     {
         // reset log_now_buffer
         size_t delta = bder->grp->log_now_buffer - logs->buffer;
-        _adjust_buffer(logs, kv_size);
+        _adjust_buffer(logs, delta + kv_size);
         bder->grp->log_now_buffer = logs->buffer + delta;
     }
     uint8_t * buf = (uint8_t *)bder->grp->log_now_buffer;
@@ -468,7 +472,7 @@ void add_log_end(log_group_builder * bder)
         {
             // reset log_now_buffer
             size_t delta = bder->grp->log_now_buffer - logs->buffer;
-            _adjust_buffer(logs, delta_header_size);
+            _adjust_buffer(logs, delta + delta_header_size);
             bder->grp->log_now_buffer = logs->buffer + delta;
         }
         // move buffer
