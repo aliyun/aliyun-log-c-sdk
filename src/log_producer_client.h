@@ -11,6 +11,7 @@
 #include "apr_portable.h"
 // @debug
 #include "aos_log.h"
+#include "log_builder.h"
 LOG_CPP_START
 
 

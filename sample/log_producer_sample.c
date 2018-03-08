@@ -10,8 +10,13 @@
 
 
 // 数据发送的回调函数
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+// @note producer后台会对多条日志进行聚合发送，每次发送无论成功或者失败都会通过此函数回调，所以回调中可能是一组日志
+// @note 发送失败时，如果是LOG_PRODUCER_SEND_SERVER_ERROR、LOG_PRODUCER_SEND_TIME_ERROR、LOG_PRODUCER_SEND_QUOTA_ERROR、LOG_PRODUCER_SEND_NETWORK_ERROR，producer后台会进行重试。若超过6小时数据包未发送成功，则丢弃该数据
+// @note 如果您需要查看失败的日志内容，可以使用deserialize_from_lz4_proto_buf(buffer, compressed_bytes, log_bytes) 来解析日志，具体请参见示例代码
+
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer)
 {
+    // @note 正常使用时，建议result为LOG_PRODUCER_OK时不要打印
     if (result == LOG_PRODUCER_OK)
     {
         printf("send done, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s\n",
@@ -19,9 +24,40 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
                (int)log_bytes, (int)compressed_bytes, req_id);
         return;
     }
+
     printf("send error, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
            config_name, get_log_producer_result_string(result),
            (int)log_bytes, (int)compressed_bytes, req_id, message);
+
+
+    // 以下代码实现的功能是：当发送失败时，将失败日志的前10条打印出来
+    log_group * logGroup = deserialize_from_lz4_proto_buf(buffer, compressed_bytes, log_bytes);
+    if (logGroup == NULL)
+    {
+        return;
+    }
+    size_t i = 0;
+    printf("######    error logs info        ######\n");
+    printf("######    tags count : %06d    ######\n", (int)logGroup->n_logtags);
+    for (i = 0; i < logGroup->n_logtags; ++i)
+    {
+        printf("\t %s : %s\n", logGroup->logtags[i]->key, logGroup->logtags[i]->value);
+    }
+    printf("######    logs count : %06d    #####\n", (int)logGroup->n_logs);
+    size_t maxPrintLogs = logGroup->n_logs > (size_t)10 ? 10 : logGroup->n_logs;
+    for (i = 0; i < maxPrintLogs; ++i)
+    {
+        printf("log -> %06d \n", (int)i);
+        log_lg * log = logGroup->logs[i];
+        size_t j = 0;
+        for (j = 0; j < log->n_contents; ++j)
+        {
+            printf("\t %s : %s \n", log->contents[j]->key, log->contents[j]->value);
+        }
+    }
+    printf("######    done                   ######\n");
+    log_group_free(logGroup, NULL);
+    // done
     return;
 }
 
@@ -85,7 +121,10 @@ int main(int argc, char *argv[])
         filePath = argv[1];
         logs = atoi(argv[2]);
     }
-    log_producer_post_logs(filePath, logs);
+    while(1)
+    {
+        log_producer_post_logs(filePath, logs);
+    }
     return 0;
 }
 

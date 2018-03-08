@@ -25,6 +25,7 @@ LOG_CPP_START
 #define INIT_TAG_NUMBER_IN_LOGGROUP      4
 #define log_group                 SlsLogs__LogGroup
 #define log_group_init            SLS_LOGS__LOG_GROUP__INIT
+#define log_group_free         sls_logs__log_group__free_unpacked
 #define log_content               SlsLogs__Log__Content
 #define log_content_init          SLS_LOGS__LOG__CONTENT__INIT
 #define log_lg                    SlsLogs__Log
@@ -75,6 +76,7 @@ typedef struct _log_http_cont{
 extern log_buf* serialize_to_proto_buf(log_group_builder* bder);
 extern log_buf* serialize_to_proto_buf_with_malloc(log_group_builder* bder);
 extern void free_proto_log_buf(log_buf* pBuf);
+extern log_group * deserialize_from_lz4_proto_buf(const unsigned char * buffer, size_t buf_size, size_t raw_buf_size);
 extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
 extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();

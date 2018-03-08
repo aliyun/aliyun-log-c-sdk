@@ -8,6 +8,7 @@
 
 #include "log_builder.h"
 #include "lz4.h"
+#include "aos_log.h"
 
 log_group_builder* log_group_create()
 {
@@ -202,5 +203,23 @@ void free_proto_log_buf(log_buf* pBuf)
 void free_lz4_log_buf(lz4_log_buf* pBuf)
 {
     free(pBuf);
+}
+
+log_group * deserialize_from_lz4_proto_buf(const unsigned char * buffer, size_t buf_size, size_t raw_buf_size)
+{
+    char * buf = (char *)malloc(raw_buf_size);
+    if (LZ4_decompress_safe((const char* )buffer, buf, buf_size, raw_buf_size) <= 0)
+    {
+        free(buf);
+        aos_fatal_log("LZ4_decompress_safe error");
+        return NULL;
+    }
+    log_group * grp = sls_logs__log_group__unpack(NULL, raw_buf_size, (const uint8_t *)buf);
+    free(buf);
+    if (grp == NULL)
+    {
+        aos_fatal_log("sls_logs__log_group__unpack error");
+    }
+    return grp;
 }
 

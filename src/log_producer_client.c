@@ -95,9 +95,12 @@ log_producer * create_log_producer(log_producer_config * config, on_log_producer
         return NULL;
     }
     log_producer * producer = (log_producer *)apr_palloc(tmp_pool, sizeof(log_producer));
+    memset(producer, 0, sizeof(log_producer));
     producer->root = tmp_pool;
     log_producer_client * producer_client = (log_producer_client *)apr_palloc(tmp_pool, sizeof(log_producer_client));
+    memset(producer_client, 0, sizeof(log_producer_client));
     producer_client_private * client_private = (producer_client_private *)apr_palloc(tmp_pool, sizeof(producer_client_private));
+    memset(client_private, 0, sizeof(producer_client_private));
     producer_client->private_data = client_private;
     producer_client->log_level = config->logLevel;
     client_private->producer_config = config;

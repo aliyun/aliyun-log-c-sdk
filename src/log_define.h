@@ -13,6 +13,8 @@
 # define LOG_CPP_END
 #endif
 
+LOG_CPP_START
+
 #define aos_xml_error_status_set(STATUS, RES) do {                   \
         aos_status_set(STATUS, RES, AOS_XML_PARSE_ERROR_CODE, NULL); \
     } while(0)
@@ -50,5 +52,7 @@ typedef struct {
     aos_http_controller_t *ctl; /*< aos http controller, more see aos_transport.h */
     aos_pool_t *pool;
 } log_request_options_t;
+
+LOG_CPP_END
 
 #endif

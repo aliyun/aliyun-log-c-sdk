@@ -172,7 +172,8 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-        producer_manager->send_done_function(producer_manager->producer_config->configName, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->req_id, result->error_msg);
+        producer_manager->send_done_function(producer_manager->producer_config->configName, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length,
+                                             result->req_id, result->error_msg, send_param->log_buf->data);
     }
     switch (send_result)
     {
@@ -357,6 +358,7 @@ log_producer_send_result AosStatusToResult(aos_status_t * result)
 log_producer_sender * create_log_producer_sender(log_producer_config * producer_config, apr_pool_t * root)
 {
     log_producer_sender * producer_sender = (log_producer_sender *)apr_palloc(root, sizeof(log_producer_sender));
+    memset(producer_sender, 0, sizeof(log_producer_sender));
     producer_sender->send_queue_size = 0;
     producer_sender->send_queue_count = 0;
     producer_sender->thread_pool = NULL;

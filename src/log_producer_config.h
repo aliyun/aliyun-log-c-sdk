@@ -80,8 +80,6 @@ LOG_CPP_START
 //}
 //
 
-
-
 typedef struct _log_producer_config_tag
 {
     char * key;

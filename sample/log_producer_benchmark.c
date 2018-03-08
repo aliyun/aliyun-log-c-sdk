@@ -133,7 +133,7 @@ void builder_speed_test(int32_t logsPerGroup)
     apr_terminate();
 }
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer)
 {
     if (result == LOG_PRODUCER_OK)
     {
