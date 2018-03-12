@@ -1,8 +1,9 @@
 #include <arpa/inet.h>
 #include <string.h>
-#include "log_util.h"
+#include "log_util_imp.h"
 #include "md5.h"
 #include "hmac-sha.h"
+#include <time.h>
 
 static const char *g_hex_hash = "0123456789ABCDEF";
 
@@ -60,4 +61,13 @@ int signature_to_base64(const char * sig, int sigLen, const char * key, int keyL
     unsigned char sha1Buf[20];
     hmac_sha1(sha1Buf, key, keyLen << 3, sig, sigLen << 3);
     return aos_base64_encode((const unsigned char *)sha1Buf, 20, base64);
+}
+
+void get_now_time_str(char * buffer)
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+    time (&rawtime);
+    timeinfo = gmtime(&rawtime);
+    strftime(buffer, 64, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
 }

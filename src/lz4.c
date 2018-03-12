@@ -33,6 +33,7 @@
 */
 
 
+
 /**************************************
 *  Tuning parameters
 **************************************/
@@ -1513,4 +1514,6 @@ int LZ4_decompress_fast_withPrefix64k(const char* source, char* dest, int origin
 }
 
 #endif   /* LZ4_COMMONDEFS_ONLY */
+
+
 

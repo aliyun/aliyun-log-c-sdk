@@ -1,233 +1,193 @@
 #include "log_util.h"
 #include "log_api.h"
-#include <curl/curl.h>
 #include <string.h>
 #include "sds.h"
-#include "inner_log.h"
 
-log_status_t sls_log_init()
+// set these functions to NULL
+md5_to_string_fun g_log_md5_to_string_fun = NULL;
+hmac_sha1_signature_to_base64_fun g_log_hmac_sha1_signature_to_base64_fun = NULL;
+get_now_time_str_fun g_log_get_now_time_str_fun = NULL;
+
+void free_post_log_header(post_log_header header)
 {
-    CURLcode ecode;
-    if ((ecode = curl_global_init(CURL_GLOBAL_NOTHING)) != CURLE_OK)
+    sdsfree(header.url);
+    sdsfree(header.path);
+    if (header.header_items != NULL)
     {
-        aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
-        return -1;
-    }
-    return 0;
-}
-void sls_log_destroy()
-{
-    curl_global_cleanup();
-}
-
-static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t totalLen = size * nmemb;
-    //printf("body  ---->  %d  %s \n", (int) (totalLen, (const char*) ptr);
-    sds * buffer = (sds *)stream;
-    if (*buffer == NULL)
-    {
-        *buffer = sdsnewEmpty(256);
-    }
-    *buffer = sdscpylen(*buffer, ptr, totalLen);
-    return totalLen;
-}
-
-static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t totalLen = size * nmemb;
-    //printf("header  ---->  %d  %s \n", (int) (totalLen), (const char*) ptr);
-    sds * buffer = (sds *)stream;
-    // only copy header start with x-log-
-    if (totalLen > 6 && memcmp(ptr, "x-log-", 6) == 0)
-    {
-        *buffer = sdscpylen(*buffer, ptr, totalLen);
-    }
-    return totalLen;
-}
-
-void get_now_time_str(char * buffer, int bufLen)
-{
-    time_t rawtime;
-    struct tm * timeinfo;
-    time (&rawtime);
-    timeinfo = gmtime(&rawtime);
-    strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
-}
-
-void post_log_result_destroy(post_log_result * result)
-{
-    if (result != NULL)
-    {
-        if (result->errorMessage != NULL)
+        uint8_t i = 0;
+        for (; i < header.item_size; ++i)
         {
-            sdsfree(result->errorMessage);
+            sdsfree(header.header_items[i]);
         }
-        if (result->requestID != NULL)
-        {
-            sdsfree(result->requestID);
-        }
-        free(result);
+        free(header.header_items);
     }
 }
 
-post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer)
+post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * accesskeyId, const char *accessKey,
+                                      const char *project, const char *logstore,
+                                      const char * data, uint32_t data_size, uint32_t raw_data_size)
 {
-    post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
-    memset(result, 0, sizeof(post_log_result));
-    CURL *curl = curl_easy_init();
-    if (curl != NULL)
+    post_log_header header;
+    memset(&header, 0, sizeof(post_log_header));
+    if (g_log_md5_to_string_fun == NULL || g_log_hmac_sha1_signature_to_base64_fun == NULL || g_log_get_now_time_str_fun == NULL)
     {
-        // url
-        sds url = sdsnew("http://");
-        url = sdscat(url, project);
-        url = sdscat(url, ".");
-        url = sdscat(url, endpoint);
-        url = sdscat(url, "/logstores/");
-        url = sdscat(url, logstore);
-        url = sdscat(url, "/shards/lb");
-
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-
-        char nowTime[64];
-        get_now_time_str(nowTime, 64);
-
-        char md5Buf[33];
-        md5Buf[32] = '\0';
-        md5_to_string((const char *)buffer->data, buffer->length, (char *)md5Buf);
-
-
-        //puts(md5Buf);
-        //puts(nowTime);
-
-        struct curl_slist* headers = NULL;
-
-        headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
-        headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
-        headers=curl_slist_append(headers, "x-log-compresstype:lz4");
-        headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
-        sds headerTime = sdsnew("Date:");
-        headerTime = sdscat(headerTime, nowTime);
-        headers=curl_slist_append(headers, headerTime);
-        sds headerMD5 = sdsnew("Content-MD5:");
-        headerMD5 = sdscat(headerMD5, md5Buf);
-        headers=curl_slist_append(headers, headerMD5);
-
-        sds headerLen= sdsnewEmpty(64);
-        headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
-        headers=curl_slist_append(headers, headerLen);
-
-        sds headerRawLen = sdsnewEmpty(64);
-        headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
-        headers=curl_slist_append(headers, headerRawLen);
-
-        sds headerHost = sdsnewEmpty(128);
-        headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
-        headers=curl_slist_append(headers, headerHost);
-
-        char sha1Buf[65];
-        sha1Buf[64] = '\0';
-
-        sds sigContent = sdsnewEmpty(512);
-        sigContent = sdscatprintf(sigContent,
-                                  "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                  md5Buf, nowTime, (int)buffer->raw_length, logstore);
-
-        //puts("#######################");
-        //puts(sigContent);
-
-        int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
-        sha1Buf[destLen] = '\0';
-        //puts(sha1Buf);
-        sds headerSig = sdsnewEmpty(256);
-        headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
-        //puts(headerSig);
-        headers=curl_slist_append(headers, headerSig);
-
-
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
-
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)buffer->data);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, buffer->length);
-
-
-        curl_easy_setopt(curl, CURLOPT_FILETIME, 1);
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
-        curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1);
-        curl_easy_setopt(curl, CURLOPT_NETRC, CURL_NETRC_IGNORED);
-
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "log-c-lite_0.1.0");
-
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15);
-
-
-        sds header = sdsnewEmpty(64);
-        sds body = NULL;
-
-
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
-
-        //curl_easy_setopt(curl,CURLOPT_VERBOSE,1); //打印调试信息
-
-        CURLcode res = curl_easy_perform(curl);
-        //printf("result : %s \n", curl_easy_strerror(res));
-        long http_code;
-        if (res == CURLE_OK)
-        {
-            if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code)) != CURLE_OK)
-            {
-                printf("get info result : %s \n", curl_easy_strerror(res));
-                result->statusCode = -2;
-            } else {
-                result->statusCode = http_code;
-            }
-        }
-        else
-        {
-            if (body == NULL)
-            {
-                body = sdsnew(curl_easy_strerror(res));
-            }
-            else
-            {
-                body = sdscpy(body, curl_easy_strerror(res));
-            }
-            result->statusCode = -1 * (int)res;
-        }
-        // header and body 's pointer may be modified in callback (size > 256)
-        if (sdslen(header) > 0)
-        {
-            result->requestID = header;
-        }
-        else
-        {
-            sdsfree(header);
-            header = NULL;
-        }
-        // body will be NULL or a error string(net error or request error)
-        result->errorMessage = body;
-
-
-        curl_slist_free_all(headers); /* free the list again */
-        sdsfree(url);
-        sdsfree(headerTime);
-        sdsfree(headerMD5);
-        sdsfree(headerLen);
-        sdsfree(headerRawLen);
-        sdsfree(headerHost);
-        sdsfree(sigContent);
-        sdsfree(headerSig);
-        /* always cleanup */
-        curl_easy_cleanup(curl);
+        return header;
     }
+    // url
+    sds url = sdsnew("http://");
+    url = sdscat(url, project);
+    url = sdscat(url, ".");
+    url = sdscat(url, endpoint);
+
+    sds path = sdsnew("/logstores/");
+    path = sdscat(path, logstore);
+    path = sdscat(path, "/shards/lb");
+    header.url = url;
+    header.path = path;
+
+    header.item_size = 10;
+    header.header_items = (char **)malloc(11 * sizeof(char *));
+    memset(header.header_items, 0, 11 * sizeof(char *));
+
+    header.header_items[0] = sdsnew("Content-Type:application/x-protobuf");
+    header.header_items[1] = sdsnew("x-log-apiversion:0.6.0");
+    header.header_items[2] = sdsnew("x-log-compresstype:lz4");
+    header.header_items[3] = sdsnew("x-log-signaturemethod:hmac-sha1");
+
+    char nowTime[64];
+    g_log_get_now_time_str_fun(nowTime);
+
+    char md5Buf[33];
+    md5Buf[32] = '\0';
+    g_log_md5_to_string_fun(data, data_size, (char *)md5Buf);
+
+    sds headerTime = sdsnew("Date:");
+    headerTime = sdscat(headerTime, nowTime);
+    header.header_items[4] = headerTime;
+    sds headerMD5 = sdsnew("Content-MD5:");
+    headerMD5 = sdscat(headerMD5, md5Buf);
+    header.header_items[5] = headerMD5;
+
+    sds headerLen= sdsnewEmpty(64);
+    headerLen = sdscatprintf(headerLen, "Content-Length:%d", data_size);
+    header.header_items[6] = headerLen;
+
+    sds headerRawLen = sdsnewEmpty(64);
+    headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", raw_data_size);
+    header.header_items[7] = headerRawLen;
+
+    sds headerHost = sdsnewEmpty(128);
+    headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+    header.header_items[8] =  headerHost;
 
 
-    return result;
+    sds sigContent = sdsnewEmpty(256);
+    //sigContent = sdscatprintf(sigContent,
+    //                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+    //                          md5Buf, nowTime, (int)raw_data_size, logstore);
+    sigContent = sdscat(sigContent, "POST\n");
+    sigContent = sdscat(sigContent, md5Buf);
+    sigContent = sdscat(sigContent, "\napplication/x-protobuf\n");
+    sigContent = sdscat(sigContent, nowTime);
+    sigContent = sdscat(sigContent, "\nx-log-apiversion:0.6.0\n");
+    sigContent = sdscatsds(sigContent, header.header_items[7]);
+    sigContent = sdscat(sigContent, "\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n");
+    sigContent = sdscatsds(sigContent, path);
+
+    char sha1Buf[128];
+    sha1Buf[127] = '\0';
+    int destLen = g_log_hmac_sha1_signature_to_base64_fun(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
+    sdsfree(sigContent);
+    sha1Buf[destLen] = '\0';
+    sds headerSig = sdsnew("Authorization:LOG ");
+    headerSig = sdscat(headerSig, accesskeyId);
+    headerSig = sdscat(headerSig, ":");
+    headerSig = sdscat(headerSig, sha1Buf);
+    header.header_items[9] = headerSig;
+
+    return header;
 }
+
+
+post_log_header pack_logs_from_raw_buffer(const char *endpoint, const char * accesskeyId, const char *accessKey,
+                                          const char *project, const char *logstore,
+                                          const char * data, uint32_t raw_data_size)
+{
+    post_log_header header;
+    memset(&header, 0, sizeof(post_log_header));
+    if (g_log_md5_to_string_fun == NULL || g_log_hmac_sha1_signature_to_base64_fun == NULL || g_log_get_now_time_str_fun == NULL)
+    {
+        return header;
+    }
+    // url
+    sds url = sdsnew("http://");
+    url = sdscat(url, project);
+    url = sdscat(url, ".");
+    url = sdscat(url, endpoint);
+
+    sds path = sdsnew("/logstores/");
+    path = sdscat(path, logstore);
+    path = sdscat(path, "/shards/lb");
+    header.url = url;
+    header.path = path;
+
+    header.item_size = 9;
+    header.header_items = (char **)malloc(10 * sizeof(char *));
+    memset(header.header_items, 0, 10 * sizeof(char *));
+
+    header.header_items[0] = sdsnew("Content-Type:application/x-protobuf");
+    header.header_items[1] = sdsnew("x-log-apiversion:0.6.0");
+    header.header_items[2] = sdsnew("x-log-signaturemethod:hmac-sha1");
+
+    char nowTime[64];
+    g_log_get_now_time_str_fun(nowTime);
+
+    char md5Buf[33];
+    md5Buf[32] = '\0';
+    g_log_md5_to_string_fun(data, raw_data_size, (char *)md5Buf);
+
+    sds headerTime = sdsnew("Date:");
+    headerTime = sdscat(headerTime, nowTime);
+    header.header_items[3] = headerTime;
+    sds headerMD5 = sdsnew("Content-MD5:");
+    headerMD5 = sdscat(headerMD5, md5Buf);
+    header.header_items[4] = headerMD5;
+
+    sds headerLen= sdsnewEmpty(64);
+    headerLen = sdscatprintf(headerLen, "Content-Length:%d", raw_data_size);
+    header.header_items[5] = headerLen;
+
+    sds headerRawLen = sdsnewEmpty(64);
+    headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", raw_data_size);
+    header.header_items[6] = headerRawLen;
+
+    sds headerHost = sdsnewEmpty(128);
+    headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+    header.header_items[7] =  headerHost;
+
+
+    sds sigContent = sdsnewEmpty(256);
+    sigContent = sdscat(sigContent, "POST\n");
+    sigContent = sdscat(sigContent, md5Buf);
+    sigContent = sdscat(sigContent, "\napplication/x-protobuf\n");
+    sigContent = sdscat(sigContent, nowTime);
+    sigContent = sdscat(sigContent, "\nx-log-apiversion:0.6.0\n");
+    sigContent = sdscatsds(sigContent, header.header_items[6]);
+    sigContent = sdscat(sigContent, "\nx-log-signaturemethod:hmac-sha1\n");
+    sigContent = sdscatsds(sigContent, path);
+
+    char sha1Buf[128];
+    sha1Buf[127] = '\0';
+    int destLen = g_log_hmac_sha1_signature_to_base64_fun(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
+    sdsfree(sigContent);
+    sha1Buf[destLen] = '\0';
+    sds headerSig = sdsnew("Authorization:LOG ");
+    headerSig = sdscat(headerSig, accesskeyId);
+    headerSig = sdscat(headerSig, ":");
+    headerSig = sdscat(headerSig, sha1Buf);
+    header.header_items[8] = headerSig;
+
+    return header;
+}
+
+

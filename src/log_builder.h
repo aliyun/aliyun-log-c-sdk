@@ -2,8 +2,6 @@
 //  log_builder.h
 //  log-c-sdk
 //
-//  Created by 王佳玮 on 16/8/23.
-//  Copyright © 2016年 wangjwchn. All rights reserved.
 //
 #ifndef LOG_BUILDER_H
 #define LOG_BUILDER_H
@@ -34,11 +32,7 @@ typedef struct _log_group{
 #endif
 }log_group;
 
-typedef struct _lz4_log_buf{
-    size_t length;
-    size_t raw_length;
-    unsigned char data[0];
-}lz4_log_buf;
+
 
 typedef struct _log_group_builder{
     log_group* grp;
@@ -52,9 +46,6 @@ typedef struct _log_buffer {
     uint32_t n_buffer;
 }log_buf;
 
-extern log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder);
-extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
-extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();
 extern void log_group_destroy(log_group_builder* bder);
 extern void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens);
@@ -63,6 +54,25 @@ extern void add_topic(log_group_builder* bder,const char* tpc,size_t len);
 extern void add_tag(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
 extern void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum);
 extern void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time);
+
+/**
+ * serialize to proto buf
+ * @param bder
+ * @return log_buf
+ * @note log_buf.buffer == bder.grp.logs.buffer, after you have sent this log_buf out, call log_group_destroy
+ * */
+extern log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder);
+
+#ifdef USE_LZ4_FLAG
+ typedef struct _lz4_log_buf{
+    size_t length;
+    size_t raw_length;
+    unsigned char data[0];
+}lz4_log_buf;
+
+extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
+extern void free_lz4_log_buf(lz4_log_buf* pBuf);
+#endif
 
 // if you want to use this functions, add `-DADD_LOG_KEY_VALUE_FUN=ON` for cmake. eg `cmake . -DADD_LOG_KEY_VALUE_FUN=ON`
 #ifdef LOG_KEY_VALUE_FLAG

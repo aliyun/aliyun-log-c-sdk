@@ -1,5 +1,7 @@
 #include "log_builder.h"
+#ifdef USE_LZ4_FLAG
 #include "lz4.h"
+#endif
 #include "sds.h"
 #include <string.h>
 #include <stdio.h>
@@ -334,7 +336,6 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
 
 }
 
-
 log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
     log_buf buf;
@@ -353,6 +354,8 @@ log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
     buf.buffer = log->buffer;
     return buf;
 }
+
+#ifdef USE_LZ4_FLAG
 
 lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
 {
@@ -391,6 +394,8 @@ void free_lz4_log_buf(lz4_log_buf* pBuf)
 {
     free(pBuf);
 }
+
+#endif
 
 #ifdef LOG_KEY_VALUE_FLAG
 

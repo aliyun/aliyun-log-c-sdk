@@ -358,3 +358,5 @@ LZ4_DEPRECATED("use LZ4_decompress_fast_usingDict() instead") int LZ4_decompress
 #if defined (__cplusplus)
 }
 #endif
+
+
