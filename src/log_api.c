@@ -8,7 +8,7 @@
 log_status_t sls_log_init()
 {
     CURLcode ecode;
-    if ((ecode = curl_global_init(CURL_GLOBAL_NOTHING)) != CURLE_OK)
+    if ((ecode = curl_global_init(CURL_GLOBAL_ALL)) != CURLE_OK)
     {
         aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
         return -1;
