@@ -7,7 +7,7 @@
 //不同操作系统资源相关的工具宏定义
 #ifdef WIN32
 /// * @brief    临界区资源
-typedef LPCRITICAL_SECTION CRITICALSECTION;
+#define CRITICALSECTION LPCRITICAL_SECTION
 #define INVALID_CRITSECT NULL
 
 /**
@@ -17,7 +17,7 @@ typedef LPCRITICAL_SECTION CRITICALSECTION;
  */
 static inline CRITICALSECTION CreateCriticalSection()
 {
-    CRITICALSECTION cs = (CRITICAL_SECTION *)malloc(sizeof(CRITICAL_SECTION));
+	CRITICALSECTION cs = (CRITICALSECTION*)malloc(sizeof(CRITICALSECTION));
     InitializeCriticalSection(cs);
     return cs;
 }
@@ -27,7 +27,7 @@ static inline CRITICALSECTION CreateCriticalSection()
  * 删除互斥锁
  ********************************************************************
  */
-static inline void DeleteCriticalSection(CRITICALSECTION cs) {
+static inline void ReleaseCriticalSection(CRITICALSECTION cs) {
     if (cs != INVALID_CRITSECT) {
         DeleteCriticalSection(cs);
         free(cs);
@@ -48,7 +48,7 @@ static inline void DeleteCriticalSection(CRITICALSECTION cs) {
 /// * @brief    互斥锁初始化
 #define MUTEX_INIT(mutex) InitializeCriticalSection(&mutex)
 /// * @brief    互斥锁销毁
-#define MUTEX_DESTROY(mutex) DeleteCriticalSection(&mutex)
+#define MUTEX_DESTROY(mutex) ReleaseCriticalSection(&mutex)
 
 //信号量资源
 /// * @brief    信号量
@@ -72,7 +72,46 @@ typedef HANDLE SEMA;
 /// * @brief    等待到信号量
 #define SEMA_WAIT_OK WAIT_OBJECT_0
 
-typedef HANDLE THREAD
+//条件量
+
+
+typedef PRTL_CONDITION_VARIABLE COND;
+typedef int COND_WAIT_T;
+#define COND_WAIT_OK 0
+#define COND_WAIT_TIMEOUT ETIMEDOUT
+#define INVALID_COND NULL
+
+static inline COND CreateCond() {
+	COND cond = (COND*)malloc(sizeof(COND));
+	assert(cond != INVALID_COND);
+	InitializeConditionVariable(cond);
+	return cond;
+}
+
+static inline void DeleteCond(COND cond) {
+	if (cond != INVALID_COND) {
+		free(cond);
+	}
+}
+
+#define COND_SIGNAL(cond) WakeConditionVariable(cond)
+#define COND_SIGNAL_ALL(cond) WakeAllConditionVariable(cond)
+
+static inline COND_WAIT_T COND_WAIT_TIME(COND cond, CRITICALSECTION cs, int32_t waitMs) {
+	SleepConditionVariableCS(cond,cs,waitMs);
+	return 0;
+}
+
+typedef HANDLE THREAD;
+
+static inline void Win32CreateThread(HANDLE* hpThread, _In_ LPTHREAD_START_ROUTINE lpStartAddress, _In_opt_ __drv_aliasesMem LPVOID lpParameter) {
+	*hpThread = CreateThread(NULL, 0, lpStartAddress, lpParameter, 0, NULL);
+}
+
+
+#define THREAD_INIT(thread, func, param)  Win32CreateThread(&thread, func, param)
+
+#define THREAD_JOIN(thread) WaitForSingleObject(thread, INFINITE)
 
 #define snprintf sprintf_s
 

@@ -1,4 +1,8 @@
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <arpa/inet.h>
+#endif
 #include <string.h>
 #include "log_util.h"
 #include "md5.h"

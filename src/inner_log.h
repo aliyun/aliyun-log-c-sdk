@@ -25,6 +25,20 @@ void aos_log_format(int level,
                      const char *function,
                      const char *fmt, ...);
 
+#ifdef WIN32
+#define aos_fatal_log(format, ...) if(aos_log_level>=AOS_LOG_FATAL) \
+        aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define aos_error_log(format, ...) if(aos_log_level>=AOS_LOG_ERROR) \
+        aos_log_format(AOS_LOG_ERROR, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define aos_warn_log(format, ...) if(aos_log_level>=AOS_LOG_WARN)   \
+        aos_log_format(AOS_LOG_WARN, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define aos_info_log(format, ...) if(aos_log_level>=AOS_LOG_INFO)   \
+        aos_log_format(AOS_LOG_INFO, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define aos_debug_log(format, ...) if(aos_log_level>=AOS_LOG_DEBUG) \
+        aos_log_format(AOS_LOG_DEBUG, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#define aos_trace_log(format, ...) if(aos_log_level>=AOS_LOG_TRACE) \
+        aos_log_format(AOS_LOG_TRACE, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+#else
 #define aos_fatal_log(format, args...) if(aos_log_level>=AOS_LOG_FATAL) \
         aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_error_log(format, args...) if(aos_log_level>=AOS_LOG_ERROR) \
@@ -37,6 +51,7 @@ void aos_log_format(int level,
         aos_log_format(AOS_LOG_DEBUG, __FILE__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_trace_log(format, args...) if(aos_log_level>=AOS_LOG_TRACE) \
         aos_log_format(AOS_LOG_TRACE, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+#endif
 
 #ifdef __cplusplus
 }

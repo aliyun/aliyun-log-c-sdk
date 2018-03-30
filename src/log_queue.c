@@ -19,7 +19,7 @@ log_queue * log_queue_create(int32_t size)
     void * buffer = malloc(sizeof(void *) * size + sizeof(log_queue));
     memset(buffer, 0, sizeof(void *) * size + sizeof(log_queue));
     log_queue * queue = (log_queue *)buffer;
-    queue->data = (void **)(buffer + sizeof(log_queue));
+    queue->data = (void **)((char*)buffer + sizeof(log_queue));
     queue->size = size;
     queue->mutex = CreateCriticalSection();
     queue->notempty = CreateCond();

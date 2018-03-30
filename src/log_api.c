@@ -1,6 +1,10 @@
 #include "log_util.h"
 #include "log_api.h"
+#ifdef WIN32
+#include "curl/curl.h"
+#else
 #include <curl/curl.h>
+#endif
 #include <string.h>
 #include "sds.h"
 #include "inner_log.h"

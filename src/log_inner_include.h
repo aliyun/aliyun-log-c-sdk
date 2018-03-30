@@ -15,6 +15,7 @@
 #include <sys/timeb.h>
 #include <windows.h>
 #include <process.h>
+#include <assert.h>
 
 typedef int socklen_t;
 

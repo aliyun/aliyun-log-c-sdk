@@ -9,7 +9,11 @@
 #include "lz4.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
+#endif
 
 const char* LOGE_SERVER_BUSY = "ServerBusy";
 const char* LOGE_INTERNAL_SERVER_ERROR = "InternalServerError";
@@ -74,13 +78,17 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 
 #endif
 
+#ifdef WIN32
+DWORD WINAPI log_producer_send_thread(LPVOID param)
+#else
 void * log_producer_send_thread(void * param)
+#endif
 {
     log_producer_manager * producer_manager = (log_producer_manager *)param;
 
     if (producer_manager->sender_data_queue == NULL)
     {
-        return NULL;
+        return 0;
     }
 
     while (!producer_manager->shutdown)
@@ -92,7 +100,7 @@ void * log_producer_send_thread(void * param)
         }
     }
 
-    return NULL;
+    return 0;
 }
 
 void * log_producer_send_fun(void * param)
@@ -153,7 +161,11 @@ void * log_producer_send_fun(void * param)
         int i =0;
         for (i = 0; i < sleepMs; i += SEND_SLEEP_INTERVAL_MS)
         {
+#ifdef WIN32
+            Sleep(SEND_SLEEP_INTERVAL_MS);
+#else
             usleep(SEND_SLEEP_INTERVAL_MS * 1000);
+#endif
             if (producer_manager->shutdown || producer_manager->networkRecover)
             {
                 break;

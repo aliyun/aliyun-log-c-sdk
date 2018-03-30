@@ -13,7 +13,11 @@
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
+#ifdef WIN32
+DWORD WINAPI log_producer_send_thread(LPVOID param);
+#else
 void * log_producer_send_thread(void * param);
+#endif
 
 char * _get_pack_id(const char * configName, const char * ip)
 {
@@ -61,7 +65,11 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI log_producer_flush_thread(LPVOID param)
+#else
 void * log_producer_flush_thread(void * param)
+#endif
 {
     log_producer_manager * root_producer_manager = (log_producer_manager*)param;
     aos_info_log("start run flusher thread, config : %s", root_producer_manager->producer_config->logstore);
@@ -164,7 +172,7 @@ void * log_producer_flush_thread(void * param)
         }
     }
     aos_info_log("exit flusher thread, config : %s", root_producer_manager->producer_config->logstore);
-    return NULL;
+    return 0;
 }
 
 log_producer_manager * create_log_producer_manager(log_producer_config * producer_config)
@@ -265,7 +273,11 @@ void destroy_log_producer_manager(log_producer_manager * manager)
             manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
             (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
+#ifdef WIN32
+        Sleep(10);
+#else
         usleep(10 * 1000);
+#endif
         if (++waitCount == 100)
         {
             break;
