@@ -6,6 +6,8 @@
 
 //不同操作系统资源相关的工具宏定义
 #ifdef WIN32
+
+
 /// * @brief    临界区资源
 #define CRITICALSECTION LPCRITICAL_SECTION
 #define INVALID_CRITSECT NULL
@@ -71,6 +73,10 @@ typedef HANDLE SEMA;
 #define SEMA_WAIT_TIMEOUT WAIT_TIMEOUT
 /// * @brief    等待到信号量
 #define SEMA_WAIT_OK WAIT_OBJECT_0
+
+
+
+
 
 //条件量
 
