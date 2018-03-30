@@ -19,7 +19,7 @@
  */
 static inline CRITICALSECTION CreateCriticalSection()
 {
-	CRITICALSECTION cs = (CRITICALSECTION*)malloc(sizeof(CRITICALSECTION));
+	CRITICALSECTION cs = (CRITICALSECTION)malloc(sizeof(RTL_CRITICAL_SECTION));
     InitializeCriticalSection(cs);
     return cs;
 }
@@ -88,7 +88,7 @@ typedef int COND_WAIT_T;
 #define INVALID_COND NULL
 
 static inline COND CreateCond() {
-	COND cond = (COND*)malloc(sizeof(COND));
+	COND cond = (COND)malloc(sizeof(RTL_CONDITION_VARIABLE));
 	assert(cond != INVALID_COND);
 	InitializeConditionVariable(cond);
 	return cond;
