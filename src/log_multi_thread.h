@@ -7,8 +7,8 @@
 //不同操作系统资源相关的工具宏定义
 #ifdef WIN32
 
+//临界区资源
 
-/// * @brief    临界区资源
 #define CRITICALSECTION LPCRITICAL_SECTION
 #define INVALID_CRITSECT NULL
 
