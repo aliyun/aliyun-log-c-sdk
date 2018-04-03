@@ -252,3 +252,30 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     log_producer_manager_add_log_end(manager);
     return LOG_PRODUCER_OK;
 }
+
+#ifdef __linux__
+
+pthread_t log_producer_client_get_flush_thread(log_producer_client * client)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return 0;
+    }
+
+    pthread_t * pthread_id = NULL;
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    apr_os_thread_get(&pthread_id, manager->flush_thread);
+
+    if (pthread_id != NULL)
+    {
+        return *pthread_id;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+#endif
+
+

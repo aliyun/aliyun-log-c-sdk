@@ -111,6 +111,20 @@ extern log_producer_result log_producer_client_add_log(log_producer_client * cli
 extern log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens);
 
 
+#ifdef __linux__
+
+/**
+ * get producer client's flush thread id
+ *
+ * @note only supported in linux
+ * @param client
+ * @return
+ */
+extern pthread_t log_producer_client_get_flush_thread(log_producer_client * client);
+
+#endif
+
+
 /**
  * for LOG_PRODUCER_ADD_LOG
  */

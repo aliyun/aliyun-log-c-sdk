@@ -87,6 +87,10 @@ void log_producer_post_logs(const char * fileName, int logs)
         exit(1);
     }
 
+#ifdef __linux__
+    printf("client thread id %d \n", (int)log_producer_client_get_flush_thread(client));
+#endif
+
     // 获取`error`的client
     log_producer_client * client_error = get_log_producer_client(producer, "error");
     if (client_error == NULL)
@@ -95,6 +99,9 @@ void log_producer_post_logs(const char * fileName, int logs)
         exit(1);
     }
 
+#ifdef __linux__
+    printf("client_error id %d \n", (int)log_producer_client_get_flush_thread(client));
+#endif
 
     int32_t i = 0;
     for (i = 0; i < logs; ++i)
