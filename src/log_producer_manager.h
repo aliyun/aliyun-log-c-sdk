@@ -32,6 +32,7 @@ typedef struct _log_producer_manager
     char * pack_prefix;
     volatile uint32_t pack_index;
     on_log_producer_send_done_function send_done_function;
+    void *user_param;
     log_producer_send_param ** send_param_queue;
     uint64_t send_param_queue_size;
     volatile uint64_t send_param_queue_read;
@@ -41,7 +42,7 @@ typedef struct _log_producer_manager
 extern log_producer_manager * create_log_producer_manager(log_producer_config * producer_config);
 extern void destroy_log_producer_manager(log_producer_manager * manager);
 
-extern log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens);
+extern log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush);
 
 LOG_CPP_END
 

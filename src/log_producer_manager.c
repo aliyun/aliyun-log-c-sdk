@@ -320,7 +320,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     free(manager);
 }
 
-log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
+log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
 {
     if (producer_manager->totalBufferSize > producer_manager->producer_config->maxBufferBytes)
     {
@@ -347,7 +347,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
     log_group_builder * builder = producer_manager->builder;
 
     int32_t nowTime = time(NULL);
-    if (producer_manager->builder->loggroup_size < producer_manager->producer_config->logBytesPerPackage &&
+    if (flush == 0 && producer_manager->builder->loggroup_size < producer_manager->producer_config->logBytesPerPackage &&
             nowTime - producer_manager->firstLogTime < producer_manager->producer_config->packageTimeoutInMS / 1000 &&
             producer_manager->builder->grp->n_logs < producer_manager->producer_config->logCountPerPackage)
     {

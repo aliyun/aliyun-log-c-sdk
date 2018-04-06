@@ -52,7 +52,7 @@ void log_producer_env_destroy()
     sls_log_destroy();
 }
 
-log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function)
+log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function, void *user_param)
 {
     if (!log_producer_config_is_valid(config))
     {
@@ -65,6 +65,7 @@ log_producer * create_log_producer(log_producer_config * config, on_log_producer
     client_private->producer_config = config;
     client_private->producer_manager = create_log_producer_manager(config);
     client_private->producer_manager->send_done_function = send_done_function;
+    client_private->producer_manager->user_param = user_param != NULL ? user_param : NULL;
 
     if(client_private->producer_manager == NULL)
     {
@@ -145,7 +146,7 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
-    log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens);
+    log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens, 0);
     free(keys);
     free(values);
     free(key_lens);
@@ -153,7 +154,7 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
     return rst;
 }
 
-log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
+log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
 {
     if (client == NULL || !client->valid_flag)
     {
@@ -162,5 +163,5 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
-    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens);
+    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens, flush);
 }

@@ -196,7 +196,10 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage);
+        uint64_t send_queue_size = producer_manager->send_param_queue_write - producer_manager->send_param_queue_read;
+        int32_t log_group_size = log_queue_size(producer_manager->loggroup_queue);
+
+        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_queue_size, log_group_size, producer_manager->user_param);
     }
     switch (send_result)
     {
