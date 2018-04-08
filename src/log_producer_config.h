@@ -50,6 +50,13 @@ LOG_CPP_START
 #define LOG_CONFIG_DEBUG_MAX_LOGFILE_COUNT "max_debug_logfile_count"
 #define LOG_CONFIG_DEBUG_MAX_LOGFILE_SIZE "max_debug_logfile_size"
 
+#define LOG_CONFIG_NET_INTERFACE "net_interface"
+#define LOG_CONFIG_CONNECT_TIMEOUT "connect_timeout_sec"
+#define LOG_CONFIG_SEND_TIMEOUT "send_timeout_sec"
+#define LOG_CONFIG_DESTROY_FLUSHER_WAIT "destroy_flusher_wait_sec"
+#define LOG_CONFIG_DESTROY_SENDER_WAIT "destroy_sender_wait_sec"
+
+
 #define LOG_CONFIG_SUB_APPENDER "sub_appenders"
 
 // log producer config file sample
@@ -76,7 +83,12 @@ LOG_CPP_START
 //  "debug_stdout" : 0,
 //  "debug_log_path" : "./log_debug.log",
 //  "max_debug_logfile_count" : 5,
-//  "max_debug_logfile_size" : 1000000
+//  "max_debug_logfile_size" : 1000000,
+//  "net_interface" : "eth0",
+//  "connect_timeout_sec" : 10,
+//  "send_timeout_sec" : 15,
+//  "destroy_flusher_wait_sec" : 1,
+//  "destroy_sender_wait_sec" : 1
 //}
 //
 
@@ -113,6 +125,12 @@ typedef struct _log_producer_config
     int32_t maxDebugLogFileSize;
     int32_t logLevel;
     log_producer_priority priority;
+
+    char * net_interface;
+    int32_t connectTimeoutSec;
+    int32_t sendTimeoutSec;
+    int32_t destroyFlusherWaitTimeoutSec;
+    int32_t destroySenderWaitTimeoutSec;
 
 
     apr_pool_t *root;

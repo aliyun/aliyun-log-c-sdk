@@ -13,6 +13,8 @@
 // @note producer后台会对多条日志进行聚合发送，每次发送无论成功或者失败都会通过此函数回调，所以回调中可能是一组日志
 // @note 发送失败时，如果是LOG_PRODUCER_SEND_SERVER_ERROR、LOG_PRODUCER_SEND_TIME_ERROR、LOG_PRODUCER_SEND_QUOTA_ERROR、LOG_PRODUCER_SEND_NETWORK_ERROR，producer后台会进行重试。若超过6小时数据包未发送成功，则丢弃该数据
 // @note 如果您需要查看失败的日志内容，可以使用deserialize_from_lz4_proto_buf(buffer, compressed_bytes, log_bytes) 来解析日志，具体请参见示例代码
+// @note 如果返回值是LOG_PRODUCER_SEND_EXIT_BUFFERED，说明程序正在退出中，此buffer将不会被发送，建议您将其存储到本地，下次程序启动时再调用 log_producer_client_add_raw_log_buffer 将其发送出去
+// @note 此函数可能被多线程调用，注意线程安全
 
 void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer)
 {
@@ -121,6 +123,8 @@ void log_producer_post_logs(const char * fileName, int logs)
 
 int main(int argc, char *argv[])
 {
+    // for debug
+    //aos_log_set_level(AOS_LOG_ALL);
     const char * filePath = "./log_config.json";
     int logs = 100;
     if (argc == 3)

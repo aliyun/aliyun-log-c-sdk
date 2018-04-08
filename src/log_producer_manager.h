@@ -39,6 +39,11 @@ typedef struct _log_producer_manager
     char * source;
     char * pack_prefix;
     volatile uint32_t pack_index;
+
+#ifdef __linux__
+    int64_t linux_thread_id;
+#endif
+
     on_log_producer_send_done_function send_done_function;
     apr_table_t * sub_managers;
 }log_producer_manager;
@@ -52,6 +57,8 @@ extern log_producer_result log_producer_manager_add_log_kv(log_producer_manager 
 extern log_producer_result log_producer_manager_add_log_kv_len(log_producer_manager * producer_manager, const char * key, size_t key_len,  const char * value, size_t value_len);
 // unlock
 extern log_producer_result log_producer_manager_add_log_end(log_producer_manager * producer_manager);
+
+extern log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
 LOG_CPP_END
 

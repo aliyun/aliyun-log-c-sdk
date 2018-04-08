@@ -79,6 +79,7 @@ aos_http_request_options_t *aos_http_request_options_create(aos_pool_t *p)
     options->speed_limit = AOS_MIN_SPEED_LIMIT;
     options->speed_time = AOS_MIN_SPEED_TIME;
     options->connect_timeout = AOS_CONNECT_TIMEOUT;
+    options->operation_timeout = AOS_OPERATION_TIMEOUT;
     options->dns_cache_timeout = AOS_DNS_CACHE_TIMOUT;
     options->max_memory_size = AOS_MAX_MEMORY_SIZE;
 
@@ -324,7 +325,14 @@ int aos_http_send_request(aos_http_controller_t *ctl, aos_http_request_t *req, a
     t->resp = resp;
     t->controller = (aos_http_controller_ex_t *)ctl;
     t->interface = ctl->interface;
-    
+    if (ctl->operation_timeout > 0) {
+        t->operation_timeout = ctl->operation_timeout;
+    }
+
+    if (ctl->connect_timeout > 0) {
+        t->connect_timeout = ctl->connect_timeout;
+    }
+
     return aos_http_transport_perform(t);
 }
 

@@ -6,11 +6,18 @@
 #include "aos_log.h"
 #include "apr_md5.h"
 
+#ifdef __linux__
+#include <sys/syscall.h>
+#include <sys/prctl.h>
+#define gettid() syscall(__NR_gettid)
+#endif
+
 #define LOG_PRODUCER_FLUSH_INTERVAL_MS 100
 
 
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
+#define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
 
 static int g_priority_map_array[] = {
         0,
@@ -101,7 +108,19 @@ int _log_producer_manager_flush_sub(void *rec, const char *key,
 void * log_producer_flush_thread(apr_thread_t * thread, void * param)
 {
     log_producer_manager * root_producer_manager = (log_producer_manager*)param;
+
     aos_info_log("start run flusher thread, config : %s", root_producer_manager->producer_config->configName);
+#ifdef __linux__
+    root_producer_manager->linux_thread_id = gettid();
+    aos_debug_log("start run flusher thread, tid %d", (int32_t)root_producer_manager->linux_thread_id);
+    char tname[64];
+    memset(tname, 0, 64);
+    snprintf(tname, 63, "log_%s", root_producer_manager->producer_config->configName);
+    prctl(PR_SET_NAME, tname);
+    //memset(tname, 0, 64);
+    //prctl(PR_GET_NAME, tname);
+    //aos_debug_log("start run flusher thread, thread name %s", tname);
+#endif
     while (root_producer_manager->shutdown == 0)
     {
         apr_thread_mutex_lock(root_producer_manager->triger_lock);
@@ -381,18 +400,19 @@ void destroy_log_producer_manager(log_producer_manager * manager)
         apr_table_do(_log_producer_manager_push_last_sub, NULL, manager->sub_managers, NULL);
     }
 
+    int32_t flush_count = manager->producer_config->destroyFlusherWaitTimeoutSec > 0 ? manager->producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_MANAGER_FLUSH_COUNT;
     int waitCount = 0;
     while (apr_queue_size(manager->loggroup_queue) > 0)
     {
         usleep(10 * 1000);
-        if (++waitCount == 100)
+        if (++waitCount == flush_count)
         {
             break;
         }
     }
-    if (waitCount == 100)
+    if (waitCount == flush_count)
     {
-        aos_error_log("try flush out producer loggroup error, force exit, now loggroup %d", (int)(apr_queue_size(manager->loggroup_queue)));
+        aos_error_log("try flush out producer loggroup error, force exit, now loggroup queue size %d", (int)(apr_queue_size(manager->loggroup_queue)));
     }
     manager->shutdown = 1;
 
@@ -400,8 +420,12 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     apr_thread_cond_signal(manager->triger_cond);
     apr_queue_interrupt_all(manager->loggroup_queue);
     apr_status_t ret_val = APR_SUCCESS;
+    aos_info_log("join flusher thread begin");
     apr_thread_join(&ret_val, manager->flush_thread);
-    destroy_log_producer_sender(manager->sender);
+    aos_info_log("join flusher thread success");
+    aos_info_log("destroy sender begin");
+    destroy_log_producer_sender(manager->sender, manager->producer_config);
+    aos_info_log("destroy sender success");
     apr_thread_cond_destroy(manager->triger_cond);
     apr_thread_mutex_destroy(manager->triger_lock);
     apr_queue_term(manager->loggroup_queue);
@@ -474,6 +498,17 @@ log_producer_result log_producer_manager_add_log_end(log_producer_manager * prod
     }
 
     return LOG_PRODUCER_OK;
+}
+
+log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+{
+    // pack lz4_log_buf
+    lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
+    lz4_buf->length = compressed_bytes;
+    lz4_buf->raw_length = log_bytes;
+    memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, NULL, time(NULL));
+    return log_producer_send_data(send_param);
 }
 
 log_producer_result log_producer_manager_add_log_kv(log_producer_manager * producer_manager, const char * key, const char * value)

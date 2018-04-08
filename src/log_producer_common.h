@@ -52,6 +52,8 @@ extern log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED;
 extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
+// this error code is passed when producer is being destroyed, you should save this buffer to local
+extern log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED;
 
 
 

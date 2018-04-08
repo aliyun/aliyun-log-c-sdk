@@ -18,6 +18,8 @@ log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED = 6;
 log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR = 7;
 log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR = 8;
 log_producer_result LOG_PRODUCER_SEND_TIME_ERROR = 9;
+log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED = 10;
+
 
 const char * log_producer_result_string[] = {
         "LOG_PRODUCER_OK",
@@ -29,7 +31,8 @@ const char * log_producer_result_string[] = {
         "LOG_PRODUCER_SEND_UNAUTHORIZED",
         "LOG_PRODUCER_SEND_SERVER_ERROR",
         "LOG_PRODUCER_SEND_DISCARD_ERROR",
-        "LOG_PRODUCER_SEND_TIME_ERROR"
+        "LOG_PRODUCER_SEND_TIME_ERROR",
+        "LOG_PRODUCER_SEND_EXIT_BUFFERED"
 };
 
 const char * log_producer_level_string[] = {

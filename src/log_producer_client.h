@@ -46,6 +46,7 @@ extern void log_producer_env_destroy();
  * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
+ * @note send_done_function must be thread safe
  * @return producer client ptr, NULL if create fail
  */
 extern log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function);
@@ -54,6 +55,7 @@ extern log_producer * create_log_producer(log_producer_config * config, on_log_p
  * create log producer from config file
  * @param configFilePath config file path
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
+ * @note send_done_function must be thread safe
  * @return producer ptr, NULL if create fail
  */
 extern log_producer * create_log_producer_by_config_file(const char * configFilePath, on_log_producer_send_done_function send_done_function);
@@ -110,6 +112,15 @@ extern log_producer_result log_producer_client_add_log(log_producer_client * cli
  */
 extern log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens);
 
+/**
+ * add raw log buffer to client, this function is used to send buffers which can not send out when producer has destroyed
+ * @param client
+ * @param log_bytes
+ * @param compressed_bytes
+ * @param raw_buffer
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
+ */
+extern log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
 #ifdef __linux__
 
@@ -121,6 +132,16 @@ extern log_producer_result log_producer_client_add_log_with_len(log_producer_cli
  * @return
  */
 extern pthread_t log_producer_client_get_flush_thread(log_producer_client * client);
+
+
+/**
+ * get producer client's flush thread's id (gettid())
+ *
+ * @note only supported in linux
+ * @param client
+ * @return not 0 if success
+ */
+extern int64_t log_producer_client_get_flush_thread_id(log_producer_client * client);
 
 #endif
 

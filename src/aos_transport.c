@@ -360,7 +360,14 @@ int aos_curl_transport_setup(aos_curl_http_transport_t *t)
 
     // request options
     curl_easy_setopt_safe(CURLOPT_DNS_CACHE_TIMEOUT, t->controller->options->dns_cache_timeout);
-    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT, t->controller->options->connect_timeout);
+
+    // if t->operation_timeout > 0, use it
+    int operation_timeout = t->operation_timeout > 0 ? t->operation_timeout : t->controller->options->operation_timeout;
+    int connect_timeout = t->connect_timeout > 0 ? t->connect_timeout : t->controller->options->connect_timeout;
+    curl_easy_setopt_safe(CURLOPT_TIMEOUT, operation_timeout);
+    curl_easy_setopt_safe(CURLOPT_CONNECTTIMEOUT, connect_timeout);
+    //aos_debug_log("curl option operation_timeout %d, connect_timeout %d", operation_timeout, connect_timeout);
+
     curl_easy_setopt_safe(CURLOPT_LOW_SPEED_LIMIT, t->controller->options->speed_limit);
     curl_easy_setopt_safe(CURLOPT_LOW_SPEED_TIME, t->controller->options->speed_time);
 

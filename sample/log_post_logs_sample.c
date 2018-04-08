@@ -166,6 +166,8 @@ void post_logs_with_http_cont_lz4_log_option(){
     add_pack_id(bder, "123456789ABC",  strlen("123456789ABC"), 0);
 
     g_log_option.interface = "eth0";
+    g_log_option.connect_timeout = 1;
+    g_log_option.operation_timeout = 1;
     int i;
     for(i=0;i<3;i++){
         add_log(bder);
@@ -373,6 +375,7 @@ void post_logs_with_proto_buffer(){
 
 int main(int argc, char *argv[])
 {
+    memset(&g_log_option, 0, sizeof(g_log_option));
     post_logs_with_http_cont_lz4_log_option();
     post_logs_with_proto_buffer_with_option();
     post_logs_with_http_cont_log_option();

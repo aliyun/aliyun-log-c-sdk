@@ -12,7 +12,9 @@ LOG_CPP_START
 
 struct _log_post_option
 {
-    char * interface;
+    char * interface;   // net interface to send log, NULL as default
+    int connect_timeout; // connection timeout seconds, 0 as default
+    int operation_timeout; // operation timeout seconds, 0 as default
 };
 typedef struct _log_post_option log_post_option;
 

@@ -99,6 +99,7 @@ typedef apr_array_header_t aos_array_header_t;
 #define AOS_MAX_GMT_TIME_LEN 128
 
 #define AOS_CONNECT_TIMEOUT 10
+#define AOS_OPERATION_TIMEOUT 15
 #define AOS_DNS_CACHE_TIMOUT 60
 #define AOS_MIN_SPEED_LIMIT 1024
 #define AOS_MIN_SPEED_TIME 15

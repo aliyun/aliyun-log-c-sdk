@@ -7,6 +7,20 @@
 #include "log_util.h"
 #include "log_api.h"
 
+static void _copy_option(log_post_option * logPostOption, log_request_options_t *options){
+    if (logPostOption != NULL){
+        if (logPostOption->interface != NULL) {
+            options->ctl->interface = (char *)logPostOption->interface;
+        }
+        if (logPostOption->connect_timeout > 0) {
+            options->ctl->connect_timeout = logPostOption->connect_timeout;
+        }
+        if (logPostOption->operation_timeout > 0) {
+            options->ctl->operation_timeout = logPostOption->operation_timeout;
+        }
+    }
+}
+
 aos_status_t* log_post_logs_from_http_cont_with_option(log_http_cont* cont, log_post_option * logPostOption){
     
     aos_http_request_t *req = (aos_http_request_t*)apr_palloc(cont->root, sizeof(aos_http_request_t));
@@ -22,9 +36,7 @@ aos_status_t* log_post_logs_from_http_cont_with_option(log_http_cont* cont, log_
     
     options->ctl = aos_http_controller_create(cont->root, 0);
     options->ctl->pool = cont->root;
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }    
+    _copy_option(logPostOption, options);
     aos_list_t buffer;
     aos_list_init(&buffer);
     
@@ -65,9 +77,7 @@ aos_status_t *log_post_logs_from_proto_buf_with_option(const char *endpoint, con
         aos_str_set(&(options->config->sts_token), stsToken);
     }
     options->ctl = aos_http_controller_create(options->pool, 0);
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }
+    _copy_option(logPostOption, options);
     headers = aos_table_make(p, 5);
     apr_table_set(headers, LOG_API_VERSION, "0.6.0");
     apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");
@@ -148,9 +158,7 @@ aos_status_t *log_post_logs_with_sts_token_with_option(aos_pool_t *p, const char
         aos_str_set(&(options->config->sts_token), stsToken);
     }
     options->ctl = aos_http_controller_create(options->pool, 0);
-    if (logPostOption != NULL){
-        options->ctl->interface = (char *)logPostOption->interface;
-    }
+    _copy_option(logPostOption, options);
     headers = aos_table_make(p, 5);
     apr_table_set(headers, LOG_API_VERSION, "0.6.0");
     apr_table_set(headers, LOG_COMPRESS_TYPE, "lz4");

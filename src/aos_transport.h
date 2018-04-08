@@ -27,6 +27,7 @@ struct aos_http_request_options_s {
     int speed_time;
     int dns_cache_timeout;
     int connect_timeout;
+    int operation_timeout;
     int64_t max_memory_size;
 };
 
@@ -44,7 +45,9 @@ struct aos_http_transport_options_s {
     int64_t finish_time;                        \
     uint32_t owner:1;                           \
     void *user_data;                            \
-    char * interface;
+    char * interface;                           \
+    int connect_timeout;                      \
+    int operation_timeout;
 
 struct aos_http_controller_s {
     AOS_HTTP_BASE_CONTROLLER_DEFINE
@@ -120,7 +123,9 @@ typedef enum {
     aos_array_header_t *cleanup;                 \
     aos_http_transport_options_t *options;       \
     aos_http_controller_ex_t *controller;        \
-    char * interface;
+    char * interface;                            \
+    int connect_timeout;                      \
+    int operation_timeout;
     
 struct aos_http_transport_s {
     AOS_HTTP_BASE_TRANSPORT_DEFINE

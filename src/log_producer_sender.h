@@ -60,7 +60,7 @@ extern log_producer_send_result AosStatusToResult(aos_status_t * result);
 
 extern log_producer_sender * create_log_producer_sender(log_producer_config * producer_config, apr_pool_t * root);
 
-extern void destroy_log_producer_sender(log_producer_sender * producer_sender);
+extern void destroy_log_producer_sender(log_producer_sender * producer_sender, log_producer_config * producer_config);
 
 extern log_producer_send_param * create_log_producer_send_param(log_producer_config * producer_config,
                                                                 void * producer_manager,

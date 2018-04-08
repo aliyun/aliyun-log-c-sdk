@@ -253,6 +253,18 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     return LOG_PRODUCER_OK;
 }
 
+log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+{
+    if (client == NULL || !client->valid_flag || raw_buffer == NULL)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
+}
+
 #ifdef __linux__
 
 pthread_t log_producer_client_get_flush_thread(log_producer_client * client)
@@ -274,6 +286,17 @@ pthread_t log_producer_client_get_flush_thread(log_producer_client * client)
     {
         return -1;
     }
+}
+
+int64_t log_producer_client_get_flush_thread_id(log_producer_client * client)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return 0;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    return manager->linux_thread_id;
 }
 
 #endif

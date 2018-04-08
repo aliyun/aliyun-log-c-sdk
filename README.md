@@ -30,6 +30,7 @@
 * 客户端计算与 I/O 逻辑分离：日志异步输出，不阻塞工作线程。
 * 支持多优先级：不通客户端可配置不同的优先级，保证高优先级日志最先发送。
 * 本地调试：支持设置本地调试，便于您在网络不通的情况下本地测试应用程序。
+* 可靠退出：程序退出时，会调用接口将日志持久化，待下次应用启动时将数据发送，保证数据可靠性。详情参见[程序可靠退出方案](save_send_buffer.md)。
 
 在以上场景中，C Producer Library 会简化您程序开发的步骤，您无需关心日志采集细节实现、也不用担心日志采集会影响您的业务正常运行，大大降低数据采集门槛。
 
@@ -309,6 +310,15 @@ C Producer Library配置模式如下，除`send_thread_count`为producer独有�
 | debug_log_path             | 调试时日志本地保存文件名                                                             | 字符串，为debug保存日志全路径           |
 | max_debug_logfile_count     | 调试时最大debug日志个数                                                              | 整数                                    |
 | max_debug_logfile_size      | 调试时单一日志文件最大大小                                                           | 整数，单位字节                          |
+| net_interface | 网络发送绑定的网卡名 | 字符串，为空时表示自动选择可用网卡 |
+| connect_timeout_sec | 网络连接超时时间 | 整数，单位秒，默认为10 |
+| send_timeout_sec | 日志发送超时时间 | 整数，单位秒，默认为15 |
+| destroy_flusher_wait_sec | flusher线程销毁最大等待时间 | 整数，单位秒，默认为1 |
+| destroy_sender_wait_sec | sender线程池销毁最大等待时间 | 整数，单位秒，默认为1 |
+
+## 相关限制
+* C Producer销毁时，会尽可能将缓存中的数据发送出去，若您不对未发送的数据进行处理，则有一定概率丢失数据。处理方法参见[程序可靠退出方案](save_send_buffer.md)
+* C Producer销毁的最长时间可能为 `send_timeout_sec` + `destroy_flusher_wait_sec` + `destroy_sender_wait_sec`
 
 ## 底层日志发送接口
 若producer提供的接口满足不了您的日志采集需求，您可以基于底层的[日志发送接口](inner_interface.md)，开发适合您的应用场景的日志采集API。

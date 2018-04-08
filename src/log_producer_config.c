@@ -16,6 +16,11 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->sendThreadCount = 1;
     pConfig->maxBufferBytes = 64 * 1024 * 1024;
     pConfig->priority = LOG_PRODUCER_PRIORITY_NORMAL;
+    pConfig->net_interface = NULL;
+    pConfig->connectTimeoutSec = 10;
+    pConfig->sendTimeoutSec = 15;
+    pConfig->destroySenderWaitTimeoutSec = 1;
+    pConfig->destroyFlusherWaitTimeoutSec = 1;
 }
 
 static void _set_config_string(apr_pool_t * pool, cJSON * obj, const char * key, char ** value, const char * defaultValue)
@@ -215,6 +220,13 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
     _set_config_int(producerConfig->root, pJson, LOG_CONFIG_DEBUG_STDOUT, &(producerConfig->debugStdout));
     _set_config_int(producerConfig->root, pJson, LOG_CONFIG_DEBUG_MAX_LOGFILE_COUNT, &(producerConfig->maxDebugLogFileCount));
     _set_config_int(producerConfig->root, pJson, LOG_CONFIG_DEBUG_MAX_LOGFILE_SIZE, &(producerConfig->maxDebugLogFileSize));
+
+
+    _set_config_string(producerConfig->root, pJson, LOG_CONFIG_NET_INTERFACE, &(producerConfig->net_interface), NULL);
+    _set_config_int(producerConfig->root, pJson, LOG_CONFIG_CONNECT_TIMEOUT, &(producerConfig->connectTimeoutSec));
+    _set_config_int(producerConfig->root, pJson, LOG_CONFIG_SEND_TIMEOUT, &(producerConfig->sendTimeoutSec));
+    _set_config_int(producerConfig->root, pJson, LOG_CONFIG_DESTROY_FLUSHER_WAIT, &(producerConfig->destroyFlusherWaitTimeoutSec));
+    _set_config_int(producerConfig->root, pJson, LOG_CONFIG_DESTROY_SENDER_WAIT, &(producerConfig->destroySenderWaitTimeoutSec));
 
     _set_config_tag(producerConfig, cJSON_GetObjectItem(pJson, LOG_CONFIG_TAGS));
 

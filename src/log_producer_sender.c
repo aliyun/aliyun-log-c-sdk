@@ -23,6 +23,7 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 #define BASE_QUOTA_ERROR_SLEEP_MS 3000
 #define INVALID_TIME_TRY_INTERVAL 3000
 #define SEND_TIME_INVALID_FIX
+#define MAX_SENDER_FLUSH_COUNT 100 // 10MS * 100
 
 #define DROP_FAIL_DATA_TIME_SECOND (3600 * 6)
 
@@ -94,6 +95,18 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
     {
         void * stsTokenPtr = (void *)&config->stsToken;
         lz4_log_buf * send_buf = send_param->log_buf;
+        if (producer_manager->shutdown)
+        {
+            // @debug
+            //continue;
+            aos_info_log("send fail but shutdown signal received, force exit");
+            if (producer_manager->send_done_function != NULL)
+            {
+                producer_manager->send_done_function(producer_manager->producer_config->configName, LOG_PRODUCER_SEND_EXIT_BUFFERED, send_param->log_buf->raw_length, send_param->log_buf->length,
+                                                     NULL, "producer is being destroyed, producer has no time to send this buffer out", send_param->log_buf->data);
+            }
+            break;
+        }
 #ifdef SEND_TIME_INVALID_FIX
         uint32_t nowTime = time(NULL);
         if (nowTime - send_param->builder_time > 600 || send_param->builder_time > nowTime || error_info.last_send_error == LOG_SEND_TIME_ERROR)
@@ -110,7 +123,12 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
                                                                   config->logstore,
                                                                   send_buf,
                                                                   send_pool);
-        aos_status_t * status =  log_post_logs_from_http_cont_with_option(cont, NULL);
+        log_post_option option;
+        memset(&option, 0, sizeof(log_post_option));
+        option.interface = config->net_interface;
+        option.operation_timeout = config->sendTimeoutSec;
+        option.connect_timeout = config->connectTimeoutSec;
+        aos_status_t * status =  log_post_logs_from_http_cont_with_option(cont, &option);
 
         int32_t sleepMs = log_producer_on_send_done(send_param, status, &error_info);
 
@@ -123,6 +141,7 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
         apr_pool_clear(send_pool);
         if (sleepMs <= 0)
         {
+            // if send success, return
             // @debug
             //continue;
             break;
@@ -136,13 +155,7 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
                 break;
             }
         }
-        if (producer_manager->shutdown)
-        {
-            // @debug
-            //continue;
-            aos_info_log("send fail but shutdown signal received, force exit");
-            break;
-        }
+
         if (producer_manager->networkRecover)
         {
             producer_manager->networkRecover = 0;
@@ -372,30 +385,38 @@ log_producer_sender * create_log_producer_sender(log_producer_config * producer_
     return producer_sender;
 }
 
-void destroy_log_producer_sender(log_producer_sender * producer_sender)
+void destroy_log_producer_sender(log_producer_sender * producer_sender, log_producer_config * producer_config)
 {
     if (producer_sender->thread_pool == NULL)
     {
         return;
     }
+
+    // add a thread to flush all data out
+    apr_thread_pool_thread_max_set(producer_sender->thread_pool, producer_config->sendThreadCount + 1);
+    int32_t flush_count = producer_config->destroyFlusherWaitTimeoutSec > 0 ? producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
     int waitCount = 0;
     while (apr_thread_pool_tasks_count(producer_sender->thread_pool) != 0)
     {
         usleep(10 * 1000);
-        if (++waitCount == 100)
+        if (++waitCount == flush_count)
         {
             break;
         }
     }
-    if (waitCount == 100)
+    if (waitCount == flush_count)
     {
-        aos_error_log("can not flush all log in 1 second, now task count : %d", (int)apr_thread_pool_tasks_count(producer_sender->thread_pool));
+        aos_error_log("can not flush all log in %d second, now task count : %d", flush_count / 100, (int)apr_thread_pool_tasks_count(producer_sender->thread_pool));
     }
-
+    aos_info_log("destroy sender thread pool begin");
     apr_status_t status = apr_thread_pool_destroy(producer_sender->thread_pool);
     if (status != APR_SUCCESS)
     {
         aos_fatal_log("destroy thread pool error, error code : %d", status);
+    }
+    else
+    {
+        aos_info_log("destroy sender thread pool success");
     }
 }
 
