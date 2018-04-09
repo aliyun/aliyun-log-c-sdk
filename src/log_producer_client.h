@@ -42,9 +42,10 @@ LOG_EXPORT void log_producer_env_destroy();
  * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
+ * @param user_param this param will send back in send_done_function
  * @return producer client ptr, NULL if create fail
  */
-LOG_EXPORT log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function);
+LOG_EXPORT log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function, void *user_param);
 
 /**
  * destroy log producer
@@ -93,9 +94,10 @@ LOG_EXPORT log_producer_result log_producer_client_add_log(log_producer_client *
  * @param key_lens the key len array
  * @param values the value array
  * @param value_lens the value len array
+ * @param flush if this log info need to send right, 1 mean flush and 0 means NO
  * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
  */
-LOG_EXPORT log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens);
+LOG_EXPORT log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens, int flush);
 
 
 LOG_CPP_END
