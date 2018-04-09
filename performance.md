@@ -182,7 +182,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 void log_producer_post_logs(int logsPerSecond, int sendSec)
 {
     //aos_log_level = AOS_LOG_DEBUG;
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 

@@ -24,6 +24,7 @@
 * 低资源消耗：每秒20W日志写入只消耗30% CPU；同时在低性能硬件（例如树莓派）上，每秒产生100条日志对资源基本无影响。详情参见[性能测试](performance.md)。
 * 客户端日志不落盘：数据产生后直接通过网络发往服务端。
 * 客户端计算与 I/O 逻辑分离：日志异步输出，不阻塞工作线程。
+* 可靠退出：程序退出时，会调用接口将日志持久化，待下次应用启动时将数据发送，保证数据可靠性。详情参见[程序可靠退出方案](save_send_buffer.md)。
 
 在以上场景中，C Producer Lite 会简化您程序开发的步骤，您无需关心日志采集细节实现、也不用担心日志采集会影响您的业务正常运行，大大降低数据采集门槛。
 
@@ -107,7 +108,15 @@ C Producer Lite使用curl进行网络操作，您需要确认这些库已经安�
 | packet_log_bytes      | 指定每个缓存的日志包的大小上限。                                                  | 整数形式，取值为1~5242880，单位为字节。默认为 3 * 1024 * 1024。 |
 | max_buffer_limit        | 指定单个Producer Client实例可以使用的内存的上限。                                           | 整数形式，单位为字节。默认为64 * 1024 * 1024。                  |
 | send_thread_count    | 指定发送线程数量，用于发送数据到日志服务。 | 整数形式，默认0，为0时发送与内部Flush公用一个线程，若您每秒日志发送不超过100条，无需设置此参数。                              |
+| net_interface | 网络发送绑定的网卡名 | 字符串，为空时表示自动选择可用网卡 |
+| connect_timeout_sec | 网络连接超时时间 | 整数，单位秒，默认为10 |
+| send_timeout_sec | 日志发送超时时间 | 整数，单位秒，默认为15 |
+| destroy_flusher_wait_sec | flusher线程销毁最大等待时间 | 整数，单位秒，默认为1 |
+| destroy_sender_wait_sec | sender线程池销毁最大等待时间 | 整数，单位秒，默认为1 |
 
+### 相关限制
+* C Producer销毁时，会尽可能将缓存中的数据发送出去，若您不对未发送的数据进行处理，则有一定概率丢失数据。处理方法参见[程序可靠退出方案](save_send_buffer.md)
+* C Producer销毁的最长时间可能为 `send_timeout_sec` + `destroy_flusher_wait_sec` + `destroy_sender_wait_sec`
 ### 样例代码
 ```c
 #include "log_api.h"
@@ -165,7 +174,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 
 void log_producer_post_logs()
 {
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 

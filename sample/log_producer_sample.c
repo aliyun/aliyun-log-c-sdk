@@ -6,7 +6,7 @@
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * raw_buffer)
 {
     if (result == LOG_PRODUCER_OK)
     {
@@ -51,13 +51,25 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     // set send thread count
     log_producer_config_set_send_thread_count(config, 4);
 
+    // set compress type : lz4
+    log_producer_config_set_compress_type(config, 1);
+
+    // set timeout
+    log_producer_config_set_connect_timeout_sec(config, 10);
+    log_producer_config_set_send_timeout_sec(config, 15);
+    log_producer_config_set_destroy_flusher_wait_sec(config, 1);
+    log_producer_config_set_destroy_sender_wait_sec(config, 1);
+
+    // set interface
+    log_producer_config_set_net_interface(config, NULL);
+
     return create_log_producer(config, on_send_done);
 }
 
 
 void log_producer_post_logs()
 {
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 

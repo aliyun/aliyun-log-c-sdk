@@ -23,7 +23,7 @@ struct _log_producer {
     log_producer_client * root_client;
 };
 
-log_producer_result log_producer_env_init()
+log_producer_result log_producer_env_init(int32_t log_global_flag)
 {
     // if already init, just return s_last_result
     if (s_init_flag == 1)
@@ -31,7 +31,7 @@ log_producer_result log_producer_env_init()
         return s_last_result;
     }
     s_init_flag = 1;
-    if (0 != sls_log_init())
+    if (0 != sls_log_init(log_global_flag))
     {
         s_last_result = LOG_PRODUCER_INVALID;
     }
@@ -163,4 +163,17 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
     return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens);
+}
+
+
+log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+{
+    if (client == NULL || !client->valid_flag || raw_buffer == NULL)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
 }

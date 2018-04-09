@@ -354,6 +354,16 @@ log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
     return buf;
 }
 
+lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
+{
+    log_buf buf = serialize_to_proto_buf_with_malloc(bder);
+    lz4_log_buf* pLogbuf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + buf.n_buffer);
+    pLogbuf->length = buf.n_buffer;
+    pLogbuf->raw_length = buf.n_buffer;
+    memcpy(pLogbuf->data, buf.buffer, buf.n_buffer);
+    return pLogbuf;
+}
+
 lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
 {
     log_tag * log = &(bder->grp->logs);

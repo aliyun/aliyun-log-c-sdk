@@ -14,6 +14,12 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->logCountPerPackage = 2048;
     pConfig->packageTimeoutInMS = 3000;
     pConfig->maxBufferBytes = 64 * 1024 * 1024;
+
+    pConfig->connectTimeoutSec = 10;
+    pConfig->sendTimeoutSec = 15;
+    pConfig->destroySenderWaitTimeoutSec = 1;
+    pConfig->destroyFlusherWaitTimeoutSec = 1;
+    pConfig->compressType = 1;
 }
 
 
@@ -70,6 +76,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     if (pConfig->source != NULL)
     {
         sdsfree(pConfig->source);
+    }
+    if (pConfig->netInterface != NULL)
+    {
+        sdsfree(pConfig->netInterface);
     }
     if (pConfig->tagCount > 0 && pConfig->tags != NULL)
     {
@@ -152,6 +162,63 @@ void log_producer_config_set_send_thread_count(log_producer_config * config, int
         return;
     }
     config->sendThreadCount = thread_count;
+}
+
+
+void log_producer_config_set_net_interface(log_producer_config * config, const char * net_interface)
+{
+    if (config == NULL || net_interface == NULL)
+    {
+        return;
+    }
+    _copy_config_string(net_interface, &config->netInterface);
+}
+
+
+void log_producer_config_set_connect_timeout_sec(log_producer_config * config, int32_t connect_timeout_sec)
+{
+    if (config == NULL || connect_timeout_sec <= 0)
+    {
+        return;
+    }
+    config->connectTimeoutSec = connect_timeout_sec;
+}
+
+
+void log_producer_config_set_send_timeout_sec(log_producer_config * config, int32_t send_timeout_sec)
+{
+    if (config == NULL || send_timeout_sec <= 0)
+    {
+        return;
+    }
+    config->sendTimeoutSec = send_timeout_sec;
+}
+
+void log_producer_config_set_destroy_flusher_wait_sec(log_producer_config * config, int32_t destroy_flusher_wait_sec)
+{
+    if (config == NULL || destroy_flusher_wait_sec <= 0)
+    {
+        return;
+    }
+    config->destroyFlusherWaitTimeoutSec = destroy_flusher_wait_sec;
+}
+
+void log_producer_config_set_destroy_sender_wait_sec(log_producer_config * config, int32_t destroy_sender_wait_sec)
+{
+    if (config == NULL || destroy_sender_wait_sec <= 0)
+    {
+        return;
+    }
+    config->destroySenderWaitTimeoutSec = destroy_sender_wait_sec;
+}
+
+void log_producer_config_set_compress_type(log_producer_config * config, int32_t compress_type)
+{
+    if (config == NULL || compress_type < 0 || compress_type > 1)
+    {
+        return;
+    }
+    config->compressType = compress_type;
 }
 
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)

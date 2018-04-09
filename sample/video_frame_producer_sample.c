@@ -17,7 +17,7 @@
  * @param req_id
  * @param message
  */
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * raw_buffer)
 {
     if (result == LOG_PRODUCER_OK)
     {
@@ -66,6 +66,8 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_packet_timeout(config, 3000);
     // 最大缓存的数据大小，超出缓存时add_log接口会立即返回失败
     log_producer_config_set_max_buffer_limit(config, 64*1024*1024);
+    // 设置不使用压缩
+    log_producer_config_set_compress_type(config, 0);
 
     // set send thread count
     // 发送线程数，为1即可
@@ -127,16 +129,16 @@ void post_frame(log_producer_client * client, video_frame * frame)
     char * values[6];
 
     char duration[32];
-    sprintf(duration, "%llu", frame->duration);
+    sprintf(duration, "%llu", (long long unsigned int)frame->duration);
 
     char frame_flag[32];
     sprintf(frame_flag, "%u", frame->frame_flag);
 
     char decoding_timestamp[32];
-    sprintf(decoding_timestamp, "%llu", frame->decoding_timestamp);
+    sprintf(decoding_timestamp, "%llu", (long long unsigned int)frame->decoding_timestamp);
 
     char presentation_timestamp[32];
-    sprintf(presentation_timestamp, "%llu", frame->presentation_timestamp);
+    sprintf(presentation_timestamp, "%llu", (long long unsigned int)frame->presentation_timestamp);
 
     values[0] = duration;
     values[1] = (char *)frame->frame_data;
@@ -192,7 +194,7 @@ void post_frame(log_producer_client * client, video_frame * frame)
  */
 void producer_post_frames()
 {
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 

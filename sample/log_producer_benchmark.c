@@ -91,7 +91,7 @@ void builder_speed_test(int32_t logsPerGroup)
     aos_error_log("total time sec  %d ", (time(NULL) - startTime));
 }
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * raw_buffer)
 {
     if (result == LOG_PRODUCER_OK)
     {
@@ -169,7 +169,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 void log_producer_multi_thread(int logsPerSecond)
 {
     logsPerSecond *= 100;
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 
@@ -229,7 +229,7 @@ void log_producer_create_destroy()
     int count = 0;
     while (1)
     {
-        if (log_producer_env_init() != LOG_PRODUCER_OK) {
+        if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
             exit(1);
         }
 
@@ -257,7 +257,7 @@ void log_producer_create_destroy()
 void log_producer_post_logs(int logsPerSecond, int sendSec)
 {
     //aos_log_level = AOS_LOG_DEBUG;
-    if (log_producer_env_init() != LOG_PRODUCER_OK) {
+    if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 

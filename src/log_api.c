@@ -5,10 +5,10 @@
 #include "sds.h"
 #include "inner_log.h"
 
-log_status_t sls_log_init()
+log_status_t sls_log_init(int32_t log_global_flag)
 {
     CURLcode ecode;
-    if ((ecode = curl_global_init(CURL_GLOBAL_NOTHING)) != CURLE_OK)
+    if ((ecode = curl_global_init(log_global_flag)) != CURLE_OK)
     {
         aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
         return -1;
@@ -71,7 +71,7 @@ void post_log_result_destroy(post_log_result * result)
     }
 }
 
-post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer)
+post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
 {
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
@@ -94,6 +94,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         char md5Buf[33];
         md5Buf[32] = '\0';
+        int lz4Flag = option == NULL || option->compress_type == 1;
         md5_to_string((const char *)buffer->data, buffer->length, (char *)md5Buf);
 
 
@@ -104,7 +105,10 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
         headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
-        headers=curl_slist_append(headers, "x-log-compresstype:lz4");
+        if (lz4Flag)
+        {
+            headers=curl_slist_append(headers, "x-log-compresstype:lz4");
+        }
         headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
         sds headerTime = sdsnew("Date:");
         headerTime = sdscat(headerTime, nowTime);
@@ -129,9 +133,18 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sha1Buf[64] = '\0';
 
         sds sigContent = sdsnewEmpty(512);
-        sigContent = sdscatprintf(sigContent,
-                                  "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                  md5Buf, nowTime, (int)buffer->raw_length, logstore);
+        if (lz4Flag)
+        {
+            sigContent = sdscatprintf(sigContent,
+                                      "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                      md5Buf, nowTime, (int)buffer->raw_length, logstore);
+        }
+        else
+        {
+            sigContent = sdscatprintf(sigContent,
+                                      "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                      md5Buf, nowTime, (int)buffer->raw_length, logstore);
+        }
 
         //puts("#######################");
         //puts(sigContent);
@@ -162,6 +175,24 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "log-c-lite_0.1.0");
 
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15);
+
+        if (option != NULL)
+        {
+            // interface
+            if (option->interface != NULL)
+            {
+                curl_easy_setopt(curl, CURLOPT_INTERFACE, option->interface);
+            }
+            if (option->operation_timeout > 0)
+            {
+                curl_easy_setopt(curl, CURLOPT_TIMEOUT, option->operation_timeout);
+            }
+            if (option->connect_timeout > 0)
+            {
+                curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, option->connect_timeout);
+            }
+        }
+
 
 
         sds header = sdsnewEmpty(64);

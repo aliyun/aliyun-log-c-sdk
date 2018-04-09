@@ -38,6 +38,15 @@ typedef struct _log_producer_config
     int32_t logCountPerPackage;
     int32_t logBytesPerPackage;
     int32_t maxBufferBytes;
+
+    char * netInterface;
+    int32_t connectTimeoutSec;
+    int32_t sendTimeoutSec;
+    int32_t destroyFlusherWaitTimeoutSec;
+    int32_t destroySenderWaitTimeoutSec;
+
+    int32_t compressType; // 0 no compress, 1 lz4
+
 }log_producer_config;
 
 
@@ -141,6 +150,48 @@ LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * c
  * @param thread_count
  */
 LOG_EXPORT void log_producer_config_set_send_thread_count(log_producer_config * config, int32_t thread_count);
+
+/**
+ * set interface to send log out
+ * @param config
+ * @param net_interface
+ */
+LOG_EXPORT void log_producer_config_set_net_interface(log_producer_config * config, const char * net_interface);
+
+/**
+ * set connect timeout seconds
+ * @param config
+ * @param connect_timeout_sec
+ */
+LOG_EXPORT void log_producer_config_set_connect_timeout_sec(log_producer_config * config, int32_t connect_timeout_sec);
+
+/**
+ * set send timeout seconds
+ * @param config
+ * @param send_timeout_sec
+ */
+LOG_EXPORT void log_producer_config_set_send_timeout_sec(log_producer_config * config, int32_t send_timeout_sec);
+
+/**
+ * set wait seconds when destroy flusher
+ * @param config
+ * @param destroy_flusher_wait_sec
+ */
+LOG_EXPORT void log_producer_config_set_destroy_flusher_wait_sec(log_producer_config * config, int32_t destroy_flusher_wait_sec);
+
+/**
+ * set wait seconds when destroy sender
+ * @param config
+ * @param destroy_sender_wait_sec
+ */
+LOG_EXPORT void log_producer_config_set_destroy_sender_wait_sec(log_producer_config * config, int32_t destroy_sender_wait_sec);
+
+/**
+ * set compress type, default 1 (lz4)
+ * @param config
+ * @param compress_type only support 1 or 0. 1 -> lz4, 0 -> no compress
+ */
+LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * config, int32_t compress_type);
 
 /**
  * destroy config, this will free all memory allocated by this config

@@ -13,6 +13,9 @@
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
+#define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
+#define MAX_SENDER_FLUSH_COUNT 100 // 10ms * 100
+
 void * log_producer_send_thread(void * param);
 
 char * _get_pack_id(const char * configName, const char * ip)
@@ -119,7 +122,17 @@ void * log_producer_flush_thread(void * param)
                     add_pack_id(builder, producer_manager->pack_prefix, strlen(producer_manager->pack_prefix), producer_manager->pack_index++);
                 }
 
-                lz4_log_buf * lz4_buf = serialize_to_proto_buf_with_malloc_lz4(builder);
+                lz4_log_buf * lz4_buf = NULL;
+                // check compress type
+                if (config->compressType == 1)
+                {
+                    lz4_buf = serialize_to_proto_buf_with_malloc_lz4(builder);
+
+                }
+                else
+                {
+                    lz4_buf = serialize_to_proto_buf_with_malloc_no_lz4(builder);
+                }
 
                 if (lz4_buf == NULL)
                 {
@@ -150,6 +163,7 @@ void * log_producer_flush_thread(void * param)
         // send data
         if (root_producer_manager->send_threads != NULL)
         {
+            // if send thread count > 0, we just push send_param to sender queue
             while (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read && !log_queue_isfull(root_producer_manager->sender_data_queue))
             {
                 log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
@@ -159,6 +173,7 @@ void * log_producer_flush_thread(void * param)
         }
         else if (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read)
         {
+            // if no sender thread, we send this packet out in flush thread
             log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
             log_producer_send_data(send_param);
         }
@@ -260,40 +275,63 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     // when destroy instance, flush last loggroup
     _push_last_loggroup(manager);
 
+    aos_info_log("flush out producer loggroup begin");
+    int32_t total_wait_count = manager->producer_config->destroyFlusherWaitTimeoutSec > 0 ? manager->producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_MANAGER_FLUSH_COUNT;
+    total_wait_count += manager->producer_config->destroySenderWaitTimeoutSec > 0 ? manager->producer_config->destroySenderWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
+
+    usleep(10 * 1000);
     int waitCount = 0;
     while (log_queue_size(manager->loggroup_queue) > 0 ||
             manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
             (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
         usleep(10 * 1000);
-        if (++waitCount == 100)
+        if (++waitCount == total_wait_count)
         {
             break;
         }
     }
-    if (waitCount == 100)
+    if (waitCount == total_wait_count)
     {
         aos_error_log("try flush out producer loggroup error, force exit, now loggroup %d", (int)(log_queue_size(manager->loggroup_queue)));
+    }
+    else
+    {
+        aos_info_log("flush out producer loggroup success");
     }
     manager->shutdown = 1;
 
     // destroy root resources
     COND_SIGNAL(manager->triger_cond);
+    aos_info_log("join flush thread begin");
     THREAD_JOIN(manager->flush_thread);
+    aos_info_log("join flush thread success");
     if (manager->send_threads != NULL)
     {
-        int32_t  threadId = 0;
+        aos_info_log("join sender thread pool begin");
+        int32_t threadId = 0;
         for (; threadId < manager->producer_config->sendThreadCount; ++threadId)
         {
             THREAD_JOIN(manager->send_threads[threadId]);
         }
         free(manager->send_threads);
+        aos_info_log("join sender thread pool success");
     }
     DeleteCond(manager->triger_cond);
     log_queue_destroy(manager->loggroup_queue);
     if (manager->sender_data_queue != NULL)
     {
+        aos_info_log("flush out sender queue begin");
+        while (log_queue_size(manager->sender_data_queue) > 0)
+        {
+            void * send_param = log_queue_trypop(manager->sender_data_queue);
+            if (send_param != NULL)
+            {
+                log_producer_send_fun(send_param);
+            }
+        }
         log_queue_destroy(manager->sender_data_queue);
+        aos_info_log("flush out sender queue success");
     }
     DeleteCriticalSection(manager->lock);
     if (manager->pack_prefix != NULL)
@@ -362,5 +400,17 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
 
     return LOG_PRODUCER_OK;
 }
+
+log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+{
+    // pack lz4_log_buf
+    lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
+    lz4_buf->length = compressed_bytes;
+    lz4_buf->raw_length = log_bytes;
+    memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
+    return log_producer_send_data(send_param);
+}
+
 
 

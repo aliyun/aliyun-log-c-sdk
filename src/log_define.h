@@ -16,6 +16,11 @@
 # define LOG_CPP_END
 #endif
 
+#define LOG_GLOBAL_SSL (1<<0)
+#define LOG_GLOBAL_WIN32 (1<<1)
+#define LOG_GLOBAL_ALL (LOG_GLOBAL_SSL|LOG_GLOBAL_WIN32)
+#define LOG_GLOBAL_NOTHING (0)
+
 typedef int log_status_t;
 
 struct _post_log_result

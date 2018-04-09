@@ -12,7 +12,7 @@
 void post_logs_with_http_cont_lz4_log_option()
 {
 
-    sls_log_init();
+    sls_log_init(LOG_GLOBAL_ALL);
 
     int i = 0;
     for (i = 0; i < 10; ++i)
@@ -78,7 +78,23 @@ void post_logs_with_http_cont_lz4_log_option()
 
 #endif
 
-        lz4_log_buf *pLZ4Buf = serialize_to_proto_buf_with_malloc_lz4(bder);
+        log_post_option option;
+        option.interface = "eth0";
+        option.connect_timeout = 1;
+        option.operation_timeout = 1;
+        option.compress_type = i % 2 == 0;
+        lz4_log_buf *pLZ4Buf = NULL;
+        if (option.compress_type == 1)
+        {
+            printf("post log with lz4 \n");
+            pLZ4Buf = serialize_to_proto_buf_with_malloc_lz4(bder);
+        }
+        else
+        {
+            printf("post log with no compress \n");
+            pLZ4Buf = serialize_to_proto_buf_with_malloc_no_lz4(bder);
+        }
+
         log_group_destroy(bder);
         if (pLZ4Buf == NULL)
         {
@@ -88,7 +104,7 @@ void post_logs_with_http_cont_lz4_log_option()
         post_log_result * rst = post_logs_from_lz4buf(LOG_ENDPOINT, ACCESS_KEY_ID,
                                                  ACCESS_KEY_SECRET, NULL,
                                                  PROJECT_NAME, LOGSTORE_NAME,
-                                                 pLZ4Buf);
+                                                 pLZ4Buf, &option);
         printf("result %d %d \n", i, rst->statusCode);
         if (rst->errorMessage != NULL)
         {

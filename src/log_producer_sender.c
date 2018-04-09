@@ -115,9 +115,12 @@ void * log_producer_send_fun(void * param)
     {
         if (producer_manager->shutdown)
         {
-            // @debug
-            //continue;
             aos_info_log("send fail but shutdown signal received, force exit");
+            if (producer_manager->send_done_function != NULL)
+            {
+                producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_SEND_EXIT_BUFFERED, send_param->log_buf->raw_length, send_param->log_buf->length,
+                                                     NULL, "producer is being destroyed, producer has no time to send this buffer out", send_param->log_buf->data);
+            }
             break;
         }
         lz4_log_buf * send_buf = send_param->log_buf;
@@ -129,10 +132,16 @@ void * log_producer_send_fun(void * param)
             send_param->builder_time = nowTime;
         }
 #endif
+        log_post_option option;
+        memset(&option, 0, sizeof(log_post_option));
+        option.connect_timeout = config->connectTimeoutSec;
+        option.operation_timeout = config->sendTimeoutSec;
+        option.interface = config->netInterface;
+        option.compress_type = config->compressType;
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, config->accessKeyId,
                                                       config->accessKey, NULL,
                                                       config->project, config->logstore,
-                                                      send_buf);
+                                                      send_buf, &option);
 
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
 
@@ -146,8 +155,6 @@ void * log_producer_send_fun(void * param)
 
         if (sleepMs <= 0)
         {
-            // @debug
-            //continue;
             break;
         }
         int i =0;
@@ -184,7 +191,13 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage);
+        producer_manager->send_done_function(producer_manager->producer_config->logstore,
+                                             callback_result,
+                                             send_param->log_buf->raw_length,
+                                             send_param->log_buf->length,
+                                             result->requestID,
+                                             result->errorMessage,
+                                             send_param->log_buf->data);
     }
     switch (send_result)
     {
