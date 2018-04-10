@@ -76,35 +76,74 @@ typedef HANDLE SEMA;
 
 
 
-
-
 //条件量
 
-
-typedef PRTL_CONDITION_VARIABLE COND;
+typedef struct windows_event{
+	HANDLE event;
+}*COND;
+//typedef PRTL_CONDITION_VARIABLE COND;
 typedef int COND_WAIT_T;
 #define COND_WAIT_OK 0
 #define COND_WAIT_TIMEOUT ETIMEDOUT
 #define INVALID_COND NULL
 
 static inline COND CreateCond() {
-	COND cond = (COND)malloc(sizeof(RTL_CONDITION_VARIABLE));
-	assert(cond != INVALID_COND);
-	InitializeConditionVariable(cond);
+	COND cond = NULL;
+	if (!(cond = malloc(sizeof(struct windows_event))))
+		return cond;
+
+	if ((cond->event = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL) {
+		free(cond);
+		return NULL;
+	}
+
 	return cond;
 }
 
 static inline void DeleteCond(COND cond) {
 	if (cond != INVALID_COND) {
+		CloseHandle(cond->event);
 		free(cond);
 	}
 }
 
-#define COND_SIGNAL(cond) WakeConditionVariable(cond)
-#define COND_SIGNAL_ALL(cond) WakeAllConditionVariable(cond)
+#define COND_SIGNAL(cond) COND_WAKE(cond)
 
 static inline COND_WAIT_T COND_WAIT_TIME(COND cond, CRITICALSECTION cs, int32_t waitMs) {
-	SleepConditionVariableCS(cond,cs,waitMs);
+	if (cond == INVALID_COND) 
+	{
+		return EINVAL;
+	}
+	DWORD ret;
+	DWORD startTime, endTime, totalWaitMs, remainMs;
+	int result = -1;
+
+	LeaveCriticalSection(cs);
+	ret = WaitForSingleObject((HANDLE)cond->event, waitMs);
+
+	if (ret == WAIT_TIMEOUT)
+	{
+		result = ETIMEDOUT;
+	}
+	else if (ret != WAIT_OBJECT_0)
+	{
+		result = EINVAL;
+	}
+
+	EnterCriticalSection(cs);
+
+	return result;
+}
+
+static inline COND_WAIT_T COND_WAKE(COND cond) {
+	if (cond == INVALID_COND)
+	{
+		return EINVAL;
+	}
+
+	if (!SetEvent((HANDLE)cond->event))
+		return EINVAL;
+
 	return 0;
 }
 
