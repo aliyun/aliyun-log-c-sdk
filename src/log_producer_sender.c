@@ -96,7 +96,7 @@ void * log_producer_send_thread(void * param)
         void * send_param = log_queue_pop(producer_manager->sender_data_queue, 30);
         if (send_param != NULL)
         {
-            ATOMICINT_INC(producer_manager->multi_thread_send_count);
+            ATOMICINT_INC(&producer_manager->multi_thread_send_count);
             log_producer_send_fun(send_param);
         }
     }
@@ -111,7 +111,7 @@ void * log_producer_send_fun(void * param)
     {
         aos_fatal_log("invalid send param, magic num not found, num 0x%x", send_param->magic_num);
         log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
-        ATOMICINT_DEC(producer_manager->multi_thread_send_count);
+        ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         return NULL;
     }
 
@@ -129,7 +129,7 @@ void * log_producer_send_fun(void * param)
             // @debug
             //continue;
             aos_info_log("send fail but shutdown signal received, force exit");
-            ATOMICINT_DEC(producer_manager->multi_thread_send_count);
+            ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
             break;
         }
         lz4_log_buf * send_buf = send_param->log_buf;
@@ -146,7 +146,7 @@ void * log_producer_send_fun(void * param)
                                                       config->project, config->logstore,
                                                       send_buf);
 
-        ATOMICINT_DEC(producer_manager->multi_thread_send_count);
+        ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
 
         post_log_result_destroy(rst);
