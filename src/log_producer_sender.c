@@ -230,7 +230,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                     break;
                 }
             }
-            aos_warn_log("send quota error, project : %s, logstore : %s, config : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
+            aos_warn_log("send quota error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
                          send_param->producer_config->logstore,
                          (int)send_param->log_buf->length,
@@ -276,7 +276,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
     CS_LEAVE(producer_manager->lock);
     if (send_result == LOG_SEND_OK)
     {
-        aos_debug_log("send success, project : %s, logstore : %s, buffer len : %d, raw len : %d, total buffer : %d,code : %d, error msg : %s",
+        aos_debug_log("send success, project : %s, logstore : %s, buffer len : %d, raw len : %d, total buffer : %d, code : %d, error msg : %s",
                       send_param->producer_config->project,
                       send_param->producer_config->logstore,
                       (int)send_param->log_buf->length,
@@ -287,7 +287,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
     }
     else
     {
-        aos_warn_log("send fail, discard data, project : %s, logstore : %s, buffer len : %d, raw len : %d, total buffer : %d,code : %d, error msg : %s",
+        aos_warn_log("send fail, discard data, project : %s, logstore : %s, buffer len : %d, raw len : %d, total buffer : %d, code : %d, error msg : %s",
                       send_param->producer_config->project,
                       send_param->producer_config->logstore,
                       (int)send_param->log_buf->length,
