@@ -98,6 +98,7 @@ void * log_producer_send_thread(void * param)
         {
             ATOMICINT_INC(&producer_manager->multi_thread_send_count);
             log_producer_send_fun(send_param);
+            ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         }
     }
 
@@ -111,7 +112,6 @@ void * log_producer_send_fun(void * param)
     {
         aos_fatal_log("invalid send param, magic num not found, num 0x%x", send_param->magic_num);
         log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
-        ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         return NULL;
     }
 
@@ -129,7 +129,6 @@ void * log_producer_send_fun(void * param)
             // @debug
             //continue;
             aos_info_log("send fail but shutdown signal received, force exit");
-            ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
             break;
         }
         lz4_log_buf * send_buf = send_param->log_buf;
@@ -146,7 +145,6 @@ void * log_producer_send_fun(void * param)
                                                       config->project, config->logstore,
                                                       send_buf);
 
-        ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
 
         post_log_result_destroy(rst);
@@ -214,7 +212,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
         if (send_finished == 1 && producer_manager->sender_data_queue != NULL)
         {
           int32_t send_data_queue_size = log_queue_size(producer_manager->sender_data_queue);
-          if (send_data_queue_size != 0 || producer_manager->multi_thread_send_count != 0)
+          if (send_data_queue_size != 0 || producer_manager->multi_thread_send_count > 1)
           {
             send_finished = 0;
           }
@@ -253,7 +251,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                     break;
                 }
             }
-            aos_warn_log("send quota error, project : %s, logstore : %s, config : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
+            aos_warn_log("send quota error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
                          send_param->producer_config->logstore,
                          (int)send_param->log_buf->length,
