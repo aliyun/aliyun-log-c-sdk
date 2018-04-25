@@ -111,7 +111,6 @@ void * log_producer_send_fun(void * param)
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
     {
         aos_fatal_log("invalid send param, magic num not found, num 0x%x", send_param->magic_num);
-        log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
         return NULL;
     }
 
