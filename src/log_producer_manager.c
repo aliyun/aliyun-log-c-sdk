@@ -308,7 +308,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     {
         log_queue_destroy(manager->sender_data_queue);
     }
-    DeleteCriticalSection(manager->lock);
+    ReleaseCriticalSection(manager->lock);
     if (manager->pack_prefix != NULL)
     {
         free(manager->pack_prefix);

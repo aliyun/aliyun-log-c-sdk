@@ -28,7 +28,7 @@ log_queue * log_queue_create(int32_t size)
 
 void log_queue_destroy(log_queue * queue)
 {
-    DeleteCriticalSection(queue->mutex);
+    ReleaseCriticalSection(queue->mutex);
     DeleteCond(queue->notempty);
     free(queue);
 }
