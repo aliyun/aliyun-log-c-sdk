@@ -78,8 +78,9 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
         producer_manager->builder = NULL;
         apr_thread_mutex_unlock(producer_manager->lock);
 
+        apr_uint32_t loggroup_size = builder->loggroup_size;
+        aos_debug_log("try push loggroup to flusher, size : %d", (int)loggroup_size);
         apr_status_t status = apr_queue_trypush(producer_manager->loggroup_queue, builder);
-        aos_debug_log("try push loggroup to flusher, size : %d, status : %d", (int)builder->loggroup_size, status);
         if (status != LOG_PRODUCER_OK)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -87,7 +88,7 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
         }
         else
         {
-            apr_atomic_add32(&producer_manager->totalBufferSize, (apr_uint32_t)builder->loggroup_size);
+            apr_atomic_add32(&producer_manager->totalBufferSize, loggroup_size);
             apr_thread_cond_signal(producer_manager->triger_cond);
         }
     }
@@ -348,8 +349,9 @@ void _push_last_loggroup(log_producer_manager * manager)
     apr_thread_mutex_unlock(manager->lock);
     if (builder != NULL)
     {
+        apr_uint32_t loggroup_size = builder->loggroup_size;
+        aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
         apr_status_t status = apr_queue_trypush(manager->loggroup_queue, builder);
-        aos_debug_log("try push loggroup to flusher, size : %d, log count %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->n_logs, status);
         if (status != LOG_PRODUCER_OK)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -357,7 +359,7 @@ void _push_last_loggroup(log_producer_manager * manager)
         }
         else
         {
-            apr_atomic_add32(&manager->totalBufferSize, (apr_uint32_t)builder->loggroup_size);
+            apr_atomic_add32(&manager->totalBufferSize, loggroup_size);
             apr_thread_cond_signal(manager->triger_cond);
         }
     }
@@ -442,6 +444,13 @@ void destroy_log_producer_manager(log_producer_manager * manager)
 
 log_producer_result log_producer_manager_add_log_start(log_producer_manager * producer_manager)
 {
+    // @todo find out why totalBufferSize be abnormal some time
+    // @note reset totalBufferSize if it is abnormal
+    if (apr_atomic_read32(&(producer_manager->totalBufferSize)) >= 0x7FFFFFFF)
+    {
+        aos_fatal_log("invalid total buffer size : %u", producer_manager->totalBufferSize);
+        apr_atomic_set32(&(producer_manager->totalBufferSize), 0);
+    }
     if (apr_atomic_read32(&(producer_manager->totalBufferSize)) > (uint32_t)producer_manager->producer_config->maxBufferBytes)
     {
         return LOG_PRODUCER_DROP_ERROR;
@@ -483,9 +492,9 @@ log_producer_result log_producer_manager_add_log_end(log_producer_manager * prod
 
     apr_thread_mutex_unlock(producer_manager->lock);
 
-
+    apr_uint32_t loggroup_size = builder->loggroup_size;
+    aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
     apr_status_t status = apr_queue_trypush(producer_manager->loggroup_queue, builder);
-    aos_debug_log("try push loggroup to flusher, size : %d, log count %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->n_logs, status);
     if (status != LOG_PRODUCER_OK)
     {
         aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -493,7 +502,7 @@ log_producer_result log_producer_manager_add_log_end(log_producer_manager * prod
     }
     else
     {
-        apr_atomic_add32(&producer_manager->totalBufferSize, (apr_uint32_t)builder->loggroup_size);
+        apr_atomic_add32(&producer_manager->totalBufferSize, loggroup_size);
         apr_thread_cond_signal(producer_manager->triger_cond);
     }
 

@@ -301,12 +301,13 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
 log_producer_result log_producer_send_data(log_producer_send_param * send_param)
 {
     log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
+    apr_uint32_t buf_len = send_param->log_buf->length;
     // if thread pool is null, send data directly
     if (producer_manager->sender->thread_pool == NULL)
     {
         apr_atomic_inc32(&(producer_manager->sender->send_queue_count));
-        apr_atomic_add32(&(producer_manager->sender->send_queue_size), send_param->log_buf->length);
-        apr_atomic_add32(&(producer_manager->totalBufferSize), send_param->log_buf->length);
+        apr_atomic_add32(&(producer_manager->sender->send_queue_size), buf_len);
+        apr_atomic_add32(&(producer_manager->totalBufferSize), buf_len);
         log_producer_send_fun(NULL, send_param);
         return LOG_PRODUCER_OK;
     }
@@ -315,11 +316,12 @@ log_producer_result log_producer_send_data(log_producer_send_param * send_param)
                                                send_param,
                                                producer_manager->priority,
                                                send_param->producer_manager);
+
     if (result == APR_SUCCESS)
     {
         apr_atomic_inc32(&(producer_manager->sender->send_queue_count));
-        apr_atomic_add32(&(producer_manager->sender->send_queue_size), send_param->log_buf->length);
-        apr_atomic_add32(&(producer_manager->totalBufferSize), send_param->log_buf->length);
+        apr_atomic_add32(&(producer_manager->sender->send_queue_size), buf_len);
+        apr_atomic_add32(&(producer_manager->totalBufferSize), buf_len);
 
         return LOG_PRODUCER_OK;
     }
@@ -329,7 +331,7 @@ log_producer_result log_producer_send_data(log_producer_send_param * send_param)
 
     apr_strerror(result, error_str, 127);
 
-    aos_warn_log("insert data to send queue fail, error : %s", error_str);
+    aos_fatal_log("insert data to send queue fail, error : %s", error_str);
 
     return LOG_PRODUCER_WRITE_ERROR;
 }

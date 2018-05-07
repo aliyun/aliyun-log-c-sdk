@@ -8,7 +8,14 @@
 #include "log_producer_config.h"
 #include "log_producer_debug_flusher.h"
 #include "log_producer_client.h"
+#include "log_producer_manager.h"
 #include "apr_thread_proc.h"
+
+typedef struct _producer_client_private {
+
+    log_producer_manager * producer_manager;
+    log_producer_config * producer_config;
+}producer_client_private ;
 
 log_post_option g_log_option;
 
@@ -270,7 +277,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
 
     int32_t i = 0;
     apr_time_t totalTime = 0;
-    for (i = 0; i < 180; ++i)
+    for (i = 0; i < 180000000; ++i)
     {
         apr_time_t startTime = apr_time_now();
         int j = 0;
@@ -278,7 +285,7 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
         {
             char indexStr[32];
             sprintf(indexStr, "%d", i * logsPerSecond + j);
-            log_producer_client_add_log(client, 20, "content_key_1", "1abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
+            log_producer_result addResult = log_producer_client_add_log(client, 20, "content_key_1", "1abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_2", "2abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_3", "3abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "content_key_4", "4abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
@@ -289,11 +296,20 @@ void log_producer_post_logs(const char * fileName, int logsPerSecond)
                                         "content_key_9", "9abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+",
                                         "index", indexStr);
 
+            /*
             LOG_PRODUCER_WARN(client2, "LogHub", "Real-time log collection and consumption",
                               "Search/Analytics", "Query and real-time analysis",
                               "Visualized", "dashboard and report functions",
                               "Interconnection", "Grafana and JDBC/SQL92");
             LOG_PRODUCER_ERROR(client3, "a", "v", "c", "a", "v");
+             */
+            if (addResult != LOG_PRODUCER_OK)
+            {
+                log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+                aos_error_log("add log error : %u  %u  %u \n", manager->totalBufferSize,
+                              manager->sender->send_queue_size,
+                              manager->sender->send_queue_count);
+            }
         }
         apr_time_t endTime = apr_time_now();
         aos_error_log("Done : %d  %d time  %f us \n", i, logsPerSecond, (float)(endTime - startTime));
