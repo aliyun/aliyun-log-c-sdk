@@ -45,8 +45,9 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
         producer_manager->builder = NULL;
         CS_LEAVE(producer_manager->lock);
 
+        size_t loggroup_size = builder->loggroup_size;
         int rst = log_queue_push(producer_manager->loggroup_queue, builder);
-        aos_debug_log("try push loggroup to flusher, size : %d, status : %d", (int)builder->loggroup_size, rst);
+        aos_debug_log("try push loggroup to flusher, size : %d, status : %d", (int)loggroup_size, rst);
         if (rst != 0)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", rst);
@@ -54,7 +55,7 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
         }
         else
         {
-            producer_manager->totalBufferSize += builder->loggroup_size;
+            producer_manager->totalBufferSize += loggroup_size;
             COND_SIGNAL(producer_manager->triger_cond);
         }
     }
@@ -253,8 +254,9 @@ void _push_last_loggroup(log_producer_manager * manager)
     manager->builder = NULL;
     if (builder != NULL)
     {
+        size_t loggroup_size = builder->loggroup_size;
+        aos_debug_log("try push loggroup to flusher, size : %d, log size %d", (int)builder->loggroup_size, (int)builder->grp->logs.now_buffer_len);
         int32_t status = log_queue_push(manager->loggroup_queue, builder);
-        aos_debug_log("try push loggroup to flusher, size : %d, log size %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->logs.now_buffer_len, status);
         if (status != 0)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -262,7 +264,7 @@ void _push_last_loggroup(log_producer_manager * manager)
         }
         else
         {
-            manager->totalBufferSize += builder->loggroup_size;
+            manager->totalBufferSize += loggroup_size;
             COND_SIGNAL(manager->triger_cond);
         }
     }
@@ -383,8 +385,9 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
 
     producer_manager->builder = NULL;
 
+    size_t loggroup_size = builder->loggroup_size;
+    aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
     int status = log_queue_push(producer_manager->loggroup_queue, builder);
-    aos_debug_log("try push loggroup to flusher, size : %d, log count %d, status : %d", (int)builder->loggroup_size, (int)builder->grp->n_logs, status);
     if (status != 0)
     {
         aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
@@ -392,7 +395,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
     }
     else
     {
-        producer_manager->totalBufferSize += builder->loggroup_size;
+        producer_manager->totalBufferSize += loggroup_size;
         COND_SIGNAL(producer_manager->triger_cond);
     }
 
