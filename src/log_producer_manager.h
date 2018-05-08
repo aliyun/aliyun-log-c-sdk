@@ -37,6 +37,7 @@ typedef struct _log_producer_manager
     uint64_t send_param_queue_size;
     volatile uint64_t send_param_queue_read;
     volatile uint64_t send_param_queue_write;
+    ATOMICINT multi_thread_send_count;
 }log_producer_manager;
 
 extern log_producer_manager * create_log_producer_manager(log_producer_config * producer_config);

@@ -96,7 +96,9 @@ void * log_producer_send_thread(void * param)
         void * send_param = log_queue_pop(producer_manager->sender_data_queue, 30);
         if (send_param != NULL)
         {
+            ATOMICINT_INC(&producer_manager->multi_thread_send_count);
             log_producer_send_fun(send_param);
+            ATOMICINT_DEC(&producer_manager->multi_thread_send_count);
         }
     }
 
@@ -196,10 +198,26 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
+        //check if main queue still have data not send out
+        int send_finished = 0;
         uint64_t send_queue_size = producer_manager->send_param_queue_write - producer_manager->send_param_queue_read;
         int32_t log_group_size = log_queue_size(producer_manager->loggroup_queue);
+        if (send_queue_size == 0 && log_group_size == 0)
+        {
+          send_finished = 1;
+        }
 
-        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_queue_size, log_group_size, producer_manager->user_param);
+        //check if mutil thread still have date not send out
+        if (send_finished == 1 && producer_manager->sender_data_queue != NULL)
+        {
+          int32_t send_data_queue_size = log_queue_size(producer_manager->sender_data_queue);
+          if (send_data_queue_size != 0 || producer_manager->multi_thread_send_count > 1)
+          {
+            send_finished = 0;
+          }
+        }
+
+        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_finished, producer_manager->user_param);
     }
     switch (send_result)
     {
@@ -232,7 +250,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                     break;
                 }
             }
-            aos_warn_log("send quota error, project : %s, logstore : %s, config : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
+            aos_warn_log("send quota error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
                          send_param->producer_config->logstore,
                          (int)send_param->log_buf->length,

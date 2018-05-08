@@ -184,7 +184,7 @@ static inline CRITICALSECTION CreateCriticalSection(int spinCount = 0)
     return cs;
 }
 
-static inline void DeleteCriticalSection(CRITICALSECTION & cs)
+static inline void ReleaseCriticalSection(CRITICALSECTION & cs)
 {
     semDelete(cs);
     cs = INVALID_CRITSECT;
@@ -225,7 +225,7 @@ static inline CRITICALSECTION CreateCriticalSection() {
     return cs;
 }
 
-static inline void DeleteCriticalSection(CRITICALSECTION cs) {
+static inline void ReleaseCriticalSection(CRITICALSECTION cs) {
     if (cs != INVALID_CRITSECT) {
         pthread_mutex_destroy(cs);
         free(cs);

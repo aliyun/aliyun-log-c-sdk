@@ -199,6 +199,7 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
 
     if (producer_config->sendThreadCount > 0)
     {
+        producer_manager->multi_thread_send_count = 0;
         producer_manager->send_threads = (THREAD *)malloc(sizeof(THREAD) * producer_config->sendThreadCount);
         producer_manager->sender_data_queue = log_queue_create(base_queue_size * 2);
         int32_t threadId = 0;
@@ -307,7 +308,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     {
         log_queue_destroy(manager->sender_data_queue);
     }
-    DeleteCriticalSection(manager->lock);
+    ReleaseCriticalSection(manager->lock);
     if (manager->pack_prefix != NULL)
     {
         free(manager->pack_prefix);
