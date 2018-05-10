@@ -109,6 +109,13 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         {
             headers=curl_slist_append(headers, "x-log-compresstype:lz4");
         }
+        if (stsToken != NULL)
+        {
+            sds tokenHeader = sdsnew("x-acs-security-token:");
+            tokenHeader = sdscat(tokenHeader, stsToken);
+            headers=curl_slist_append(headers, tokenHeader);
+            sdsfree(tokenHeader);
+        }
         headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
         sds headerTime = sdsnew("Date:");
         headerTime = sdscat(headerTime, nowTime);
@@ -135,15 +142,34 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sds sigContent = sdsnewEmpty(512);
         if (lz4Flag)
         {
-            sigContent = sdscatprintf(sigContent,
-                                      "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                      md5Buf, nowTime, (int)buffer->raw_length, logstore);
+            if (stsToken == NULL)
+            {
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, (int)buffer->raw_length, logstore);
+            }
+            else
+            {
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+            }
         }
         else
         {
-            sigContent = sdscatprintf(sigContent,
-                                      "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                      md5Buf, nowTime, (int)buffer->raw_length, logstore);
+            if (stsToken == NULL)
+            {
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, (int)buffer->raw_length, logstore);
+            }
+            else
+            {
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+            }
+
         }
 
         //puts("#######################");

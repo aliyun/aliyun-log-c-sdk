@@ -7,6 +7,7 @@
 #include "log_producer_manager.h"
 #include "inner_log.h"
 #include "lz4.h"
+#include "sds.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -138,10 +139,19 @@ void * log_producer_send_fun(void * param)
         option.operation_timeout = config->sendTimeoutSec;
         option.interface = config->netInterface;
         option.compress_type = config->compressType;
-        post_log_result * rst = post_logs_from_lz4buf(config->endpoint, config->accessKeyId,
-                                                      config->accessKey, NULL,
+
+        sds accessKeyId = NULL;
+        sds accessKey = NULL;
+        sds stsToken = NULL;
+        log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+
+        post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
+                                                      accessKey, stsToken,
                                                       config->project, config->logstore,
                                                       send_buf, &option);
+        sdsfree(accessKeyId);
+        sdsfree(accessKey);
+        sdsfree(stsToken);
 
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
 

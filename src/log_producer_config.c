@@ -81,6 +81,14 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     {
         sdsfree(pConfig->netInterface);
     }
+    if (pConfig->securityToken != NULL)
+    {
+        sdsfree(pConfig->securityToken);
+    }
+    if (pConfig->securityTokenLock != NULL)
+    {
+        DeleteCriticalSection(pConfig->securityTokenLock);
+    }
     if (pConfig->tagCount > 0 && pConfig->tags != NULL)
     {
         int i = 0;
@@ -283,6 +291,37 @@ void log_producer_config_set_access_id(log_producer_config * config, const char 
 void log_producer_config_set_access_key(log_producer_config * config, const char * access_key)
 {
     _copy_config_string(access_key, &config->accessKey);
+}
+
+
+void log_producer_config_reset_security_token(log_producer_config * config, const char * access_id, const char * access_secret, const char * security_token)
+{
+    if (config->securityTokenLock == NULL)
+    {
+        config->securityTokenLock = CreateCriticalSection();
+    }
+    CS_ENTER(config->securityTokenLock);
+    _copy_config_string(access_id, &config->accessKeyId);
+    _copy_config_string(access_secret, &config->accessKey);
+    _copy_config_string(security_token, &config->securityToken);
+    CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_get_security(log_producer_config * config, char ** access_id, char ** access_secret, char ** security_token)
+{
+    if (config->securityTokenLock == NULL)
+    {
+        _copy_config_string(config->accessKeyId, access_id);
+        _copy_config_string(config->accessKey, access_secret);
+    }
+    else
+    {
+        CS_ENTER(config->securityTokenLock);
+        _copy_config_string(config->accessKeyId, access_id);
+        _copy_config_string(config->accessKey, access_secret);
+        _copy_config_string(config->securityToken, security_token);
+        CS_LEAVE(config->securityTokenLock);
+    }
 }
 
 void log_producer_config_set_topic(log_producer_config * config, const char * topic)

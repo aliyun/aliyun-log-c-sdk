@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "log_multi_thread.h"
 LOG_CPP_START
 
 
@@ -26,8 +27,10 @@ typedef struct _log_producer_config
     char * logstore;
     char * accessKeyId;
     char * accessKey;
+    char * securityToken;
     char * topic;
     char * source;
+    CRITICALSECTION securityTokenLock;
     log_producer_config_tag * tags;
     int32_t tagAllocSize;
     int32_t tagCount;
@@ -85,12 +88,29 @@ LOG_EXPORT void log_producer_config_set_logstore(log_producer_config * config, c
  */
 LOG_EXPORT void log_producer_config_set_access_id(log_producer_config * config, const char * access_id);
 
+
 /**
  * set producer config access key
  * @param config
  * @param access_id
  */
 LOG_EXPORT void log_producer_config_set_access_key(log_producer_config * config, const char * access_id);
+
+
+/**
+ * reset producer config security token (thread safe)
+ * @note if you want to use security token to send logs, you must call this function when create config and reset token before expired.
+ *       if token has expired, producer will drop logs after 6 hours
+ * @param config
+ * @param access_id
+ */
+LOG_EXPORT void log_producer_config_reset_security_token(log_producer_config * config, const char * access_id, const char * access_secret, const char * security_token);
+
+
+/**
+ * inner api
+ */
+LOG_EXPORT void log_producer_config_get_security(log_producer_config * config, char ** access_id, char ** access_secret, char ** security_token);
 
 /**
  * set producer config topic

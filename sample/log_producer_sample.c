@@ -34,6 +34,9 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_access_id(config, "${your_access_key_id}");
     log_producer_config_set_access_key(config, "${your_access_key_secret}");
 
+    // @note, if using security token to send log, remember reset token before expired. this function is thread safe
+    //log_producer_config_reset_security_token(config, "${your_access_key_id}", "${your_access_key_secret}", "${your_access_security_token}");
+
     // if you do not need topic or tag, comment it
     log_producer_config_set_topic(config, "test_topic");
     log_producer_config_add_tag(config, "tag_1", "val_1");
