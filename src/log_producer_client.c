@@ -8,7 +8,7 @@
 #include "aos_http_io.h"
 #include "apr_atomic.h"
 
-#define C_PRODUCER_VERSION "c-producer-0.1.0"
+#define C_PRODUCER_VERSION "c-producer-0.1.2"
 
 static apr_uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
