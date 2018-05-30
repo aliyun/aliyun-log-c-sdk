@@ -99,6 +99,15 @@ LOG_EXPORT log_producer_result log_producer_client_add_log(log_producer_client *
  */
 LOG_EXPORT log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens, int flush);
 
+/**
+* add raw log buffer to client, this function is used to send buffers which can not send out when producer has destroyed
+* @param client
+* @param log_bytes
+* @param compressed_bytes
+* @param raw_buffer
+* @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
+*/
+LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
 LOG_CPP_END
 

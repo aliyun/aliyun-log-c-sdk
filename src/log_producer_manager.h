@@ -45,6 +45,8 @@ extern void destroy_log_producer_manager(log_producer_manager * manager);
 
 extern log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush);
 
+extern log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
+
 LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_MANAGER_H

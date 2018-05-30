@@ -89,7 +89,7 @@ typedef int COND_WAIT_T;
 
 static inline COND CreateCond() {
 	COND cond = NULL;
-	if (!(cond = malloc(sizeof(struct windows_event))))
+	if (!(cond = (COND)malloc(sizeof(struct windows_event))))
 		return cond;
 
 	if ((cond->event = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL) {
