@@ -87,7 +87,7 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     }
     if (pConfig->securityTokenLock != NULL)
     {
-      DeleteCriticalSection(pConfig->securityTokenLock);
+      ReleaseCriticalSection(pConfig->securityTokenLock);
     }
     if (pConfig->tagCount > 0 && pConfig->tags != NULL)
     {
