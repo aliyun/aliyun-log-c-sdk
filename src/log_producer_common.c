@@ -22,7 +22,7 @@ log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED = 6;
 log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR = 7;
 log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR = 8;
 log_producer_result LOG_PRODUCER_SEND_TIME_ERROR = 9;
-
+log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED = 10;
 
 int is_log_producer_result_ok(log_producer_result rst)
 {

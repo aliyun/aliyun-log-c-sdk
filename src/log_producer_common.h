@@ -36,7 +36,7 @@ extern log_producer_result LOG_PRODUCER_SEND_UNAUTHORIZED;
 extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
-
+extern log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED;
 
 /**
  * check if rst if ok
@@ -44,13 +44,6 @@ extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
  * @return 1 if ok, 0 not ok
  */
 LOG_EXPORT int is_log_producer_result_ok(log_producer_result rst);
-
-/**
- * get string value of log producer operation result
- * @param rst
- * @return
- */
-LOG_EXPORT const char * get_log_producer_result_string(log_producer_result rst);
 
 
 LOG_CPP_END
