@@ -61,20 +61,10 @@ INSTALL(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib)
 
 INSTALL(TARGETS ${CMAKE_PROJECT_NAME}_static ARCHIVE DESTINATION lib)
 
+file(GLOB HEADER_FILES src/*.h)
+
 INSTALL(FILES
-  src/cJSON.h
-  src/lz4.h
-  src/aos_log.h
-  src/log_define.h
-  src/log_util.h
-  src/log_api.h
-  src/log_http_cont.h
-  src/log_builder.h
-  src/protobuf-c.h
-  src/log_logs.pb-c.h
-  src/log_producer_client.h
-  src/log_producer_common.h
-  src/log_producer_config.h
+  ${HEADER_FILES}
   DESTINATION include/log_c_sdk)
 
 add_subdirectory(sample)
