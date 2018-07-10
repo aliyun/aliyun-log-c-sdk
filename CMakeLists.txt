@@ -96,30 +96,14 @@ add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
 
+file(GLOB HEADER_FILES src/*.h)
+
 INSTALL(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib)
 
 INSTALL(TARGETS ${CMAKE_PROJECT_NAME}_static ARCHIVE DESTINATION lib)
 
 INSTALL(FILES
-  src/cJSON.h
-  src/lz4.h
-  src/aos_buf.h
-  src/aos_define.h
-  src/aos_fstack.h
-  src/aos_http_io.h
-  src/aos_list.h
-  src/aos_log.h
-  src/aos_status.h
-  src/aos_string.h
-  src/aos_transport.h
-  src/aos_util.h
-  src/log_define.h
-  src/log_util.h
-  src/log_api.h
-  src/log_http_cont.h
-  src/log_builder.h
-  src/protobuf-c.h
-  src/log_logstores.pb-c.h
+  ${HEADER_FILES}
   DESTINATION include/log_c_sdk)
 
 add_subdirectory(sample)

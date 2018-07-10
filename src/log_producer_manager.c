@@ -390,6 +390,14 @@ int _log_producer_manager_destroy_sub(void *rec, const char *key,
     return 1;
 }
 
+int _log_producer_manager_set_shutdown(void *rec, const char *key,
+                                      const char *value)
+{
+    log_producer_manager * manager = (log_producer_manager *)value;
+    manager->shutdown = 1;
+    return 1;
+}
+
 
 
 void destroy_log_producer_manager(log_producer_manager * manager)
@@ -417,6 +425,10 @@ void destroy_log_producer_manager(log_producer_manager * manager)
         aos_error_log("try flush out producer loggroup error, force exit, now loggroup queue size %d", (int)(apr_queue_size(manager->loggroup_queue)));
     }
     manager->shutdown = 1;
+    if (manager->sub_managers != NULL)
+    {
+        apr_table_do(_log_producer_manager_set_shutdown, NULL, manager->sub_managers, NULL);
+    }
 
     // destroy root resources
     apr_thread_cond_signal(manager->triger_cond);
