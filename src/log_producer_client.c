@@ -13,6 +13,15 @@
 static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
 
+extern log_queue * g_sender_data_queue;
+extern THREAD * g_send_threads;
+extern int32_t g_send_thread_count;
+extern volatile uint8_t g_send_thread_destroy;
+
+extern void * log_producer_send_thread_global(void * param);
+extern void log_producer_send_thread_global_inner(log_producer_send_param * send_param);
+extern void destroy_log_producer_manager_tail(log_producer_manager * manager);
+
 typedef struct _producer_client_private {
 
     log_producer_manager * producer_manager;
@@ -49,6 +58,33 @@ void log_producer_env_destroy()
         return;
     }
     s_init_flag = 0;
+
+    // destroy global send threads
+    if (g_send_threads != NULL) {
+        g_send_thread_destroy = 1;
+        aos_info_log("join global sender thread pool begin, thread count : %d", g_send_thread_count);
+        int32_t threadId = 0;
+        for (; threadId < g_send_thread_count; ++threadId)
+        {
+            THREAD_JOIN(g_send_threads[threadId]);
+            aos_info_log("join one global sender thread pool done, thread id : %d", threadId);
+        }
+        free(g_send_threads);
+        aos_info_log("flush out global sender queue begin");
+        while (log_queue_size(g_sender_data_queue) > 0)
+        {
+            // @note : we must process all data in queue, otherwise this will cause memory leak
+            log_producer_send_param * send_param = (log_producer_send_param *)log_queue_trypop(g_sender_data_queue);
+            log_producer_send_thread_global_inner(send_param);
+        }
+        aos_info_log("flush out global sender queue success");
+        log_queue_destroy(g_sender_data_queue);
+        g_sender_data_queue = NULL;
+        g_send_thread_destroy = 0;
+        g_send_thread_count = 0;
+        g_send_threads = NULL;
+        aos_info_log("join global sender thread pool success");
+    }
     sls_log_destroy();
 }
 
@@ -91,7 +127,7 @@ void destroy_log_producer(log_producer * producer)
     client->valid_flag = 0;
     producer_client_private * client_private = (producer_client_private *)client->private_data;
     destroy_log_producer_manager(client_private->producer_manager);
-    destroy_log_producer_config(client_private->producer_config);
+
     free(client_private);
     free(client);
     free(producer);
@@ -176,4 +212,22 @@ log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client *
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
     return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
+}
+
+log_producer_result log_producer_global_send_thread_init(int32_t log_global_send_thread_count, int32_t log_global_send_queue_size)
+{
+    if (log_global_send_thread_count <= 0  || log_global_send_queue_size <= 0 || g_send_threads != NULL) {
+        return LOG_PRODUCER_INVALID;
+    }
+    g_send_thread_count = log_global_send_thread_count;
+    g_send_threads = (THREAD *)malloc(sizeof(THREAD) * g_send_thread_count);
+
+    g_sender_data_queue = log_queue_create(log_global_send_queue_size);
+    g_send_thread_destroy = 0;
+    int32_t threadId = 0;
+    for (; threadId < g_send_thread_count; ++threadId)
+    {
+        THREAD_INIT(g_send_threads[threadId], log_producer_send_thread_global, g_sender_data_queue);
+    }
+    return LOG_PRODUCER_OK;
 }

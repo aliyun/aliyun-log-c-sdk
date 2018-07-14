@@ -16,6 +16,11 @@
 #define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
 #define MAX_SENDER_FLUSH_COUNT 100 // 10ms * 100
 
+log_queue * g_sender_data_queue = NULL;
+THREAD * g_send_threads = NULL;
+int32_t g_send_thread_count = 0;
+volatile uint8_t g_send_thread_destroy = 0;
+
 void * log_producer_send_thread(void * param);
 
 char * _get_pack_id(const char * configName, const char * ip)
@@ -162,6 +167,7 @@ void * log_producer_flush_thread(void * param)
         _try_flush_loggroup(root_producer_manager);
 
         // send data
+        // [priority] : producer manager's send thread > global send thread > send directly
         if (root_producer_manager->send_threads != NULL)
         {
             // if send thread count > 0, we just push send_param to sender queue
@@ -170,6 +176,21 @@ void * log_producer_flush_thread(void * param)
                 log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
                 // push always success
                 log_queue_push(root_producer_manager->sender_data_queue, send_param);
+            }
+        }
+        else if (g_send_threads != NULL && g_sender_data_queue != NULL)
+        {
+            // if send thread count > 0, we just push send_param to sender queue
+            while (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read && !log_queue_isfull(g_sender_data_queue))
+            {
+                (void)ATOMICINT_INC(&root_producer_manager->ref_count);
+                assert(root_producer_manager->ref_count > 1);
+                log_producer_send_param * send_param = root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_read++ % root_producer_manager->send_param_queue_size];
+                // make sure push success
+                while(0 != log_queue_push(g_sender_data_queue, send_param))
+                {
+                    ;
+                }
             }
         }
         else if (root_producer_manager->send_param_queue_write > root_producer_manager->send_param_queue_read)
@@ -188,6 +209,10 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
     aos_debug_log("create log producer manager : %s", producer_config->logstore);
     log_producer_manager * producer_manager = (log_producer_manager *)malloc(sizeof(log_producer_manager));
     memset(producer_manager, 0, sizeof(log_producer_manager));
+
+    (void)ATOMICINT_INC(&producer_manager->ref_count);
+
+    assert(producer_manager->ref_count == 1);
 
     producer_manager->producer_config = producer_config;
 
@@ -271,6 +296,22 @@ void _push_last_loggroup(log_producer_manager * manager)
     CS_LEAVE(manager->lock);
 }
 
+void destroy_log_producer_manager_tail(log_producer_manager * manager)
+{
+    aos_info_log("delete producer manager tail");
+    DeleteCriticalSection(manager->lock);
+    if (manager->pack_prefix != NULL)
+    {
+        free(manager->pack_prefix);
+    }
+    if (manager->send_param_queue != NULL)
+    {
+        free(manager->send_param_queue);
+    }
+    sdsfree(manager->source);
+    free(manager);
+    destroy_log_producer_config(manager->producer_config);
+}
 
 void destroy_log_producer_manager(log_producer_manager * manager)
 {
@@ -335,17 +376,20 @@ void destroy_log_producer_manager(log_producer_manager * manager)
         log_queue_destroy(manager->sender_data_queue);
         aos_info_log("flush out sender queue success");
     }
-    DeleteCriticalSection(manager->lock);
-    if (manager->pack_prefix != NULL)
+    else if (g_sender_data_queue != NULL && g_send_threads != NULL)
     {
-        free(manager->pack_prefix);
+        // if use global send queue, let send thread destroy manager
+        log_producer_send_param * destroy_param = create_log_producer_destroy_param(manager->producer_config, manager);
+        // make sure push success
+        while(0 != log_queue_push(g_sender_data_queue, destroy_param))
+        {
+            ;
+        }
+        return;
     }
-    if (manager->send_param_queue != NULL)
-    {
-        free(manager->send_param_queue);
-    }
-    sdsfree(manager->source);
-    free(manager);
+
+    destroy_log_producer_manager_tail(manager);
+
 }
 
 log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)

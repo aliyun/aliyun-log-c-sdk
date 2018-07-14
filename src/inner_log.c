@@ -42,7 +42,6 @@ void aos_log_format(int level,
     va_end(args);
 
     while (buffer[len -1] == '\n') len--;
-    buffer[len++] = '\n';
     buffer[len] = '\0';
 
     puts(buffer);

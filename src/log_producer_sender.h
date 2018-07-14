@@ -51,6 +51,8 @@ extern log_producer_send_param * create_log_producer_send_param(log_producer_con
                                                                 lz4_log_buf * log_buf,
                                                                 uint32_t builder_time);
 
+extern log_producer_send_param * create_log_producer_destroy_param(log_producer_config * producer_config, void * producer_manager);
+
 LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_SENDER_H

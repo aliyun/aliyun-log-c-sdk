@@ -30,6 +30,10 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_TIME_INVALID_FIX
 
+extern volatile uint8_t g_send_thread_destroy;
+
+extern void destroy_log_producer_manager_tail(log_producer_manager * manager);
+
 typedef struct _send_error_info
 {
     log_producer_send_result last_send_error;
@@ -96,12 +100,48 @@ void * log_producer_send_thread(void * param)
     return NULL;
 }
 
+void log_producer_send_thread_global_inner(log_producer_send_param * send_param)
+{
+    if (send_param != NULL)
+    {
+        log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
+        log_producer_send_fun(send_param);
+        // @note after log_producer_send_fun, send_param has been destroyed
+        if (ATOMICINT_DEC(&producer_manager->ref_count) == 0)
+        {
+            aos_info_log("producer's ref count is 0, destroy this producer, project : %s, logstore : %s",
+                         producer_manager->producer_config->project, producer_manager->producer_config->logstore);
+            destroy_log_producer_manager_tail(producer_manager);
+        }
+    }
+}
+
+void * log_producer_send_thread_global(void * param)
+{
+    log_queue * send_log_queue = (log_queue * )param;
+
+    while (!g_send_thread_destroy)
+    {
+        log_producer_send_param * send_param = (log_producer_send_param *)log_queue_pop(send_log_queue, 300);
+        log_producer_send_thread_global_inner(send_param);
+    }
+
+    return NULL;
+}
+
 void * log_producer_send_fun(void * param)
 {
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
     {
         aos_fatal_log("invalid send param, magic num not found, num 0x%x", send_param->magic_num);
+        return NULL;
+    }
+
+    if (send_param->log_buf == NULL)
+    {
+        aos_info_log("receive producer destroy event, project : %s, logstore : %s", send_param->producer_config->project, send_param->producer_config->logstore);
+        free(send_param);
         return NULL;
     }
 
@@ -357,6 +397,17 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
     param->log_buf = log_buf;
     param->magic_num = LOG_PRODUCER_SEND_MAGIC_NUM;
     param->builder_time = builder_time;
+    return param;
+}
+
+log_producer_send_param * create_log_producer_destroy_param(log_producer_config * producer_config, void *producer_manager)
+{
+    log_producer_send_param * param = (log_producer_send_param *)malloc(sizeof(log_producer_send_param));
+    param->producer_config = producer_config;
+    param->producer_manager = producer_manager;
+    param->log_buf = NULL;
+    param->magic_num = LOG_PRODUCER_SEND_MAGIC_NUM;
+    param->builder_time = 0;
     return param;
 }
 

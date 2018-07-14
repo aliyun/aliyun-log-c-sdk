@@ -33,6 +33,19 @@ typedef struct _log_producer log_producer;
 LOG_EXPORT log_producer_result log_producer_env_init(int32_t log_global_flag);
 
 /**
+ * create global send thread pool
+ *
+ * @note if producer have no send thread, use global send thread pool to send logs
+ * @note this thread pool will been destroyed when you call log_producer_env_destroy
+ * @note not thread safe
+ *
+ * @param log_global_send_thread_count
+ * @param log_global_send_queue_size recommend values : for server apps, set 10000; for client apps, set 1000; for iot devices, set 100
+ * @return
+ */
+LOG_EXPORT log_producer_result log_producer_global_send_thread_init(int32_t log_global_send_thread_count, int32_t log_global_send_queue_size);
+
+/**
  * destroy log producer environment
  * @note should been called after all log producer clients destroyed
  * @note no multi thread safe

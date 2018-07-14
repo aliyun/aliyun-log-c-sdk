@@ -11,6 +11,7 @@
 #include <string.h>
 #include "log_multi_thread.h"
 
+int producer_send_thread_count = 16;
 
 void builder_speed_test(int32_t logsPerGroup)
 {
@@ -115,16 +116,18 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
 typedef struct _multi_write_log_param
 {
     log_producer_client * client;
-    int32_t send_count;
+    size_t send_count;
 }multi_write_log_param;
 
 void * write_log_thread(void* param)
 {
     aos_error_log("Thread start");
     multi_write_log_param * write_log_param = (multi_write_log_param *)param;
-    int32_t i = 0;
+    size_t i = 0;
+    char buffer[512];
     for (; i < write_log_param->send_count; ++i)
     {
+        sprintf(buffer, "The Logstore is a unit in Log Service for the collection, storage, and query of log data, %d", (int)i);
         log_producer_client_add_log(write_log_param->client, 8, "Log group", "A log group is a collection of logs and is the basic unit for writing and reading",
                           "Log topic", "Logs in a Logstore can be classified by log topics",
                           "Project", "The project is the resource management unit in Log Service and is used to isolate and control resources",
@@ -159,56 +162,55 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_max_buffer_limit(config, 64*1024*1024);
 
     // set send thread
-    log_producer_config_set_send_thread_count(config, 16);
+    log_producer_config_set_send_thread_count(config, producer_send_thread_count);
 
     return create_log_producer(config, on_send_done);
 }
 
 #define MUTLI_THREAD_COUNT 16
+#define MUTLI_PRODUCER_COUNT 4
 
-void log_producer_multi_thread(int logsPerSecond)
+#define GLOBAL_THREAD_FLAG
+
+void log_producer_multi_thread(size_t logsPerSecond)
 {
     logsPerSecond *= 100;
     if (log_producer_env_init(LOG_GLOBAL_ALL) != LOG_PRODUCER_OK) {
         exit(1);
     }
 
-    log_producer * producer = create_log_producer_wrapper(on_log_send_done);
-    if (producer == NULL)
-    {
-        printf("create log producer by config file fail \n");
-        exit(1);
+#ifdef GLOBAL_THREAD_FLAG
+    log_producer_global_send_thread_init(producer_send_thread_count, 100000);
+    producer_send_thread_count = 0;
+#endif
+
+    log_producer * producers[MUTLI_PRODUCER_COUNT];
+    log_producer_client * clients[MUTLI_PRODUCER_COUNT];
+    multi_write_log_param param[MUTLI_PRODUCER_COUNT];
+
+    int i = 0;
+    for (; i < MUTLI_PRODUCER_COUNT; ++i) {
+        producers[i] = create_log_producer_wrapper(on_log_send_done);
+        if (producers[i] == NULL)
+        {
+            printf("create log producer by config file fail \n");
+            exit(1);
+        }
+        clients[i] = get_log_producer_client(producers[i], NULL);
+        if (clients[i] == NULL)
+        {
+            printf("create log producer client by config file fail \n");
+            exit(1);
+        }
+        param[i].send_count = logsPerSecond;
+        param[i].client = clients[i] ;
     }
 
-    log_producer_client * client = get_log_producer_client(producer, NULL);
-    if (client == NULL)
-    {
-        printf("create log producer client by config file fail \n");
-        exit(1);
-    }
-
-    log_producer_client * client2 = get_log_producer_client(producer, "test_sub_config");
-    if (client2 == NULL)
-    {
-        printf("create log producer client by config file fail \n");
-        exit(1);
-    }
-    //assert(client != client2);
-
-
-    multi_write_log_param param[2];
-    param[0].send_count = logsPerSecond;
-    param[0].client = client;
-
-
-    param[1].send_count = logsPerSecond;
-    param[1].client = client2;
 
     pthread_t allThread[MUTLI_THREAD_COUNT];
-    int i = 0;
     for (i = 0; i < MUTLI_THREAD_COUNT; ++i)
     {
-        pthread_create(&allThread[i], NULL, write_log_thread, &param[i % 2]);
+        pthread_create(&allThread[i], NULL, write_log_thread, &param[i % MUTLI_PRODUCER_COUNT]);
     }
 
 
@@ -218,7 +220,9 @@ void log_producer_multi_thread(int logsPerSecond)
     }
     aos_error_log("All thread done");
 
-    destroy_log_producer(producer);
+    for (i = 0; i < MUTLI_PRODUCER_COUNT; ++i) {
+        destroy_log_producer(producers[i]);
+    }
 
     log_producer_env_destroy();
 
@@ -324,6 +328,9 @@ void log_producer_post_logs(int logsPerSecond, int sendSec)
 
 int main(int argc, char *argv[])
 {
+    aos_log_level = AOS_LOG_INFO;
+    log_producer_multi_thread(999llu);
+    return 0;
     //aos_log_level = AOS_LOG_TRACE;
     int logsPerSec = 100;
     int sendSec = 180;
