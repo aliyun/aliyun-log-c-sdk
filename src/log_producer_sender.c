@@ -179,6 +179,7 @@ void * log_producer_send_fun(void * param)
         option.operation_timeout = config->sendTimeoutSec;
         option.interface = config->netInterface;
         option.compress_type = config->compressType;
+        option.remote_address = config->remote_address;
 
         sds accessKeyId = NULL;
         sds accessKey = NULL;

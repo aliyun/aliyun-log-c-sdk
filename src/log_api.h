@@ -9,6 +9,7 @@ LOG_CPP_START
 struct _log_post_option
 {
     char * interface;   // net interface to send log, NULL as default
+    char * remote_address; // remote_address to send log, NULL as default
     int connect_timeout; // connection timeout seconds, 0 as default
     int operation_timeout; // operation timeout seconds, 0 as default
     int compress_type; // 0 no compress, 1 lz4

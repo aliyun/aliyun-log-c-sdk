@@ -43,6 +43,7 @@ typedef struct _log_producer_config
     int32_t maxBufferBytes;
 
     char * netInterface;
+    char * remote_address;
     int32_t connectTimeoutSec;
     int32_t sendTimeoutSec;
     int32_t destroyFlusherWaitTimeoutSec;
@@ -177,6 +178,13 @@ LOG_EXPORT void log_producer_config_set_send_thread_count(log_producer_config * 
  * @param net_interface
  */
 LOG_EXPORT void log_producer_config_set_net_interface(log_producer_config * config, const char * net_interface);
+
+/**
+ * set remote_address to send log out
+ * @param config
+ * @param remote_address
+ */
+LOG_EXPORT void log_producer_config_set_remote_address(log_producer_config * config, const char * remote_address);
 
 /**
  * set connect timeout seconds

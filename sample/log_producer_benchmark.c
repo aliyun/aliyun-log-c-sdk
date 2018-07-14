@@ -146,6 +146,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_logstore(config, "${your_logstore}");
     log_producer_config_set_access_id(config, "${your_access_key_id}");
     log_producer_config_set_access_key(config, "${your_access_key_secret}");
+    //log_producer_config_set_remote_address(config, "192.168.12.12");
 
     // if you do not need topic or tag, comment it
     log_producer_config_set_topic(config, "test_topic");
@@ -328,7 +329,7 @@ void log_producer_post_logs(int logsPerSecond, int sendSec)
 
 int main(int argc, char *argv[])
 {
-    aos_log_level = AOS_LOG_INFO;
+    aos_log_level = AOS_LOG_DEBUG;
     log_producer_multi_thread(999llu);
     return 0;
     //aos_log_level = AOS_LOG_TRACE;

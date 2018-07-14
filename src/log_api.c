@@ -88,6 +88,21 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         url = sdscat(url, "/shards/lb");
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
+        struct curl_slist *connect_to = NULL;
+        if (option->remote_address != NULL)
+        {
+            // example.com::192.168.1.5:
+            sds connect_to_item = sdsnew(project);
+            connect_to_item = sdscat(connect_to_item, ".");
+            connect_to_item = sdscat(connect_to_item, endpoint);
+            connect_to_item = sdscat(connect_to_item, "::");
+            connect_to_item = sdscat(connect_to_item, option->remote_address);
+            connect_to_item = sdscat(connect_to_item, ":");
+
+            connect_to = curl_slist_append(NULL, connect_to_item);
+            curl_easy_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
+            sdsfree(connect_to_item);
+        }
 
         char nowTime[64];
         get_now_time_str(nowTime, 64);
@@ -283,6 +298,10 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sdsfree(headerSig);
         /* always cleanup */
         curl_easy_cleanup(curl);
+        if (connect_to != NULL)
+        {
+            curl_slist_free_all(connect_to);
+        }
     }
 
 

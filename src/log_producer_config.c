@@ -81,6 +81,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     {
         sdsfree(pConfig->netInterface);
     }
+    if (pConfig->remote_address != NULL)
+    {
+        sdsfree(pConfig->remote_address);
+    }
     if (pConfig->securityToken != NULL)
     {
         sdsfree(pConfig->securityToken);
@@ -182,6 +186,14 @@ void log_producer_config_set_net_interface(log_producer_config * config, const c
     _copy_config_string(net_interface, &config->netInterface);
 }
 
+void log_producer_config_set_remote_address(log_producer_config * config, const char * remote_address)
+{
+    if (config == NULL || remote_address == NULL)
+    {
+        return;
+    }
+    _copy_config_string(remote_address, &config->remote_address);
+}
 
 void log_producer_config_set_connect_timeout_sec(log_producer_config * config, int32_t connect_timeout_sec)
 {
