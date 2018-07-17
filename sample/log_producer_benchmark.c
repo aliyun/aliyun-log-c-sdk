@@ -148,7 +148,7 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
     }
     printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s, log number : %d\n",
            config_name, get_log_producer_result_string(result),
-           (int)log_bytes, (int)compressed_bytes, req_id, message, log_num);
+           (int)log_bytes, (int)compressed_bytes, req_id, message, (int)log_num);
 }
 
 typedef struct _multi_write_log_param

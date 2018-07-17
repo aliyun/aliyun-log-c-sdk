@@ -23,13 +23,13 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
     {
         printf("send done, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, log number : %d\n",
                config_name, get_log_producer_result_string(result),
-               (int)log_bytes, (int)compressed_bytes, req_id, log_num);
+               (int)log_bytes, (int)compressed_bytes, req_id, (int)log_num);
         return;
     }
 
     printf("send error, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s, log number : %d\n",
            config_name, get_log_producer_result_string(result),
-           (int)log_bytes, (int)compressed_bytes, req_id, message, log_num);
+           (int)log_bytes, (int)compressed_bytes, req_id, message, (int)log_num);
 
 
     // 以下代码实现的功能是：当发送失败时，将失败日志的前10条打印出来
