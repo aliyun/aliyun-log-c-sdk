@@ -180,7 +180,7 @@ void * log_producer_flush_thread(apr_thread_t * thread, void * param)
                     // if use multi thread, should change producer_manager->send_pool to NULL
                     //apr_pool_t * pool = config->sendThreadCount == 1 ? producer_manager->send_pool : NULL;
                     apr_pool_t * pool = NULL;
-                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, pool, builder->builder_time);
+                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, pool, builder->builder_time, builder->grp->n_logs);
                     log_producer_send_data(send_param);
                 }
 
@@ -521,14 +521,14 @@ log_producer_result log_producer_manager_add_log_end(log_producer_manager * prod
     return LOG_PRODUCER_OK;
 }
 
-log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer, size_t log_num)
 {
     // pack lz4_log_buf
     lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
     lz4_buf->length = compressed_bytes;
     lz4_buf->raw_length = log_bytes;
     memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
-    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, NULL, time(NULL));
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, NULL, time(NULL), log_num);
     return log_producer_send_data(send_param);
 }
 

@@ -38,9 +38,10 @@ typedef int log_producer_result;
  * @param compressed_bytes lz4 compressed bytes
  * @param error_message if send result is not ok, error message is set. must check if is NULL when use it
  * @param raw_buffer lz4 buffer, you can call deserialize_from_lz4_proto_buf(raw_buffer, compressed_bytes, log_bytes) to get this loggroup
+ * @param log_num number of log in package
  * @note you can only read raw_buffer, but can't modify or free it; you must call log_group_free after deserialize_from_lz4_proto_buf
  */
-typedef void (*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message, const unsigned char * raw_buffer);
+typedef void (*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message, const unsigned char * raw_buffer, size_t log_num);
 
 extern log_producer_result LOG_PRODUCER_OK;
 extern log_producer_result LOG_PRODUCER_INVALID;

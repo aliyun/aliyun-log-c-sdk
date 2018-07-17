@@ -118,9 +118,10 @@ extern log_producer_result log_producer_client_add_log_with_len(log_producer_cli
  * @param log_bytes
  * @param compressed_bytes
  * @param raw_buffer
+ * @param log_num
  * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
  */
-extern log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
+extern log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer, size_t log_num);
 
 #ifdef __linux__
 

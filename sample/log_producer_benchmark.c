@@ -140,15 +140,15 @@ void builder_speed_test(int32_t logsPerGroup)
     apr_terminate();
 }
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer, size_t log_num)
 {
     if (result == LOG_PRODUCER_OK)
     {
         return;
     }
-    printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
+    printf("send fail, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s, log number : %d\n",
            config_name, get_log_producer_result_string(result),
-           (int)log_bytes, (int)compressed_bytes, req_id, message);
+           (int)log_bytes, (int)compressed_bytes, req_id, message, (int)log_num);
 }
 
 typedef struct _multi_write_log_param

@@ -50,6 +50,7 @@ typedef struct _log_producer_send_param
     uint32_t magic_num;
     apr_pool_t * send_pool;
     uint32_t builder_time;
+    size_t log_num;
 }log_producer_send_param;
 
 extern void * log_producer_send_fun(apr_thread_t * thread, void * send_param);
@@ -66,7 +67,8 @@ extern log_producer_send_param * create_log_producer_send_param(log_producer_con
                                                                 void * producer_manager,
                                                                 lz4_log_buf * log_buf,
                                                                 apr_pool_t * send_pool,
-                                                                uint32_t builder_time);
+                                                                uint32_t builder_time,
+                                                                size_t log_num);
 
 LOG_CPP_END
 
