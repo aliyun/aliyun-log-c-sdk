@@ -16,20 +16,20 @@
 // @note 如果返回值是LOG_PRODUCER_SEND_EXIT_BUFFERED，说明程序正在退出中，此buffer将不会被发送，建议您将其存储到本地，下次程序启动时再调用 log_producer_client_add_raw_log_buffer 将其发送出去
 // @note 此函数可能被多线程调用，注意线程安全
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer, size_t log_num)
 {
     // @note 正常使用时，建议result为LOG_PRODUCER_OK时不要打印
     if (result == LOG_PRODUCER_OK)
     {
-        printf("send done, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s\n",
+        printf("send done, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, log number : %d\n",
                config_name, get_log_producer_result_string(result),
-               (int)log_bytes, (int)compressed_bytes, req_id);
+               (int)log_bytes, (int)compressed_bytes, req_id, log_num);
         return;
     }
 
-    printf("send error, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
+    printf("send error, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s, log number : %d\n",
            config_name, get_log_producer_result_string(result),
-           (int)log_bytes, (int)compressed_bytes, req_id, message);
+           (int)log_bytes, (int)compressed_bytes, req_id, message, log_num);
 
 
     // 以下代码实现的功能是：当发送失败时，将失败日志的前10条打印出来
