@@ -58,7 +58,7 @@ extern log_producer_result log_producer_manager_add_log_kv_len(log_producer_mana
 // unlock
 extern log_producer_result log_producer_manager_add_log_end(log_producer_manager * producer_manager);
 
-extern log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
+extern log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer, size_t log_num);
 
 LOG_CPP_END
 

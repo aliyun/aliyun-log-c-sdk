@@ -103,7 +103,8 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
             if (producer_manager->send_done_function != NULL)
             {
                 producer_manager->send_done_function(producer_manager->producer_config->configName, LOG_PRODUCER_SEND_EXIT_BUFFERED, send_param->log_buf->raw_length, send_param->log_buf->length,
-                                                     NULL, "producer is being destroyed, producer has no time to send this buffer out", send_param->log_buf->data);
+                                                     NULL, "producer is being destroyed, producer has no time to send this buffer out", send_param->log_buf->data,
+                                                     send_param->log_num);
             }
             break;
         }
@@ -186,7 +187,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, aos_stat
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
         producer_manager->send_done_function(producer_manager->producer_config->configName, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length,
-                                             result->req_id, result->error_msg, send_param->log_buf->data);
+                                             result->req_id, result->error_msg, send_param->log_buf->data, send_param->log_num);
     }
     switch (send_result)
     {
@@ -426,7 +427,8 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
                                                          void * producer_manager,
                                                          lz4_log_buf * log_buf,
                                                          apr_pool_t * send_pool,
-                                                         uint32_t builder_time)
+                                                         uint32_t builder_time,
+                                                         size_t log_num)
 {
     log_producer_send_param * param = (log_producer_send_param *)malloc(sizeof(log_producer_send_param));
     param->producer_config = producer_config;
@@ -435,6 +437,7 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
     param->magic_num = LOG_PRODUCER_SEND_MAGIC_NUM;
     param->send_pool = send_pool;
     param->builder_time = builder_time;
+    param->log_num = log_num;
     return param;
 }
 
