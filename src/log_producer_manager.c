@@ -309,8 +309,8 @@ void destroy_log_producer_manager_tail(log_producer_manager * manager)
         free(manager->send_param_queue);
     }
     sdsfree(manager->source);
-    free(manager);
     destroy_log_producer_config(manager->producer_config);
+    free(manager);
 }
 
 void destroy_log_producer_manager(log_producer_manager * manager)
