@@ -20,6 +20,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->destroySenderWaitTimeoutSec = 1;
     pConfig->destroyFlusherWaitTimeoutSec = 1;
     pConfig->compressType = 1;
+    pConfig->using_https = 0;
 }
 
 
@@ -241,6 +242,15 @@ void log_producer_config_set_compress_type(log_producer_config * config, int32_t
     config->compressType = compress_type;
 }
 
+void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https)
+{
+    if (config == NULL || using_https < 0)
+    {
+        return;
+    }
+    config->using_https = using_https;
+}
+
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
 {
     if(key == NULL || value == NULL)
@@ -275,12 +285,16 @@ void log_producer_config_add_tag(log_producer_config * pConfig, const char * key
 
 void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint)
 {
+    if (strlen(endpoint) < 8) {
+        return;
+    }
     if (strncmp(endpoint, "http://", 7) == 0)
     {
         endpoint += 7;
     }
     else if (strncmp(endpoint, "https://", 8) == 0)
     {
+        config->using_https = 1;
         endpoint += 8;
     }
     _copy_config_string(endpoint, &config->endpoint);

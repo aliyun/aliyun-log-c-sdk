@@ -180,6 +180,7 @@ void * log_producer_send_fun(void * param)
         option.interface = config->netInterface;
         option.compress_type = config->compressType;
         option.remote_address = config->remote_address;
+        option.using_https = config->using_https;
 
         sds accessKeyId = NULL;
         sds accessKey = NULL;

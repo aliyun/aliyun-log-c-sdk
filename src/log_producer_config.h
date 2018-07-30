@@ -49,7 +49,8 @@ typedef struct _log_producer_config
     int32_t destroyFlusherWaitTimeoutSec;
     int32_t destroySenderWaitTimeoutSec;
 
-    int32_t compressType; // 0 no compress, 1 lz4
+    int32_t compressType; // default lz4, 0 no compress, 1 lz4
+    int32_t using_https; // default http, 0 http, 1 https
 
 }log_producer_config;
 
@@ -63,6 +64,8 @@ LOG_EXPORT log_producer_config * create_log_producer_config();
 
 /**
  * set producer config endpoint
+ * @note if endpoint start with "https", then set using_https 1
+ * @note strlen(endpoint) must >= 8
  * @param config
  * @param endpoint
  */
@@ -220,6 +223,13 @@ LOG_EXPORT void log_producer_config_set_destroy_sender_wait_sec(log_producer_con
  * @param compress_type only support 1 or 0. 1 -> lz4, 0 -> no compress
  */
 LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * config, int32_t compress_type);
+
+/**
+ * default http, 0 http, 1 https
+ * @param config
+ * @param using_https
+ */
+LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
 
 /**
  * destroy config, this will free all memory allocated by this config
