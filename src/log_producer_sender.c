@@ -277,10 +277,14 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                 {
                     error_info->last_sleep_ms *= 2;
                 }
+
+#ifndef SEND_TIME_INVALID_FIX
+                // only drop data when SEND_TIME_INVALID_FIX not defined
                 if (time(NULL) - error_info->first_error_time > DROP_FAIL_DATA_TIME_SECOND)
                 {
                     break;
                 }
+#endif
             }
             aos_warn_log("send quota error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
@@ -304,10 +308,13 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                 {
                     error_info->last_sleep_ms *= 2;
                 }
+#ifndef SEND_TIME_INVALID_FIX
+                // only drop data when SEND_TIME_INVALID_FIX not defined
                 if (time(NULL) - error_info->first_error_time > DROP_FAIL_DATA_TIME_SECOND)
                 {
                     break;
                 }
+#endif
             }
             aos_warn_log("send network error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
