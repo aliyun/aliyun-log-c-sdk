@@ -265,6 +265,16 @@ log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client *
     return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer, log_num);
 }
 
+void log_producer_client_update_token(log_producer_client * client, const char * access_id, const char * access_key, const char * token)
+{
+    if (client == NULL || !client->valid_flag || access_id == NULL || access_key == NULL)
+    {
+        return;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_producer_config_update_token(manager->producer_config, access_id, access_key, token);
+}
+
 #ifdef __linux__
 
 pthread_t log_producer_client_get_flush_thread(log_producer_client * client)

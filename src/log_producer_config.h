@@ -132,6 +132,7 @@ typedef struct _log_producer_config
     int32_t destroyFlusherWaitTimeoutSec;
     int32_t destroySenderWaitTimeoutSec;
 
+    apr_thread_mutex_t * tokenLock;
 
     apr_pool_t *root;
 
@@ -208,7 +209,7 @@ void log_producer_config_set_access_id(log_producer_config * config, const char 
  * @param config
  * @param access_id
  */
-void log_producer_config_set_access_key(log_producer_config * config, const char * access_id);
+void log_producer_config_set_access_key(log_producer_config * config, const char * access_key);
 
 /**
  * set producer config sts token
@@ -216,6 +217,28 @@ void log_producer_config_set_access_key(log_producer_config * config, const char
  * @param token
  */
 void log_producer_config_set_sts_token(log_producer_config * config, const char * token);
+
+
+/**
+ * update token
+ * @note thread safe
+ * @param config
+ * @param access_id
+ * @param access_key
+ * @param token
+ */
+void log_producer_config_update_token(log_producer_config * config, const char * access_id, const char * access_key, const char * token);
+
+/**
+ * get token
+ * @note thread safe
+ * @param config
+ * @param access_id
+ * @param access_key
+ * @param token
+ */
+void log_producer_config_get_token(log_producer_config * config, char ** access_id, char ** access_key, char ** token);
+
 
 /**
  * set producer config name

@@ -7,7 +7,10 @@
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 
-
+int useStsToken = 0;
+const char * accessId = "STS.addfadsafdsfdsfadsfsdfds";
+const char * accessKey = "G8VmGs9zhV2CbdC123213213123123123fdsaf";
+const char * token = "CAIStQJ1q6Ft5B2yfSjIr4vXecnbhrAT7qihM+=";
 
 // 数据发送的回调函数
 // @note producer后台会对多条日志进行聚合发送，每次发送无论成功或者失败都会通过此函数回调，所以回调中可能是一组日志
@@ -105,6 +108,12 @@ void log_producer_post_logs(const char * fileName, int logs)
     printf("client_error id %d \n", (int)log_producer_client_get_flush_thread(client));
 #endif
 
+    // 如果需要动态设置 sts token，调用如下接口
+    if (useStsToken)
+    {
+        log_producer_client_update_token(client, accessId, accessKey, token);
+    }
+
     int32_t i = 0;
     for (i = 0; i < logs; ++i)
     {
@@ -132,7 +141,8 @@ int main(int argc, char *argv[])
         filePath = argv[1];
         logs = atoi(argv[2]);
     }
-    while(1)
+    int i =0;
+    for(i = 0; i < 3; ++i)
     {
         log_producer_post_logs(filePath, logs);
     }

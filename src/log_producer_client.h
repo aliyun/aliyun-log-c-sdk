@@ -123,6 +123,16 @@ extern log_producer_result log_producer_client_add_log_with_len(log_producer_cli
  */
 extern log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer, size_t log_num);
 
+/**
+ * update sts token dynamically
+ * @note thread safe
+ * @param client
+ * @param access_id
+ * @param access_key
+ * @param token
+ */
+extern void log_producer_client_update_token(log_producer_client * client, const char * access_id, const char * access_key, const char * token);
+
 #ifdef __linux__
 
 /**

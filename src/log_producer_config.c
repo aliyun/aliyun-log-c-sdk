@@ -92,6 +92,12 @@ log_producer_config * _create_log_producer_config(apr_pool_t * root)
     log_producer_config* pConfig = (log_producer_config*)apr_palloc(tmp,sizeof(log_producer_config));
     memset(pConfig, 0, sizeof(log_producer_config));
     pConfig->root = tmp;
+    apr_status_t status = apr_thread_mutex_create(&(pConfig->tokenLock), APR_THREAD_MUTEX_DEFAULT, pConfig->root);
+    assert(status == APR_SUCCESS);
+    if (status != APR_SUCCESS)
+    {
+        aos_fatal_log("create producer config fail on create token lock, error code : %d", status);
+    }
     _set_default_producer_config(pConfig);
     return pConfig;
 }
@@ -101,9 +107,43 @@ log_producer_config * create_log_producer_config()
     return _create_log_producer_config(NULL);
 }
 
+int log_producer_config_free_sub(void *rec, const char *key,
+                                 const char *value)
+{
+    log_producer_config * producerConfig = (log_producer_config*)value;
+    if (producerConfig->stsToken != NULL)
+    {
+        free(producerConfig->stsToken);
+    }
+    if (producerConfig->accessKey != NULL)
+    {
+        free(producerConfig->accessKey);
+    }
+    if (producerConfig->accessKeyId != NULL)
+    {
+        free(producerConfig->accessKeyId);
+    }
+    return 1;
+}
 
 void destroy_log_producer_config(log_producer_config * pConfig)
 {
+    if (pConfig->stsToken != NULL)
+    {
+        free(pConfig->stsToken);
+    }
+    if (pConfig->accessKey != NULL)
+    {
+        free(pConfig->accessKey);
+    }
+    if (pConfig->accessKeyId != NULL)
+    {
+        free(pConfig->accessKeyId);
+    }
+    if (pConfig->subConfigs != NULL)
+    {
+        apr_table_do(log_producer_config_free_sub, NULL, pConfig->subConfigs, NULL);
+    }
     apr_pool_destroy(pConfig->root);
 }
 
@@ -196,10 +236,28 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ENDPOINT, &(producerConfig->endpoint), "default_endpoint");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_PROJECT, &(producerConfig->project), "default_project");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_LOGSTORE, &(producerConfig->logstore), "default_logstore");
-    _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ACCESS_ID, &(producerConfig->accessKeyId), "default_id");
-    _set_config_string(producerConfig->root, pJson, LOG_CONFIG_ACCESS_KEY, &(producerConfig->accessKey), "default_key");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_NAME, &(producerConfig->configName), "default_name");
     _set_config_string(producerConfig->root, pJson, LOG_CONFIG_TOPIC, &(producerConfig->topic), "default_topic");
+
+    cJSON * accessIdItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_ACCESS_ID);
+    if (accessIdItem != NULL && accessIdItem->type == cJSON_String)
+    {
+        log_producer_config_set_access_id(producerConfig, accessIdItem->valuestring);
+    }
+    else
+    {
+        log_producer_config_set_access_id(producerConfig, "default_id");
+    }
+
+    cJSON * accessKeyItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_ACCESS_KEY);
+    if (accessKeyItem != NULL && accessKeyItem->type == cJSON_String)
+    {
+        log_producer_config_set_access_key(producerConfig, accessKeyItem->valuestring);
+    }
+    else
+    {
+        log_producer_config_set_access_key(producerConfig, "default_key");
+    }
 
     cJSON * stsTokenItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_TOKEN);
     if (stsTokenItem != NULL && stsTokenItem->type == cJSON_String)
@@ -401,33 +459,63 @@ void log_producer_config_set_logstore(log_producer_config * config, const char *
     _copy_config_string(config->root, logstore, &config->logstore);
 }
 
+void _update_alloced_string(char ** raw_string, const char * dest_string)
+{
+    if (dest_string == NULL)
+    {
+        return;
+    }
+    if (*raw_string != NULL)
+    {
+        free(*raw_string);
+    }
+    *raw_string = strdup(dest_string);
+}
+
 void log_producer_config_set_access_id(log_producer_config * config, const char * access_id)
 {
-    _copy_config_string(config->root, access_id, &config->accessKeyId);
+    _update_alloced_string(&config->accessKeyId, access_id);
 }
 
 void log_producer_config_set_access_key(log_producer_config * config, const char * access_key)
 {
-    _copy_config_string(config->root, access_key, &config->accessKey);
+    _update_alloced_string(&config->accessKey, access_key);
 }
 
 void log_producer_config_set_sts_token(log_producer_config * config, const char * token)
 {
-    if (token == NULL)
-    {
-        return;
-    }
-    size_t tokenLen = strlen(token);
-    char * tmpBuf = (char *)malloc(tokenLen + 1);
-    strncpy(tmpBuf, token, tokenLen);
-    tmpBuf[tokenLen] = '\0';
-    void * stsTokenPtr = (void *)&config->stsToken;
-    char * oldToken = (char *)apr_atomic_xchgptr(stsTokenPtr, tmpBuf);
-    if (oldToken != NULL)
-    {
-        free(oldToken);
-    }
+    _update_alloced_string(&config->stsToken, token);
 }
+
+
+void log_producer_config_update_token(log_producer_config * config, const char * access_id, const char * access_key, const char * token)
+{
+    apr_thread_mutex_lock(config->tokenLock);
+    log_producer_config_set_access_id(config, access_id);
+    log_producer_config_set_access_key(config, access_key);
+    log_producer_config_set_sts_token(config, token);
+    apr_thread_mutex_unlock(config->tokenLock);
+}
+
+
+void log_producer_config_get_token(log_producer_config * config, char ** access_id, char ** access_key, char ** token)
+{
+    apr_thread_mutex_lock(config->tokenLock);
+    if (config->accessKeyId != NULL)
+    {
+        *access_id = strdup(config->accessKeyId);
+    }
+    if (config->accessKey != NULL)
+    {
+        *access_key = strdup(config->accessKey);
+    }
+    if (config->stsToken != NULL)
+    {
+        *token = strdup(config->stsToken);
+    }
+    apr_thread_mutex_unlock(config->tokenLock);
+}
+
 
 void log_producer_config_set_name(log_producer_config * config, const char * config_name)
 {

@@ -93,7 +93,6 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
     }
     do
     {
-        void * stsTokenPtr = (void *)&config->stsToken;
         lz4_log_buf * send_buf = send_param->log_buf;
         if (producer_manager->shutdown)
         {
@@ -116,14 +115,32 @@ void * log_producer_send_fun(apr_thread_t * thread, void * param)
             send_param->builder_time = nowTime;
         }
 #endif
+
+        char * accessId = NULL;
+        char * accessKey = NULL;
+        char * stsToken = NULL;
+        log_producer_config_get_token(config, &accessId, &accessKey, &stsToken);
+
         log_http_cont* cont =  log_create_http_cont_with_lz4_data(config->endpoint,
-                                                                  config->accessKeyId,
-                                                                  config->accessKey,
-                                                                  (char *)apr_atomic_casptr(stsTokenPtr, NULL, NULL),
+                                                                  accessId,
+                                                                  accessKey,
+                                                                  stsToken,
                                                                   config->project,
                                                                   config->logstore,
                                                                   send_buf,
                                                                   send_pool);
+        if (accessId != NULL)
+        {
+            free(accessId);
+        }
+        if (accessKey != NULL)
+        {
+            free(accessKey);
+        }
+        if (stsToken != NULL)
+        {
+            free(stsToken);
+        }
         log_post_option option;
         memset(&option, 0, sizeof(log_post_option));
         option.interface = config->net_interface;
