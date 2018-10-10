@@ -48,6 +48,8 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream
 
 void get_now_time_str(char * buffer, int bufLen)
 {
+    strcpy(buffer, "Mon, 09 Nov 2015 06:11:16 GMT");
+    return;
     time_t rawtime;
     struct tm * timeinfo;
     time (&rawtime);
@@ -118,9 +120,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         int lz4Flag = option == NULL || option->compress_type == 1;
         md5_to_string((const char *)buffer->data, buffer->length, (char *)md5Buf);
 
-
-        //puts(md5Buf);
-        //puts(nowTime);
+        printf("md5 sum result : %s, data length : %d, now time : %s\n", md5Buf, (int32_t)buffer->length, nowTime);
 
         struct curl_slist* headers = NULL;
 
@@ -204,6 +204,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         //puts(headerSig);
         headers=curl_slist_append(headers, headerSig);
 
+        printf("sig content:[%s], sha1 buf:[%s], header:[%s]\n", sigContent, sha1Buf, headerSig);
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POST, 1);

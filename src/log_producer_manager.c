@@ -414,7 +414,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
         producer_manager->builder->private_value = producer_manager;
     }
 
-    add_log_full(producer_manager->builder, (uint32_t)time(NULL), pair_count, keys, key_lens, values, val_lens);
+    add_log_full(producer_manager->builder, (uint32_t)1539156189, pair_count, keys, key_lens, values, val_lens);
 
     log_group_builder * builder = producer_manager->builder;
 
