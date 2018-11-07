@@ -414,7 +414,7 @@ void destroy_log_producer_sender(log_producer_sender * producer_sender, log_prod
 
     // add a thread to flush all data out
     apr_thread_pool_thread_max_set(producer_sender->thread_pool, producer_config->sendThreadCount + 1);
-    int32_t flush_count = producer_config->destroyFlusherWaitTimeoutSec > 0 ? producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
+    int32_t flush_count = producer_config->destroySenderWaitTimeoutSec > 0 ? producer_config->destroySenderWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
     int waitCount = 0;
     while (apr_thread_pool_tasks_count(producer_sender->thread_pool) != 0)
     {
