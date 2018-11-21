@@ -8,6 +8,8 @@
 #include "log_config.h"
 #include <time.h>
 #include <stdlib.h>
+#include "lz4.h"
+#include "log_logstores.pb-c.h"
 
 log_post_option g_log_option;
 
@@ -372,6 +374,49 @@ void post_logs_with_proto_buffer(){
     
     aos_http_io_deinitialize();
 }
+
+int printLZ4LogGroupBuffer(char * buff, int32_t buffLen, int32_t rawBuffLen)
+{
+    // 申请解压后的内存
+    // malloc buffer to store decompressed data
+    char * rawBuff = (char *)malloc(rawBuffLen);
+    // 解压
+    // decompresse
+    if (LZ4_decompress_safe((const char* )buff, rawBuff, buffLen, rawBuffLen) <= 0)
+    {
+        free(rawBuff);
+        aos_fatal_log("LZ4_decompress_safe error");
+        return -1;
+    }
+    // 反序列化
+    // unpack
+    SlsLogs__LogGroup * grp = sls_logs__log_group__unpack(NULL, rawBuffLen, (const uint8_t *)rawBuff);
+    free(rawBuff);
+    if (grp == NULL)
+    {
+        aos_fatal_log("sls_logs__log_group__unpack error");
+        return -1;
+    }
+    int i = 0;
+    // 遍历所有的日志 LOG
+    // scan all Logs in LogGroup
+    for(i = 0; i < grp->n_logs; ++i)
+    {
+        SlsLogs__Log * log = grp->logs[i];
+        int j = 0;
+        printf("log : %d, time : %u \n", i, log->time);
+        // 遍历所有的key value 对
+        // scan all log contents in this log
+        for (j = 0; j < log->n_contents; ++j)
+        {
+            SlsLogs__Log__Content * content = log->contents[j];
+            printf("%s %s \n", content->key, content->value);
+        }
+    }
+    sls_logs__log_group__free_unpacked(grp, NULL);
+    return 0;
+}
+
 
 int main(int argc, char *argv[])
 {
