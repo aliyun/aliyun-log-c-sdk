@@ -15,7 +15,7 @@
 #define LOG_PRODUCER_FLUSH_INTERVAL_MS 100
 
 
-#define MAX_LOGGROUP_QUEUE_SIZE 1024
+#define MAX_LOGGROUP_QUEUE_SIZE (16*1024)
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 #define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
 
@@ -76,18 +76,21 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
     {
         log_group_builder * builder = producer_manager->builder;
         producer_manager->builder = NULL;
-        apr_thread_mutex_unlock(producer_manager->lock);
 
         apr_uint32_t loggroup_size = builder->loggroup_size;
         aos_debug_log("try push loggroup to flusher, size : %d", (int)loggroup_size);
         apr_status_t status = apr_queue_trypush(producer_manager->loggroup_queue, builder);
         if (status != LOG_PRODUCER_OK)
         {
-            aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
-            log_group_destroy(builder);
+            aos_warn_log("try push loggroup to flusher failed, will retry latter, error code : %d", status);
+            // note : do not destroy builder, reset back
+            //log_group_destroy(builder);
+            producer_manager->builder = builder;
+            apr_thread_mutex_unlock(producer_manager->lock);
         }
         else
         {
+            apr_thread_mutex_unlock(producer_manager->lock);
             apr_atomic_add32(&producer_manager->totalBufferSize, loggroup_size);
             apr_thread_cond_signal(producer_manager->triger_cond);
         }
@@ -235,7 +238,10 @@ log_producer_manager * _create_log_producer_manager(apr_pool_t * root, log_produ
     {
         apr_pool_create(&(producer_manager->send_pool), NULL);
 
-        int32_t base_queue_size = producer_config->maxBufferBytes / (producer_config->logBytesPerPackage + 1) + 10;
+        // queue size is shared between all sub configs, so must * producer_config->subConfigSize
+        int32_t base_queue_size = producer_config->maxBufferBytes /
+                                  (producer_config->logBytesPerPackage + 1) *
+                                  producer_config->subConfigSize + 10;
         if (base_queue_size < MIN_LOGGROUP_QUEUE_SIZE)
         {
             base_queue_size = MIN_LOGGROUP_QUEUE_SIZE;
@@ -354,6 +360,7 @@ void _push_last_loggroup(log_producer_manager * manager)
         apr_status_t status = apr_queue_trypush(manager->loggroup_queue, builder);
         if (status != LOG_PRODUCER_OK)
         {
+            // if last loggroup flush failed, force delete this builder
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
             log_group_destroy(builder);
         }
@@ -506,19 +513,28 @@ log_producer_result log_producer_manager_add_log_end(log_producer_manager * prod
 
     apr_uint32_t loggroup_size = builder->loggroup_size;
     aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
-    apr_status_t status = apr_queue_trypush(producer_manager->loggroup_queue, builder);
-    if (status != LOG_PRODUCER_OK)
+    int tryCount = 0;
+    for (; tryCount < 1000; ++tryCount)
     {
-        aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
-        log_group_destroy(builder);
+        apr_status_t status = apr_queue_trypush(producer_manager->loggroup_queue, builder);
+        if (status != LOG_PRODUCER_OK)
+        {
+            if (tryCount == 0)
+            {
+                aos_warn_log("try push loggroup to flusher failed, will retry 10 seconds, error code : %d", status);
+            }
+            usleep(10*1000);
+        }
+        else
+        {
+            apr_atomic_add32(&producer_manager->totalBufferSize, loggroup_size);
+            apr_thread_cond_signal(producer_manager->triger_cond);
+            return LOG_PRODUCER_OK;
+        }
     }
-    else
-    {
-        apr_atomic_add32(&producer_manager->totalBufferSize, loggroup_size);
-        apr_thread_cond_signal(producer_manager->triger_cond);
-    }
-
-    return LOG_PRODUCER_OK;
+    log_group_destroy(builder);
+    aos_error_log("try push loggroup to flusher failed, force drop this log group, drop logs : %d", (int)(builder->grp->n_logs));
+    return LOG_PRODUCER_SEND_DISCARD_ERROR;
 }
 
 log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer, size_t log_num)

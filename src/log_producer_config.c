@@ -344,6 +344,7 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
         }
     }
 
+    producerConfig->subConfigSize = 0;
     cJSON * subItem = cJSON_GetObjectItem(pJson, LOG_CONFIG_SUB_APPENDER);
     if (subItem != NULL && (subItem->type == cJSON_Object || subItem->type == cJSON_Array))
     {
@@ -355,6 +356,7 @@ log_producer_config * _load_log_producer_config_JSON_Obj(cJSON * pJson, apr_pool
             if (subConfig != NULL)
             {
                 apr_table_setn(producerConfig->subConfigs, subConfig->configName, (const char *)subConfig);
+                ++producerConfig->subConfigSize;
             }
             c=c->next;
         }

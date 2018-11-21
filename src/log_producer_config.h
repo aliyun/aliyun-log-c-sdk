@@ -137,6 +137,7 @@ typedef struct _log_producer_config
     apr_pool_t *root;
 
     apr_table_t * subConfigs;
+    int32_t subConfigSize;
 
 }log_producer_config;
 
