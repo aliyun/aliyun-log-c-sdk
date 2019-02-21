@@ -10,13 +10,27 @@ void on_log_send_done(const char * config_name, log_producer_result result, size
 {
     if (result == LOG_PRODUCER_OK)
     {
+        // @note requst id may be NULL and printf %s NULL is undefined behavior
+        if (req_id == NULL)
+        {
+            req_id = "";
+        } 
         printf("send success, config : %s, result : %d, log bytes : %d, compressed bytes : %d, request id : %s \n",
                config_name, (result),
                (int)log_bytes, (int)compressed_bytes, req_id);
-
     }
     else
     {
+        // @note message may be NULL and printf %s NULL is undefined behavior
+        if (message == NULL)
+        {
+            message = "";
+        }
+        // @note requst id may be NULL and printf %s NULL is undefined behavior
+        if (req_id == NULL)
+        {
+            req_id = "";
+        } 
         printf("send fail, config : %s, result : %d, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s\n",
                config_name, (result),
                (int)log_bytes, (int)compressed_bytes, req_id, message);

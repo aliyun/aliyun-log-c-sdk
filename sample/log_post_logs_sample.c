@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
-// just for developer
+// @note this sample is just for SDK's developer, 99% of cases you should use log_producer_sample
 
 #define POST_LOG_COUNT 10
 #define POST_LOG_CONTENT_PAIRS 15
@@ -122,9 +122,9 @@ void post_logs_with_http_cont_lz4_log_option()
     sls_log_destroy();
 }
 
+// @note this sample is just for SDK's developer, 99% of cases you should use log_producer_sample
 int main(int argc, char *argv[])
 {
-    // for developer
     post_logs_with_http_cont_lz4_log_option();
     return 0;
 }

@@ -18,10 +18,12 @@ typedef int log_producer_result;
 
 /**
  * callback function for producer client
+ * @param config_name this is logstore name
  * @param result send result
  * @param log_bytes log group packaged bytes
  * @param compressed_bytes lz4 compressed bytes
- * @param error_message if send result is not ok, error message is set. must check if is NULL when use it
+ * @param req_id request id. Must check NULL when use it
+ * @param error_message if send result is not ok, error message is set. Must check NULL when use it
  * @param raw_buffer lz4 buffer
  * @note you can only read raw_buffer, but can't modify or free it
  */
