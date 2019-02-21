@@ -13,6 +13,7 @@
 
 log_post_option g_log_option;
 
+// @note this sample is just for SDK's developer, 99% of cases you should use log_producer_sample
 
 void post_logs_with_json_with_option()
 {
@@ -417,7 +418,7 @@ int printLZ4LogGroupBuffer(char * buff, int32_t buffLen, int32_t rawBuffLen)
     return 0;
 }
 
-
+// @note this sample is just for SDK's developer, 99% of cases you should use log_producer_sample
 int main(int argc, char *argv[])
 {
     memset(&g_log_option, 0, sizeof(g_log_option));

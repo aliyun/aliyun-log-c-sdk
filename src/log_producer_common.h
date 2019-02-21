@@ -36,6 +36,7 @@ typedef int log_producer_result;
  * @param result send result
  * @param log_bytes log group packaged bytes
  * @param compressed_bytes lz4 compressed bytes
+ * @param req_id request id. must check if is NULL when use it
  * @param error_message if send result is not ok, error message is set. must check if is NULL when use it
  * @param raw_buffer lz4 buffer, you can call deserialize_from_lz4_proto_buf(raw_buffer, compressed_bytes, log_bytes) to get this loggroup
  * @param log_num number of log in package

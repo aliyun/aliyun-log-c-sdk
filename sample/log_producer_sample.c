@@ -18,16 +18,30 @@ const char * token = "CAIStQJ1q6Ft5B2yfSjIr4vXecnbhrAT7qihM+=";
 // @note 如果您需要查看失败的日志内容，可以使用deserialize_from_lz4_proto_buf(buffer, compressed_bytes, log_bytes) 来解析日志，具体请参见示例代码
 // @note 如果返回值是LOG_PRODUCER_SEND_EXIT_BUFFERED，说明程序正在退出中，此buffer将不会被发送，建议您将其存储到本地，下次程序启动时再调用 log_producer_client_add_raw_log_buffer 将其发送出去
 // @note 此函数可能被多线程调用，注意线程安全
+// @note 注意判断 req_id  message 是否为空，printf打印NULL的行为可能是不确定的
 
 void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * buffer, size_t log_num)
 {
     // @note 正常使用时，建议result为LOG_PRODUCER_OK时不要打印
     if (result == LOG_PRODUCER_OK)
     {
+        if (req_id == NULL)
+        {
+            req_id = "";
+        }
         printf("send done, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, log number : %d\n",
                config_name, get_log_producer_result_string(result),
                (int)log_bytes, (int)compressed_bytes, req_id, (int)log_num);
         return;
+    }
+
+    if (req_id == NULL)
+    {
+        req_id = "";
+    }
+    if (message == NULL)
+    {
+        message = "";
     }
 
     printf("send error, config : %s, result : %s, log bytes : %d, compressed bytes : %d, request id : %s, error message : %s, log number : %d\n",
