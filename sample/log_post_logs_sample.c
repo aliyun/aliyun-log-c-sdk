@@ -79,9 +79,10 @@ void post_logs_with_http_cont_lz4_log_option()
 #endif
 
         log_post_option option;
-        option.interface = "eth0";
-        option.connect_timeout = 1;
-        option.operation_timeout = 1;
+        memset(&option, 0, sizeof(log_post_option));
+        option.interface = NULL;
+        option.connect_timeout = 15;
+        option.operation_timeout = 15;
         option.compress_type = i % 2 == 0;
         lz4_log_buf *pLZ4Buf = NULL;
         if (option.compress_type == 1)
