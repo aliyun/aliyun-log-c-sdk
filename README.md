@@ -57,7 +57,7 @@ C Producer Lite使用curl进行网络操作，您需要确认这些库已经安�
 
 #### libcurl下载以及安装
 
-  libcurl建议 7.32.0 及以上版本
+  libcurl建议 7.49 及以上版本
 
   请从[这里](http://curl.haxx.se/download.html)下载，并参考[libcurl 安装指南](http://curl.haxx.se/docs/install.html)安装。典型的安装方式如下：
 ```shell
