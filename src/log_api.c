@@ -2,6 +2,7 @@
 #include "log_api.h"
 #include <curl/curl.h>
 #include <string.h>
+#include <locale.h>
 #include "sds.h"
 #include "inner_log.h"
 
@@ -52,6 +53,12 @@ void get_now_time_str(char * buffer, int bufLen)
     struct tm * timeinfo;
     time (&rawtime);
     timeinfo = gmtime(&rawtime);
+    // make sure time_str is RFC822 format, or server return 400 (InvalidDateFormat)
+    char *time_locale = setlocale(LC_TIME, "en_US.UTF-8");
+    if(time_locale == NULL){
+        printf("error while set LC_TIME");
+    }
+
     strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
 }
 
