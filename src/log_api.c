@@ -56,7 +56,7 @@ void get_now_time_str(char * buffer, int bufLen)
     // make sure time_str is RFC822 format, or server return 400 (InvalidDateFormat)
     char *time_locale = setlocale(LC_TIME, "en_US.UTF-8");
     if(time_locale == NULL){
-        printf("error while set LC_TIME");
+        printf("error while set LC_TIME to en_US.UTF-8");
     }
 
     strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
