@@ -25,6 +25,8 @@ void aos_log_format(int level,
                      const char *function,
                      const char *fmt, ...);
 
+void aos_log_set_level(aos_log_level_e level);
+
 #ifdef WIN32
 #define aos_fatal_log(format, ...) if(aos_log_level>=AOS_LOG_FATAL) \
         aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
