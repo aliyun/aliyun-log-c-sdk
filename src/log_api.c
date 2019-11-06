@@ -54,11 +54,15 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream
     return totalLen;
 }
 
-void get_now_time_str(char * buffer, int bufLen)
+void get_now_time_str(char * buffer, int bufLen, int timeOffset)
 {
     time_t rawtime;
     struct tm * timeinfo;
     time (&rawtime);
+    if (timeOffset != 0)
+    {
+      rawtime += timeOffset;
+    }
     timeinfo = gmtime(&rawtime);
     strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
 }
@@ -98,7 +102,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         curl_easy_setopt(curl, CURLOPT_URL, url);
 
         char nowTime[64];
-        get_now_time_str(nowTime, 64);
+        get_now_time_str(nowTime, 64, option->ntp_time_offset);
 
         char md5Buf[33];
         md5Buf[32] = '\0';

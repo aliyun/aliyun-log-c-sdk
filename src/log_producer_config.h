@@ -49,6 +49,7 @@ typedef struct _log_producer_config
     int32_t destroySenderWaitTimeoutSec;
 
     int32_t compressType; // 0 no compress, 1 lz4
+    int32_t ntpTimeOffset;
 }log_producer_config;
 
 
@@ -208,6 +209,14 @@ LOG_EXPORT void log_producer_config_set_destroy_sender_wait_sec(log_producer_con
  * @param compress_type only support 1 or 0. 1 -> lz4, 0 -> no compress
  */
 LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * config, int32_t compress_type);
+
+/**
+* set time offset between local time and server ntp time
+* @param config
+* @param ntp_time_diff
+*/
+LOG_EXPORT void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32_t ntp_time_offset);
+
 
 /**
  * destroy config, this will free all memory allocated by this config

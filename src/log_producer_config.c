@@ -20,6 +20,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->destroySenderWaitTimeoutSec = 1;
     pConfig->destroyFlusherWaitTimeoutSec = 1;
     pConfig->compressType = 1;
+    pConfig->ntpTimeOffset = 0;
 }
 
 
@@ -224,6 +225,16 @@ void log_producer_config_set_compress_type(log_producer_config * config, int32_t
     return;
   }
   config->compressType = compress_type;
+}
+
+
+void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32_t ntp_time_offset)
+{
+  if (config == NULL)
+  {
+    return;
+  }
+  config->ntpTimeOffset = ntp_time_offset;
 }
 
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
