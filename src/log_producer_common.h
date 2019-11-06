@@ -22,9 +22,10 @@ typedef int log_producer_result;
  * @param log_bytes log group packaged bytes
  * @param compressed_bytes lz4 compressed bytes
  * @param error_message if send result is not ok, error message is set. must check if is NULL when use it
- * @param send_finished if all data put into log producer client already send out, 1 mean true and 0 means NO
+ * @param raw_buffer lz4 buffer
+ * @note you can only read raw_buffer, but can't modify or free it
  */
-typedef void (*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message, int send_finished, void *user_param);
+typedef void(*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message, const unsigned char * raw_buffer, void *user_param);
 
 extern log_producer_result LOG_PRODUCER_OK;
 extern log_producer_result LOG_PRODUCER_INVALID;

@@ -55,6 +55,11 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
         if (rst != 0)
         {
             aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", rst);
+            if (producer_manager->send_done_function != NULL)
+            {
+              producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, loggroup_size, 0,
+                NULL, "try push loggroup to flusher failed, force drop this log group", NULL, producer_manager->user_param);
+            }
             log_group_destroy(builder);
         }
         else
@@ -145,6 +150,11 @@ void * log_producer_flush_thread(void * param)
                 if (lz4_buf == NULL)
                 {
                     aos_error_log("serialize loggroup to proto buf with lz4 failed");
+                    if (producer_manager->send_done_function)
+                    {
+                      producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, builder->loggroup_size, 0,
+                        NULL, "serialize loggroup to proto buf with lz4 failed", NULL, producer_manager->user_param);
+                    }
                 }
                 else
                 {
@@ -399,14 +409,15 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
         return LOG_PRODUCER_OK;
     }
 
+    int ret = LOG_PRODUCER_OK;
     producer_manager->builder = NULL;
-
     size_t loggroup_size = builder->loggroup_size;
     aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
     int status = log_queue_push(producer_manager->loggroup_queue, builder);
     if (status != 0)
     {
         aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
+        ret = LOG_PRODUCER_DROP_ERROR;
         log_group_destroy(builder);
     }
     else
@@ -417,7 +428,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
 
     CS_LEAVE(producer_manager->lock);
 
-    return LOG_PRODUCER_OK;
+    return ret;
 }
 
 log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)

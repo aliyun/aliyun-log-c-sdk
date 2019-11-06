@@ -24,13 +24,13 @@ const char* LOGE_SHARD_WRITE_QUOTA_EXCEED = "ShardWriteQuotaExceed";
 const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_SLEEP_INTERVAL_MS 100
-#define MAX_NETWORK_ERROR_SLEEP_MS 3600000
-#define BASE_NETWORK_ERROR_SLEEP_MS 1000
-#define MAX_QUOTA_ERROR_SLEEP_MS 60000
-#define BASE_QUOTA_ERROR_SLEEP_MS 3000
-#define INVALID_TIME_TRY_INTERVAL 3000
+#define MAX_NETWORK_ERROR_SLEEP_MS 2000
+#define BASE_NETWORK_ERROR_SLEEP_MS 500
+#define MAX_QUOTA_ERROR_SLEEP_MS 2000
+#define BASE_QUOTA_ERROR_SLEEP_MS 500
+#define INVALID_TIME_TRY_INTERVAL 500
 
-#define DROP_FAIL_DATA_TIME_SECOND (3600 * 6)
+#define DROP_FAIL_DATA_TIME_SECOND 30
 
 #define SEND_TIME_INVALID_FIX
 
@@ -112,6 +112,12 @@ void * log_producer_send_fun(void * param)
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
     {
         aos_fatal_log("invalid send param, magic num not found, num 0x%x", send_param->magic_num);
+        log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
+        if (producer_manager && producer_manager->send_done_function != NULL)
+        {
+          producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_INVALID, send_param->log_buf->raw_length, send_param->log_buf->length,
+            NULL, "invalid send param, magic num not found", send_param->log_buf->data, producer_manager->user_param);
+        }
         return NULL;
     }
 
@@ -130,7 +136,7 @@ void * log_producer_send_fun(void * param)
             if (producer_manager->send_done_function != NULL)
             {
               producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_SEND_EXIT_BUFFERED, send_param->log_buf->raw_length, send_param->log_buf->length,
-                NULL, "producer is being destroyed, producer has no time to send this buffer out", 0, producer_manager->user_param);
+                NULL, "producer is being destroyed, producer has no time to send this buffer out", send_param->log_buf->data, producer_manager->user_param);
             }
             break;
         }
@@ -209,26 +215,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
         log_producer_result callback_result = send_result == LOG_SEND_OK ?
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-        //check if main queue still have data not send out
-        int send_finished = 0;
-        uint64_t send_queue_size = producer_manager->send_param_queue_write - producer_manager->send_param_queue_read;
-        int32_t log_group_size = log_queue_size(producer_manager->loggroup_queue);
-        if (send_queue_size == 0 && log_group_size == 0)
-        {
-          send_finished = 1;
-        }
-
-        //check if mutil thread still have date not send out
-        if (send_finished == 1 && producer_manager->sender_data_queue != NULL)
-        {
-          int32_t send_data_queue_size = log_queue_size(producer_manager->sender_data_queue);
-          if (send_data_queue_size != 0 || producer_manager->multi_thread_send_count > 1)
-          {
-            send_finished = 0;
-          }
-        }
-
-        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_finished, producer_manager->user_param);
+        producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_param->log_buf->data, producer_manager->user_param);
     }
     switch (send_result)
     {
@@ -326,6 +313,10 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                       (int)producer_manager->totalBufferSize,
                       result->statusCode,
                       result->errorMessage);
+        if (producer_manager->send_done_function != NULL)
+        {
+          producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_param->log_buf->data, producer_manager->user_param);
+        }
     }
 
     return 0;
