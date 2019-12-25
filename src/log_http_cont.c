@@ -32,7 +32,7 @@ log_buf* _compressed_buffer(apr_pool_t* pool,log_buf* before)
     char *body = before->data;
     int compress_bound = LZ4_compressBound((int)before->length);
     char *compress_data = aos_pcalloc(pool, compress_bound);
-    int compressed_size = LZ4_compress(body, compress_data, (int)before->length);
+    int compressed_size = LZ4_compress_default(body, compress_data, (int)before->length, compress_bound);
     
     log_buf* after = aos_pcalloc(pool, sizeof(log_buf));
     
