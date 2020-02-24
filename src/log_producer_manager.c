@@ -234,6 +234,15 @@ log_producer_manager * _create_log_producer_manager(apr_pool_t * root, log_produ
 
 
     apr_status_t status = APR_SUCCESS;
+
+    // producer_manager's lock should init before flush thread
+    status = apr_thread_mutex_create(&(producer_manager->lock), APR_THREAD_MUTEX_DEFAULT, root);
+    if (status != APR_SUCCESS)
+    {
+        aos_fatal_log("create log producer manager fail on create lock, error code : %d", status);
+        goto create_fail;
+    }
+
     if (parent_manager == NULL)
     {
         apr_pool_create(&(producer_manager->send_pool), NULL);
@@ -299,13 +308,6 @@ log_producer_manager * _create_log_producer_manager(apr_pool_t * root, log_produ
     if (producer_config->debugOpen)
     {
         producer_manager->debuger = create_log_producer_debug_flusher(producer_config);
-    }
-
-    status = apr_thread_mutex_create(&(producer_manager->lock), APR_THREAD_MUTEX_DEFAULT, root);
-    if (status != APR_SUCCESS)
-    {
-        aos_fatal_log("create log producer manager fail on create lock, error code : %d", status);
-        goto create_fail;
     }
 
     producer_manager->source = get_ip_by_host_name(producer_manager->root);
