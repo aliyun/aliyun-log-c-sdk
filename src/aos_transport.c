@@ -26,7 +26,7 @@ static void aos_init_curl_headers(aos_curl_http_transport_t *t)
     union aos_func_u func;
 
     if (t->req->method == HTTP_PUT || t->req->method == HTTP_POST) {
-        header = apr_psprintf(t->pool, "Content-Length: %" APR_INT64_T_FMT, t->req->body_len);
+        header = apr_psprintf(t->pool, "Content-Length: %lld" APR_INT64_T_FMT, t->req->body_len);
         t->headers = curl_slist_append(t->headers, header);
     }
 
@@ -243,7 +243,7 @@ size_t aos_curl_default_write_callback(char *ptr, size_t size, size_t nmemb, voi
 
     if (t->resp->type == BODY_IN_MEMORY && t->resp->body_len >= (int64_t)t->controller->options->max_memory_size) {
         t->controller->reason = apr_psprintf(t->pool,
-             "receive body too big, current body size: %" APR_INT64_T_FMT ", max memory size: %" APR_INT64_T_FMT,
+             "receive body too big, current body size: %lld" APR_INT64_T_FMT ", max memory size: %lld" APR_INT64_T_FMT,
               t->resp->body_len, t->controller->options->max_memory_size);
         t->controller->error_code = AOSE_OVER_MEMORY;
         aos_error_log("error reason:%s, ", t->controller->reason);
