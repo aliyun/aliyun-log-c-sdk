@@ -91,7 +91,7 @@ void builder_speed_test(int32_t logsPerGroup)
     aos_error_log("total time sec  %d ", (time(NULL) - startTime));
 }
 
-void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message)
+void on_log_send_done(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * message, const unsigned char * raw_buffer, void *user_param)
 {
     if (result == LOG_PRODUCER_OK)
     {
@@ -161,7 +161,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     // set send thread
     log_producer_config_set_send_thread_count(config, 16);
 
-    return create_log_producer(config, on_send_done);
+    return create_log_producer(config, on_send_done, NULL);
 }
 
 #define MUTLI_THREAD_COUNT 16

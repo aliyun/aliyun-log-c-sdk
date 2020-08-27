@@ -21,6 +21,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->destroyFlusherWaitTimeoutSec = 1;
     pConfig->compressType = 1;
     pConfig->ntpTimeOffset = 0;
+    pConfig->using_https = 0;
 }
 
 
@@ -80,15 +81,15 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     }
     if (pConfig->netInterface != NULL)
     {
-      sdsfree(pConfig->netInterface);
+        sdsfree(pConfig->netInterface);
     }
     if (pConfig->securityToken != NULL)
     {
-      sdsfree(pConfig->securityToken);
+        sdsfree(pConfig->securityToken);
     }
     if (pConfig->securityTokenLock != NULL)
     {
-      ReleaseCriticalSection(pConfig->securityTokenLock);
+        ReleaseCriticalSection(pConfig->securityTokenLock);
     }
     if (pConfig->tagCount > 0 && pConfig->tags != NULL)
     {
@@ -99,6 +100,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
             sdsfree(pConfig->tags[i].value);
         }
         free(pConfig->tags);
+    }
+    if (pConfig->persistentFilePath != NULL)
+    {
+        sdsfree(pConfig->persistentFilePath);
     }
     free(pConfig);
 }
@@ -268,15 +273,18 @@ void log_producer_config_add_tag(log_producer_config * pConfig, const char * key
 
 }
 
-
 void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint)
 {
+    if (strlen(endpoint) < 8) {
+        return;
+    }
     if (strncmp(endpoint, "http://", 7) == 0)
     {
         endpoint += 7;
     }
     else if (strncmp(endpoint, "https://", 8) == 0)
     {
+        config->using_https = 1;
         endpoint += 8;
     }
     _copy_config_string(endpoint, &config->endpoint);
@@ -305,7 +313,7 @@ void log_producer_config_reset_security_token(log_producer_config * config, cons
 {
   if (config->securityTokenLock == NULL)
   {
-    config->securityTokenLock = CreateCriticalSection();
+      config->securityTokenLock = CreateCriticalSection();
   }
   CS_ENTER(config->securityTokenLock);
   _copy_config_string(access_id, &config->accessKeyId);
@@ -363,5 +371,86 @@ int log_producer_config_is_valid(log_producer_config * config)
         aos_error_log("invalid producer config log merge and buffer params");
         return 0;
     }
+    if (config->usePersistent)
+    {
+        if (config->persistentFilePath == NULL || config->maxPersistentFileCount <= 0 || config->maxPersistentLogCount <= 0 || config->maxPersistentFileSize <=0 )
+        {
+            aos_error_log("invalid producer persistent config params");
+            return 0;
+        }
+    }
     return 1;
+}
+
+void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https)
+{
+    if (config == NULL || using_https < 0)
+    {
+        return;
+    }
+    config->using_https = using_https;
+}
+
+int log_producer_persistent_config_is_enabled(log_producer_config *config)
+{
+    if (config == NULL)
+    {
+        aos_error_log("invalid producer config");
+        return 0;
+    }
+    if (config->usePersistent == 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+void log_producer_config_set_persistent(log_producer_config *config,
+                                        int32_t persistent)
+{
+    if (config == NULL)
+        return;
+    config->usePersistent = persistent;
+}
+
+void log_producer_config_set_persistent_file_path(log_producer_config *config,
+                                                  const char *file_path)
+{
+    if (config == NULL)
+        return;
+    _copy_config_string(file_path, &config->persistentFilePath);
+}
+
+void
+log_producer_config_set_persistent_max_file_count(log_producer_config *config,
+                                                  int32_t file_count)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentFileCount = file_count;
+}
+
+void
+log_producer_config_set_persistent_max_file_size(log_producer_config *config,
+                                                 int32_t file_size)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentFileSize = file_size;
+}
+
+void log_producer_config_set_persistent_force_flush(log_producer_config *config,
+                                                    int32_t force)
+{
+    if (config == NULL)
+        return;
+    config->forceFlushDisk = force;
+}
+
+void log_producer_config_set_persistent_max_log_count(log_producer_config *config,
+                                           int32_t max_log_count)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentLogCount = max_log_count;
 }

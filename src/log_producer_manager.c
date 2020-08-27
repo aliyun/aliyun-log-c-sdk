@@ -166,7 +166,7 @@ void * log_producer_flush_thread(void * param)
                                   config->logstore, (int)lz4_buf->raw_length, (int)lz4_buf->length, (int)producer_manager->totalBufferSize);
                     // if use multi thread, should change producer_manager->send_pool to NULL
                     //apr_pool_t * pool = config->sendThreadCount == 1 ? producer_manager->send_pool : NULL;
-                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, builder->builder_time);
+                    log_producer_send_param * send_param = create_log_producer_send_param(config, producer_manager, lz4_buf, builder);
                     root_producer_manager->send_param_queue[root_producer_manager->send_param_queue_write++ % root_producer_manager->send_param_queue_size] = send_param;
                 }
                 log_group_destroy(builder);
@@ -350,16 +350,17 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     log_queue_destroy(manager->loggroup_queue);
     if (manager->sender_data_queue != NULL)
     {
-      aos_info_log("flush out sender queue begin");
-      while (log_queue_size(manager->sender_data_queue) > 0)
-      {
-        void * send_param = log_queue_trypop(manager->sender_data_queue);
-        if (send_param != NULL)
+        aos_info_log("flush out sender queue begin");
+        while (log_queue_size(manager->sender_data_queue) > 0)
         {
-          log_producer_send_fun(send_param);
+            void * send_param = log_queue_trypop(manager->sender_data_queue);
+            if (send_param != NULL)
+            {
+                log_producer_send_fun(send_param);
+            }
         }
-      }
-      log_queue_destroy(manager->sender_data_queue);
+        log_queue_destroy(manager->sender_data_queue);
+        aos_info_log("flush out sender queue success");
     }
     ReleaseCriticalSection(manager->lock);
     if (manager->pack_prefix != NULL)
@@ -374,70 +375,151 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     free(manager);
 }
 
-log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
-{
-    if (producer_manager->totalBufferSize > producer_manager->producer_config->maxBufferBytes)
-    {
-        return LOG_PRODUCER_DROP_ERROR;
-    }
-    CS_ENTER(producer_manager->lock);
-    if (producer_manager->builder == NULL)
-    {
-        // if queue is full, return drop error
-        if (log_queue_isfull(producer_manager->loggroup_queue))
-        {
-            CS_LEAVE(producer_manager->lock);
-            return LOG_PRODUCER_DROP_ERROR;
-        }
-        int32_t now_time = time(NULL);
 
-        producer_manager->builder = log_group_create();
-        producer_manager->firstLogTime = now_time;
-        producer_manager->builder->private_value = producer_manager;
-    }
+#define LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN if (producer_manager->totalBufferSize > producer_manager->producer_config->maxBufferBytes) \
+{ \
+return LOG_PRODUCER_DROP_ERROR; \
+} \
+CS_ENTER(producer_manager->lock); \
+if (producer_manager->builder == NULL) \
+{ \
+if (log_queue_isfull(producer_manager->loggroup_queue)) \
+{ \
+CS_LEAVE(producer_manager->lock); \
+return LOG_PRODUCER_DROP_ERROR; \
+} \
+int32_t now_time = time(NULL); \
+producer_manager->builder = log_group_create(); \
+producer_manager->builder->start_uuid = uuid; \
+producer_manager->firstLogTime = now_time; \
+producer_manager->builder->private_value = producer_manager; \
+}
+
+#define LOG_PRODUCER_MANAGER_ADD_LOG_END log_group_builder * builder = producer_manager->builder; \
+builder->end_uuid = uuid; \
+int32_t nowTime = time(NULL); \
+if (flush == 0 && producer_manager->builder->loggroup_size < producer_manager->producer_config->logBytesPerPackage && nowTime - producer_manager->firstLogTime < producer_manager->producer_config->packageTimeoutInMS / 1000 && producer_manager->builder->grp->n_logs < producer_manager->producer_config->logCountPerPackage) \
+{ \
+CS_LEAVE(producer_manager->lock); \
+return LOG_PRODUCER_OK; \
+} \
+int ret = LOG_PRODUCER_OK; \
+producer_manager->builder = NULL; \
+size_t loggroup_size = builder->loggroup_size; \
+aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs); \
+int status = log_queue_push(producer_manager->loggroup_queue, builder); \
+if (status != 0) \
+{ \
+aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status); \
+ret = LOG_PRODUCER_DROP_ERROR; \
+log_group_destroy(builder); \
+} \
+else \
+{ \
+producer_manager->totalBufferSize += loggroup_size; \
+COND_SIGNAL(producer_manager->triger_cond); \
+} \
+CS_LEAVE(producer_manager->lock); \
+return ret;
+
+log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush, int64_t uuid)
+{
+//    if (producer_manager->totalBufferSize > producer_manager->producer_config->maxBufferBytes)
+//    {
+//        return LOG_PRODUCER_DROP_ERROR;
+//    }
+//    CS_ENTER(producer_manager->lock);
+//    if (producer_manager->builder == NULL)
+//    {
+//        // if queue is full, return drop error
+//        if (log_queue_isfull(producer_manager->loggroup_queue))
+//        {
+//            CS_LEAVE(producer_manager->lock);
+//            return LOG_PRODUCER_DROP_ERROR;
+//        }
+//        int32_t now_time = time(NULL);
+//
+//        producer_manager->builder = log_group_create();
+//        producer_manager->builder->start_uuid = uuid;
+//        producer_manager->firstLogTime = now_time;
+//        producer_manager->builder->private_value = producer_manager;
+//    }
+
+    LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
 
     add_log_full(producer_manager->builder, (uint32_t)time(NULL), pair_count, keys, key_lens, values, val_lens);
 
-    log_group_builder * builder = producer_manager->builder;
+    LOG_PRODUCER_MANAGER_ADD_LOG_END;
 
-    int32_t nowTime = time(NULL);
-    if (flush == 0 && producer_manager->builder->loggroup_size < producer_manager->producer_config->logBytesPerPackage &&
-            nowTime - producer_manager->firstLogTime < producer_manager->producer_config->packageTimeoutInMS / 1000 &&
-            producer_manager->builder->grp->n_logs < producer_manager->producer_config->logCountPerPackage)
-    {
-        CS_LEAVE(producer_manager->lock);
-        return LOG_PRODUCER_OK;
-    }
-
-    int ret = LOG_PRODUCER_OK;
-    producer_manager->builder = NULL;
-    size_t loggroup_size = builder->loggroup_size;
-    aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
-    int status = log_queue_push(producer_manager->loggroup_queue, builder);
-    if (status != 0)
-    {
-        aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
-        ret = LOG_PRODUCER_DROP_ERROR;
-        log_group_destroy(builder);
-    }
-    else
-    {
-        producer_manager->totalBufferSize += loggroup_size;
-        COND_SIGNAL(producer_manager->triger_cond);
-    }
-
-    CS_LEAVE(producer_manager->lock);
-
-    return ret;
+//    log_group_builder * builder = producer_manager->builder;
+//    builder->end_uuid = uuid;
+//
+//    int32_t nowTime = time(NULL);
+//    if (flush == 0 && producer_manager->builder->loggroup_size < producer_manager->producer_config->logBytesPerPackage &&
+//            nowTime - producer_manager->firstLogTime < producer_manager->producer_config->packageTimeoutInMS / 1000 &&
+//            producer_manager->builder->grp->n_logs < producer_manager->producer_config->logCountPerPackage)
+//    {
+//        CS_LEAVE(producer_manager->lock);
+//        return LOG_PRODUCER_OK;
+//    }
+//
+//    int ret = LOG_PRODUCER_OK;
+//    producer_manager->builder = NULL;
+//    size_t loggroup_size = builder->loggroup_size;
+//    aos_debug_log("try push loggroup to flusher, size : %d, log count %d", (int)builder->loggroup_size, (int)builder->grp->n_logs);
+//    int status = log_queue_push(producer_manager->loggroup_queue, builder);
+//    if (status != 0)
+//    {
+//        aos_error_log("try push loggroup to flusher failed, force drop this log group, error code : %d", status);
+//        ret = LOG_PRODUCER_DROP_ERROR;
+//        log_group_destroy(builder);
+//    }
+//    else
+//    {
+//        producer_manager->totalBufferSize += loggroup_size;
+//        COND_SIGNAL(producer_manager->triger_cond);
+//    }
+//
+//    CS_LEAVE(producer_manager->lock);
+//
+//    return ret;
 }
 
 log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
 {
-  // pack lz4_log_buf
-  lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
-  lz4_buf->length = compressed_bytes;
-  lz4_buf->raw_length = log_bytes;
-  memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
-  log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
-  return log_producer_send_data(send_param);
+    // pack lz4_log_buf
+    lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
+    lz4_buf->length = compressed_bytes;
+    lz4_buf->raw_length = log_bytes;
+    memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, NULL);
+    return log_producer_send_data(send_param);
 }
+
+log_producer_result
+log_producer_manager_add_log_raw(log_producer_manager *producer_manager,
+                                 const char *logBuf, size_t logSize, int flush,
+                                 int64_t uuid)
+{
+    LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
+
+    add_log_raw(producer_manager->builder, logBuf, logSize);
+
+    LOG_PRODUCER_MANAGER_ADD_LOG_END;
+}
+
+log_producer_result
+log_producer_manager_add_log_with_array(log_producer_manager *producer_manager,
+                                        uint32_t logTime, size_t logItemCount,
+                                        const char *logItemsBuf,
+                                        const uint32_t *logItemsSize, int flush,
+                                        int64_t uuid)
+{
+    LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
+
+    add_log_full_v2(producer_manager->builder, logTime, logItemCount, logItemsBuf, logItemsSize);
+
+    LOG_PRODUCER_MANAGER_ADD_LOG_END;
+}
+
+

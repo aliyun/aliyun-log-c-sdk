@@ -105,6 +105,8 @@ log_group_builder* log_group_create()
     bder->grp = (log_group*)((char *)(bder) + sizeof(log_group_builder));
     bder->loggroup_size = sizeof(log_group) + sizeof(log_group_builder);
     bder->builder_time = time(NULL);
+    bder->start_uuid = -1;
+    bder->end_uuid = -1;
     return bder;
 }
 
@@ -159,6 +161,20 @@ void _adjust_buffer(log_tag * tag, uint32_t new_len)
     tag->buffer = (char *)realloc(tag->buffer, new_buffer_len);
     tag->now_buffer = tag->buffer + tag->now_buffer_len;
     tag->max_buffer_len = new_buffer_len;
+}
+
+void add_log_raw(log_group_builder *bder, const char *buffer, size_t size)
+{
+    ++bder->grp->n_logs;
+    log_tag * log = &(bder->grp->logs);
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + size)
+    {
+        _adjust_buffer(log, size);
+    }
+    memcpy(log->now_buffer, buffer, size);
+    bder->loggroup_size += size;
+    log->now_buffer_len += size;
+    log->now_buffer += size;
 }
 
 void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
@@ -433,7 +449,7 @@ void add_log_time(log_group_builder * bder, uint32_t logTime)
     bder->grp->log_now_buffer = (char *)buf;
 }
 
-void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len)
+void add_log_key_value(log_group_builder *bder, const char * key, size_t key_len, const char * value, size_t value_len)
 {
     // sum total size
     uint32_t kv_size = sizeof(char) * (key_len + value_len) + uint32_size((uint32_t)key_len) + uint32_size((uint32_t)value_len) + 2;
@@ -497,6 +513,34 @@ void add_log_end(log_group_builder * bder)
     logs->now_buffer_len += header_size + log_size;
     // update loggroup size
     bder->loggroup_size += header_size + log_size;
+}
+
+void clear_log_tag(log_tag *tag)
+{
+    tag->now_buffer = tag->buffer;
+    tag->now_buffer_len = 0;
+}
+
+void
+add_log_full_v2(log_group_builder *bder, uint32_t logTime, size_t logItemCount,
+                const char *logItemsBuf, const uint32_t *logItemsSize)
+{
+    if (logTime == 0)
+    {
+        logTime = time(NULL);
+    }
+    add_log_begin(bder);
+    add_log_time(bder, logTime);
+    size_t startOffset = 0;
+    logItemCount = (logItemCount >> 1) << 1;
+    for (size_t (i) = 0; (i) < logItemCount; i += 2)
+    {
+        uint32_t keySize = logItemsSize[i];
+        uint32_t valSize = logItemsSize[i+1];
+        add_log_key_value(bder, logItemsBuf + startOffset, keySize, logItemsBuf + startOffset + keySize, valSize);
+        startOffset += keySize + valSize;
+    }
+    add_log_end(bder);
 }
 
 #endif

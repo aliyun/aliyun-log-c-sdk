@@ -115,8 +115,21 @@ void * log_producer_send_fun(void * param)
         log_producer_manager * producer_manager = (log_producer_manager *)send_param->producer_manager;
         if (producer_manager && producer_manager->send_done_function != NULL)
         {
-          producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_INVALID, send_param->log_buf->raw_length, send_param->log_buf->length,
+            producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_INVALID, send_param->log_buf->raw_length, send_param->log_buf->length,
             NULL, "invalid send param, magic num not found", send_param->log_buf->data, producer_manager->user_param);
+        }
+        if (producer_manager && producer_manager->uuid_send_done_function != NULL)
+        {
+            producer_manager->uuid_send_done_function(producer_manager->producer_config->logstore,
+                                                 LOG_PRODUCER_INVALID,
+                                                 send_param->log_buf->raw_length,
+                                                 send_param->log_buf->length,
+                                                 NULL,
+                                                 "invalid send param, magic num not found",
+                                                 send_param->log_buf->data,
+                                                 producer_manager->uuid_user_param,
+                                                 send_param->start_uuid,
+                                                 send_param->end_uuid);
         }
         return NULL;
     }
@@ -155,6 +168,7 @@ void * log_producer_send_fun(void * param)
         option.operation_timeout = config->sendTimeoutSec;
         option.interface = config->netInterface;
         option.compress_type = config->compressType;
+        option.using_https = config->using_https;
         option.ntp_time_offset = config->ntpTimeOffset;
         sds accessKeyId = NULL;
         sds accessKey = NULL;
@@ -217,6 +231,22 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                                               LOG_PRODUCER_OK :
                                               (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
         producer_manager->send_done_function(producer_manager->producer_config->logstore, callback_result, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_param->log_buf->data, producer_manager->user_param);
+    }
+    if (producer_manager->uuid_send_done_function != NULL)
+    {
+        log_producer_result callback_result = send_result == LOG_SEND_OK ?
+                                              LOG_PRODUCER_OK :
+                                              (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
+        producer_manager->uuid_send_done_function(producer_manager->producer_config->logstore,
+                                                  callback_result,
+                                                  send_param->log_buf->raw_length,
+                                                  send_param->log_buf->length,
+                                                  result->requestID,
+                                                  result->errorMessage,
+                                                  send_param->log_buf->data,
+                                                  producer_manager->uuid_user_param,
+                                                  send_param->start_uuid,
+                                                  send_param->end_uuid);
     }
     switch (send_result)
     {
@@ -316,7 +346,27 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                       result->errorMessage);
         if (producer_manager->send_done_function != NULL)
         {
-          producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, send_param->log_buf->raw_length, send_param->log_buf->length, result->requestID, result->errorMessage, send_param->log_buf->data, producer_manager->user_param);
+            producer_manager->send_done_function(producer_manager->producer_config->logstore,
+                                                 LOG_PRODUCER_DROP_ERROR,
+                                                 send_param->log_buf->raw_length,
+                                                 send_param->log_buf->length,
+                                                 result->requestID,
+                                                 result->errorMessage,
+                                                 send_param->log_buf->data,
+                                                 producer_manager->user_param);
+        }
+        if (producer_manager->uuid_send_done_function != NULL)
+        {
+            producer_manager->uuid_send_done_function(producer_manager->producer_config->logstore,
+                                                      LOG_PRODUCER_DROP_ERROR,
+                                                      send_param->log_buf->raw_length,
+                                                      send_param->log_buf->length,
+                                                      result->requestID,
+                                                      result->errorMessage,
+                                                      send_param->log_buf->data,
+                                                      producer_manager->uuid_user_param,
+                                                      send_param->start_uuid,
+                                                      send_param->end_uuid);
         }
     }
 
@@ -362,14 +412,25 @@ log_producer_send_result AosStatusToResult(post_log_result * result)
 log_producer_send_param * create_log_producer_send_param(log_producer_config * producer_config,
                                                          void * producer_manager,
                                                          lz4_log_buf * log_buf,
-                                                         uint32_t builder_time)
+                                                         log_group_builder * builder)
 {
     log_producer_send_param * param = (log_producer_send_param *)malloc(sizeof(log_producer_send_param));
     param->producer_config = producer_config;
     param->producer_manager = producer_manager;
     param->log_buf = log_buf;
     param->magic_num = LOG_PRODUCER_SEND_MAGIC_NUM;
-    param->builder_time = builder_time;
+    if (builder != NULL)
+    {
+        param->builder_time = builder->builder_time;
+        param->start_uuid = builder->start_uuid;
+        param->end_uuid = builder->end_uuid;
+    }
+    else
+    {
+        param->builder_time = time(NULL);
+        param->start_uuid = -1;
+        param->end_uuid = -1;
+    }
     return param;
 }
 

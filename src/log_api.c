@@ -91,7 +91,12 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
     if (curl != NULL)
     {
         // url
-        sds url = sdsnew("http://");
+        sds url = NULL;
+        if (option->using_https) {
+            url = sdsnew("https://");
+        } else {
+            url = sdsnew("http://");
+        }
         url = sdscat(url, project);
         url = sdscat(url, ".");
         url = sdscat(url, endpoint);

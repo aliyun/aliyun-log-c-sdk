@@ -50,6 +50,16 @@ typedef struct _log_producer_config
 
     int32_t compressType; // 0 no compress, 1 lz4
     int32_t ntpTimeOffset;
+    int using_https; // 0 http, 1 https
+
+    // for persistent feature
+    int32_t usePersistent; // 0 no, 1 yes
+    char * persistentFilePath;
+    int32_t maxPersistentLogCount;
+    int32_t maxPersistentFileSize; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
+    int32_t maxPersistentFileCount; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
+    int32_t forceFlushDisk; // force flush disk
+
 }log_producer_config;
 
 
@@ -62,10 +72,19 @@ LOG_EXPORT log_producer_config * create_log_producer_config();
 
 /**
  * set producer config endpoint
+ * @note if endpoint start with "https", then set using_https 1
+ * @note strlen(endpoint) must >= 8
  * @param config
  * @param endpoint
  */
 LOG_EXPORT void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint);
+
+/**
+ * default http, 0 http, 1 https
+ * @param config
+ * @param using_https
+ */
+LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
 
 /**
  * set producer config project
@@ -217,12 +236,55 @@ LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * conf
 */
 LOG_EXPORT void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32_t ntp_time_offset);
 
+/**
+ * set persistent flag, 0 disable, 1 enable
+ * @param config
+ * @param persistent
+ */
+LOG_EXPORT void log_producer_config_set_persistent(log_producer_config * config, int32_t persistent);
+
+/**
+ * set persistent file path
+ * @param config
+ * @param file_path full file path, eg : "/app/test/data.dat"
+ * @note the file dir must exist
+ */
+LOG_EXPORT void log_producer_config_set_persistent_file_path(log_producer_config * config, const char * file_path);
+
+/**
+ * set max persistent file count, max size in disk is file_count * file_size
+ * @param config
+ * @param file_count 1-1000
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_file_count(log_producer_config * config, int32_t file_count);
+
+/**
+ * set max persistent file size, max size in disk is file_count * file_size
+ * @param config
+ * @param file_size
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_file_size(log_producer_config * config, int32_t file_size);
+
+/**
+ * force flush disk when add a log, 0 disable, 1 enable
+ * @param config
+ * @param force
+ */
+LOG_EXPORT void log_producer_config_set_persistent_force_flush(log_producer_config * config, int32_t force);
+
+/**
+ * set max log count saved in disk
+ * @param config
+ * @param max_log_count
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_log_count(log_producer_config * config, int32_t max_log_count);
 
 /**
  * destroy config, this will free all memory allocated by this config
  * @param config
  */
 LOG_EXPORT void destroy_log_producer_config(log_producer_config * config);
+
 
 #ifdef LOG_PRODUCER_DEBUG
 /**
@@ -240,6 +302,11 @@ void log_producer_config_print(log_producer_config * config, FILE * pFile);
  */
 LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
 
+/**
+ *
+ * @return
+ */
+LOG_EXPORT int log_producer_persistent_config_is_enabled(log_producer_config * config);
 
 
 LOG_CPP_END

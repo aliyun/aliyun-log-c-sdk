@@ -85,10 +85,15 @@ void post_logs_with_http_cont_lz4_log_option()
             printf("serialize_to_proto_buf_with_malloc_lz4 failed\n");
             exit(1);
         }
+        log_post_option option;
+        memset(&option, 0, sizeof(log_post_option));
+        option.connect_timeout = 10;
+        option.operation_timeout = 15;
+        option.compress_type = 0;
         post_log_result * rst = post_logs_from_lz4buf(LOG_ENDPOINT, ACCESS_KEY_ID,
                                                  ACCESS_KEY_SECRET, NULL,
                                                  PROJECT_NAME, LOGSTORE_NAME,
-                                                 pLZ4Buf);
+                                                 pLZ4Buf, &option);
         printf("result %d %d \n", i, rst->statusCode);
         if (rst->errorMessage != NULL)
         {
