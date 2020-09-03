@@ -57,6 +57,16 @@ extern log_producer_result log_producer_manager_add_log(log_producer_manager * p
                                                         int flush,
                                                         int64_t uuid);
 
+extern log_producer_result log_producer_manager_add_log_int32(log_producer_manager * producer_manager,
+                                                        int32_t pair_count,
+                                                        char ** keys,
+                                                        int32_t * key_lens,
+                                                        char ** values,
+                                                        int32_t * val_lens,
+                                                        int flush,
+                                                        int64_t uuid);
+
+
 extern log_producer_result log_producer_manager_add_log_raw(log_producer_manager * producer_manager,
                                                              const char * logBuf,
                                                              size_t logSize,

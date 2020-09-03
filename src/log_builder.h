@@ -65,6 +65,7 @@ extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();
 extern void log_group_destroy(log_group_builder* bder);
 extern void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens);
+extern void add_log_full_int32(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, int32_t * key_lens, char ** values, int32_t * val_lens);
 extern void add_log_full_v2(log_group_builder* bder, uint32_t logTime, size_t  logItemCount, const char * logItemsBuf, const uint32_t * logItemsSize);
 extern void add_log_raw(log_group_builder* bder, const char * buffer, size_t size);
 extern void add_source(log_group_builder* bder,const char* src,size_t len);

@@ -522,4 +522,18 @@ log_producer_manager_add_log_with_array(log_producer_manager *producer_manager,
     LOG_PRODUCER_MANAGER_ADD_LOG_END;
 }
 
+log_producer_result
+log_producer_manager_add_log_int32(log_producer_manager *producer_manager,
+                                   int32_t pair_count, char **keys,
+                                   int32_t *key_lens, char **values,
+                                   int32_t *val_lens, int flush, int64_t uuid)
+{
+    LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
+
+    add_log_full_int32(producer_manager->builder, (uint32_t)time(NULL), pair_count, keys, key_lens, values, val_lens);
+
+    LOG_PRODUCER_MANAGER_ADD_LOG_END;
+
+}
+
 

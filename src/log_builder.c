@@ -543,5 +543,65 @@ add_log_full_v2(log_group_builder *bder, uint32_t logTime, size_t logItemCount,
     add_log_end(bder);
 }
 
+void add_log_full_int32(log_group_builder *bder, uint32_t logTime,
+                        int32_t pair_count, char **keys, int32_t *key_lens,
+                        char **values, int32_t *val_lens)
+{
+    ++bder->grp->n_logs;
+
+    // limit logTime's min value, ensure varint size is 5
+    if (logTime < 1263563523)
+    {
+        logTime = 1263563523;
+    }
+
+    int32_t i = 0;
+    int32_t logSize = 6;
+    for (; i < pair_count; ++i)
+    {
+        uint32_t contSize = uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + key_lens[i] + val_lens[i] + 2;
+        logSize += 1 + uint32_size(contSize) + contSize;
+    }
+    int32_t totalBufferSize = logSize + 1 + uint32_size(logSize);
+
+    log_tag * log = &(bder->grp->logs);
+
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + totalBufferSize)
+    {
+        _adjust_buffer(log, totalBufferSize);
+    }
+
+
+    bder->loggroup_size += totalBufferSize;
+    uint8_t * buf = (uint8_t*)log->now_buffer;
+
+    *buf++ = 0x0A;
+    buf += uint32_pack(logSize, buf);
+
+    // time
+    *buf++=0x08;
+    buf += uint32_pack(logTime, buf);
+
+    // Content
+    // header
+    i = 0;
+    for (; i < pair_count; ++i)
+    {
+        *buf++ = 0x12;
+        buf += uint32_pack(uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + 2 + key_lens[i] + val_lens[i], buf);
+        *buf++ = 0x0A;
+        buf += uint32_pack(key_lens[i], buf);
+        memcpy(buf, keys[i], key_lens[i]);
+        buf += key_lens[i];
+        *buf++ = 0x12;
+        buf += uint32_pack(val_lens[i], buf);
+        memcpy(buf, values[i], val_lens[i]);
+        buf += val_lens[i];
+    }
+    assert(buf - (uint8_t*)log->now_buffer == totalBufferSize);
+    log->now_buffer_len += totalBufferSize;
+    log->now_buffer = (char *)buf;
+}
+
 #endif
 
