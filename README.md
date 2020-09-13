@@ -128,7 +128,7 @@ LOG C SDK并没有带上这几个外部库，您需要确认这些库已经安�
  - 需要通过--with-apr指定apr安装目录，如果apr安装到系统目录下需要指定--with-apr=/usr/local/apr/
 
 
-##### CMake (建议2.6.0及以上版本)
+##### CMake (需要3.13.5及以上版本)
 
   请从[这里](https://cmake.org/download)下载，典型的安装方式如下：
 ```shell
