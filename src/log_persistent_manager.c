@@ -60,8 +60,11 @@ int save_log_checkpoint(log_persistent_manager * manager)
             checkpoint->start_file_offset + checkpoint->now_file_offset;
     if (manager->checkpoint_file_size > MAX_CHECKPOINT_FILE_SIZE)
     {
-        fclose(manager->checkpoint_file_ptr);
-        manager->checkpoint_file_ptr = NULL;
+        if (manager->checkpoint_file_ptr != NULL)
+        {
+            fclose(manager->checkpoint_file_ptr);
+            manager->checkpoint_file_ptr = NULL;
+        }
         char tmpFilePath[256];
         strcpy(tmpFilePath, manager->checkpoint_file_path);
         strcat(tmpFilePath, ".bak");
@@ -113,7 +116,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
         return;
     }
     log_persistent_manager * manager = (log_persistent_manager *)persistent_manager;
-    if (manager == NULL || manager->is_invalid == 0 || startId < 0 || endId < 0 || startId > endId)
+    if (manager == NULL || manager->is_invalid == 1 || startId < 0 || endId < 0 || startId > endId)
     {
         return;
     }
@@ -121,16 +124,17 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
     // invalid id range
     if (endId - startId > 1024 * 1024)
     {
+        aos_fatal_log("invalid id range %lld %lld", startId, endId);
         manager->is_invalid = 1;
     }
     // multi thread send is not allowed, and this should never happen
     if (startId > manager->checkpoint.start_log_uuid)
     {
-        aos_fatal_log("project %s, logstore %s, invalid checkpoint start log uuid %d %d",
+        aos_fatal_log("project %s, logstore %s, invalid checkpoint start log uuid %lld %lld",
                       manager->config->project,
                       manager->config->logstore,
-                      (int)startId,
-                      (int)manager->checkpoint.start_log_uuid);
+                      startId,
+                      manager->checkpoint.start_log_uuid);
         return;
     }
     CS_ENTER(manager->lock);
@@ -177,6 +181,7 @@ static void log_persistent_manager_clear(log_persistent_manager * manager)
     if (manager->checkpoint_file_ptr != NULL)
     {
         fclose(manager->checkpoint_file_ptr);
+        manager->checkpoint_file_ptr = NULL;
     }
     free(manager->in_buffer_log_sizes);
     sdsfree(manager->checkpoint_file_path);
@@ -316,7 +321,7 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
             header.log_uuid < logUUID ||
             header.log_size <= 0 || header.log_size > 10*1024*1024 )
         {
-            aos_debug_log("project %s, logstore %s, read binlog file success but header is invalid, uuid %lld %lld",
+            aos_info_log("project %s, logstore %s, read binlog file success, uuid %lld %lld",
                           manager->config->project,
                           manager->config->logstore,
                           header.log_uuid,
@@ -375,11 +380,15 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
     if (logUUID < manager->checkpoint.now_log_uuid)
     {
         // replay fail
-        aos_fatal_log("project %s, logstore %s, replay bin log failed, now log uuid %lld, expected min log uuid %lld",
+        aos_fatal_log("project %s, logstore %s, replay bin log failed, now log uuid %lld, expected min log uuid %lld, start uuid %lld, start offset  %lld, now offset  %lld, replayed offset %lld",
                       manager->config->project,
                       manager->config->logstore,
                       logUUID,
-                      manager->checkpoint.now_log_uuid);
+                      manager->checkpoint.now_log_uuid,
+                      manager->checkpoint.start_log_uuid,
+                      manager->checkpoint.start_file_offset,
+                      manager->checkpoint.now_file_offset,
+                      fileOffset);
         return -4;
     }
 
@@ -427,12 +436,12 @@ int log_persistent_manager_recover(log_persistent_manager *manager,
     if (rst != 0)
     {
         // if recover failed, reset persistent manager
-        manager->is_invalid = 0;
+        manager->is_invalid = 1;
         log_persistent_manager_reset(manager);
     }
     else
     {
-        manager->is_invalid = 1;
+        manager->is_invalid = 0;
     }
     CS_LEAVE(manager->lock);
     return rst;
