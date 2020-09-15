@@ -111,7 +111,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
                                               int64_t startId,
                                               int64_t endId)
 {
-    if (result != LOG_PRODUCER_OK && result != LOG_PRODUCER_DROP_ERROR)
+    if (result != LOG_PRODUCER_OK && result != LOG_PRODUCER_DROP_ERROR && result != LOG_PRODUCER_INVALID)
     {
         return;
     }
@@ -144,7 +144,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
     {
         totalOffset += manager->in_buffer_log_sizes[id % manager->config->maxPersistentLogCount];
     }
-    log_ring_file_clean(manager->ring_file, manager->checkpoint.start_file_offset, manager->checkpoint.start_file_offset + totalOffset);
+
     manager->checkpoint.start_file_offset += totalOffset;
     manager->checkpoint.start_log_uuid = endId + 1;
     int rst = save_log_checkpoint(manager);
@@ -155,6 +155,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
                       manager->config->logstore,
                       rst);
     }
+    log_ring_file_clean(manager->ring_file, manager->checkpoint.start_file_offset - totalOffset, manager->checkpoint.start_file_offset);
 
     CS_LEAVE(manager->lock);
 }
@@ -308,6 +309,11 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
                 aos_info_log("project %s, logstore %s, read end of file",
                              manager->config->project,
                              manager->config->logstore);
+                if (buffer != NULL)
+                {
+                    free(buffer);
+                    buffer = NULL;
+                }
                 break;
             }
             aos_error_log("project %s, logstore %s, read binlog file header failed, offset %lld, result %d",
@@ -315,6 +321,11 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
                           manager->config->logstore,
                           fileOffset,
                           rst);
+            if (buffer != NULL)
+            {
+                free(buffer);
+                buffer = NULL;
+            }
             return -1;
         }
         if (header.magic_code != LOG_PERSISTENT_HEADER_MAGIC ||
@@ -340,13 +351,13 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
         rst = log_ring_file_read(manager->ring_file, fileOffset + sizeof(log_persistent_item_header), buffer, header.log_size);
         if (rst != header.log_size)
         {
-
-            aos_error_log("project %s, logstore %s, read binlog file content failed, offset %lld, result %d",
+            // if read fail, just break
+            aos_warn_log("project %s, logstore %s, read binlog file content failed, offset %lld, result %d",
                           manager->config->project,
                           manager->config->logstore,
                           fileOffset + sizeof(log_persistent_item_header),
                           rst);
-            return -2;
+            break;
         }
         if (header.log_uuid - logUUID > 1024*1024)
         {
@@ -355,6 +366,11 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
                           manager->config->logstore,
                           header.log_uuid,
                           logUUID);
+            if (buffer != NULL)
+            {
+                free(buffer);
+                buffer = NULL;
+            }
             return -3;
         }
         // set empty log uuid len 0
@@ -375,6 +391,11 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
                           manager->config->logstore);
         }
 
+    }
+    if (buffer != NULL)
+    {
+        free(buffer);
+        buffer = NULL;
     }
 
     if (logUUID < manager->checkpoint.now_log_uuid)
@@ -422,7 +443,7 @@ static void log_persistent_manager_reset(log_persistent_manager * manager)
     log_persistent_manager_init(manager, config);
     manager->checkpoint.start_log_uuid = (int64_t)(time(NULL)) * 1000LL * 1000LL * 1000LL + 500LL * 1000LL * 1000LL;
     manager->checkpoint.now_log_uuid = manager->checkpoint.start_log_uuid;
-    manager->is_invalid = 1;
+    manager->is_invalid = 0;
 }
 
 int log_persistent_manager_recover(log_persistent_manager *manager,

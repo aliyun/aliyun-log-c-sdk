@@ -183,18 +183,19 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
         char * logBuf = persistent_manager->builder->grp->logs.buffer;
         size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
         clear_log_tag(&(persistent_manager->builder->grp->logs));
-        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize))
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
         {
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        int rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
         if (rst != LOG_PRODUCER_OK)
         {
             CS_LEAVE(persistent_manager->lock);
-            return rst;
+            return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -226,18 +227,19 @@ log_producer_client_add_log_raw(log_producer_client *client, const char *logBuf,
     if (persistent_manager != NULL)
     {
         CS_ENTER(persistent_manager->lock);
-        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize))
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+                manager->totalBufferSize > manager->producer_config->maxBufferBytes)
         {
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        int rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
         if (rst != LOG_PRODUCER_OK)
         {
             CS_LEAVE(persistent_manager->lock);
-            return rst;
+            return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -266,19 +268,19 @@ log_producer_client_add_log_with_array(log_producer_client *client,
         char * logBuf = persistent_manager->builder->grp->logs.buffer;
         size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
         clear_log_tag(&(persistent_manager->builder->grp->logs));
-        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize))
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
         {
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-
-        int rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
         if (rst != LOG_PRODUCER_OK)
         {
             CS_LEAVE(persistent_manager->lock);
-            return rst;
+            return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -308,18 +310,19 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
         char * logBuf = persistent_manager->builder->grp->logs.buffer;
         size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
         clear_log_tag(&(persistent_manager->builder->grp->logs));
-        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize))
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
         {
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        int rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
         if (rst != LOG_PRODUCER_OK)
         {
             CS_LEAVE(persistent_manager->lock);
-            return rst;
+            return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
