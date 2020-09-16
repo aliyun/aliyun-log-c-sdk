@@ -414,7 +414,7 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
     }
 
     // update new checkpoint
-    manager->checkpoint.now_log_uuid = logUUID;
+    manager->checkpoint.now_log_uuid = logUUID + 1;
     manager->checkpoint.now_file_offset = fileOffset;
     aos_info_log("project %s, logstore %s, replay bin log success, now checkpoint %lld %lld %lld %lld",
                  manager->config->project,

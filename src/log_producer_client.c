@@ -195,7 +195,7 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -239,7 +239,7 @@ log_producer_client_add_log_raw(log_producer_client *client, const char *logBuf,
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -280,7 +280,7 @@ log_producer_client_add_log_with_array(log_producer_client *client,
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }
@@ -322,7 +322,7 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
             CS_LEAVE(persistent_manager->lock);
             return LOG_PRODUCER_DROP_ERROR;
         }
-        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid);
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
         CS_LEAVE(persistent_manager->lock);
         return rst;
     }

@@ -71,6 +71,29 @@ int log_ring_file_write_single(log_ring_file *file, uint64_t offset,
                                const void *buffer,
                                size_t buffer_size)
 {
+
+//    {
+//        int openFlag = O_RDWR|O_CREAT;
+//        if (file->syncWrite)
+//        {
+//            openFlag |= O_SYNC;
+//        }
+//        file->nowFD = open(file->filePath, openFlag, 0644);
+//        if (file->nowFD < 0)
+//        {
+//            aos_error_log("open file failed %s, error %s", file->filePath, strerror(errno));
+//            return -1;
+//        }
+//        if (offset != 0)
+//        {
+//            lseek(file->nowFD, offset, SEEK_SET);
+//        }
+//        int rst = write(file->nowFD, (char *)buffer, buffer_size);
+//        close(file->nowFD);
+//        file->nowFD = 0;
+//        return rst;
+//    }
+
     int32_t fileIndex = 0;
     int32_t fileOffset = 0;
     size_t nowOffset = 0;
@@ -134,6 +157,27 @@ int log_ring_file_write(log_ring_file *file, uint64_t offset, int buffer_count,
 int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
                        size_t buffer_size)
 {
+//    {
+//        int openFlag = O_RDWR|O_CREAT;
+//        if (file->syncWrite)
+//        {
+//            openFlag |= O_SYNC;
+//        }
+//        file->nowFD = open(file->filePath, openFlag, 0644);
+//        if (file->nowFD < 0)
+//        {
+//            aos_error_log("open file failed %s, error %s", file->filePath, strerror(errno));
+//            return -1;
+//        }
+//        if (offset != 0)
+//        {
+//            lseek(file->nowFD, offset, SEEK_SET);
+//        }
+//        int rst = read(file->nowFD, buffer, buffer_size);
+//        close(file->nowFD);
+//        file->nowFD = 0;
+//        return rst;
+//    }
     int32_t fileIndex = 0;
     int32_t fileOffset = 0;
     size_t nowOffset = 0;
@@ -184,6 +228,7 @@ int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
                 if (rst > 0)
                 {
                     file->nowOffset += rst;
+                    nowOffset += rst;
                     continue;
                 }
                 if (rst == 0)
