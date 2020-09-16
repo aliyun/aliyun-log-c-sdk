@@ -1,6 +1,6 @@
 PROJECT(log_c_sdk)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)  
+CMAKE_MINIMUM_REQUIRED(VERSION 3.13.5)  
 
 set(CMAKE_VERSION 2.0.0)
 
@@ -28,6 +28,11 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/build/${CMAKE_BUILD_TYPE}/bin)
 set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
+aux_source_directory(src SRC_LIST)
+
+add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
+add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
+
 FIND_PROGRAM(APR_CONFIG_BIN NAMES apr-config apr-1-config PATHS /usr/bin /usr/local/bin /usr/local/apr/bin/)
 FIND_PROGRAM(APU_CONFIG_BIN NAMES apu-config apu-1-config PATHS /usr/bin /usr/local/bin /usr/local/apr/bin/)
 
@@ -47,6 +52,7 @@ IF (APR_CONFIG_BIN)
         OUTPUT_VARIABLE APR_LIBRARIES
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${APR_LIBRARIES}")
 ELSE()
     MESSAGE(FATAL_ERROR "Could not find apr-config/apr-1-config")
 ENDIF()
@@ -67,6 +73,7 @@ IF (APU_CONFIG_BIN)
         OUTPUT_VARIABLE APU_LIBRARIES
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${APU_LIBRARIES}")
 ELSE()
     MESSAGE(FATAL_ERROR "Could not find apu-config/apu-1-config")
 ENDIF()
@@ -80,20 +87,16 @@ IF (CURL_CONFIG_BIN)
         OUTPUT_VARIABLE CURL_LIBRARIES
         OUTPUT_STRIP_TRAILING_WHITESPACE
         )
+    target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${CURL_LIBRARIES}")
 ELSE()
     MESSAGE(FATAL_ERROR "Could not find curl-config")
 ENDIF()
-  
+
 # Compile and link lib_log_c_sdk
 include_directories(${APR_INCLUDE_DIR})
 include_directories(${APR_UTIL_INCLUDE_DIR})
 include_directories(${CURL_INCLUDE_DIR})
-
-aux_source_directory(src SRC_LIST)
-
-add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
-add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
-
+  
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
 
 file(GLOB HEADER_FILES src/*.h)
