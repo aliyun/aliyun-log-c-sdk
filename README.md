@@ -66,7 +66,8 @@ C Producer Lite使用curl进行网络操作，您需要确认这些库已经安�
 ```
 
 * 注意：
- - 执行./configure时默认是配置安装目录为/usr/local/，如果需要指定安装目录，请使用 ./configure --prefix=/your/install/path/
+ - 执行./configure时默认是配置安装目录为/usr/local/，如果需要指定安装目录，请使用 ./configure --prefix=/your/install/path/并且把/your/install/path/bin
+   加到PATH中去。
 
 #### LOG C SDK的安装
 
