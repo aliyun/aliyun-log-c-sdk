@@ -398,7 +398,7 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
         buffer = NULL;
     }
 
-    if (logUUID < manager->checkpoint.now_log_uuid)
+    if (logUUID < manager->checkpoint.now_log_uuid - 1)
     {
         // replay fail
         aos_fatal_log("project %s, logstore %s, replay bin log failed, now log uuid %lld, expected min log uuid %lld, start uuid %lld, start offset  %lld, now offset  %lld, replayed offset %lld",
