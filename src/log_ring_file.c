@@ -97,46 +97,34 @@ int log_ring_file_write_single(log_ring_file *file, uint64_t offset,
     int32_t fileIndex = 0;
     int32_t fileOffset = 0;
     size_t nowOffset = 0;
-    while (1)
+    while (nowOffset < buffer_size)
     {
         get_ring_file_offset(file, offset + nowOffset, &fileIndex, &fileOffset);
         if (log_ring_file_open_fd(file, offset, fileIndex, fileOffset) != 0)
         {
             return -1;
         }
-        if (fileOffset + buffer_size - nowOffset > file->maxFileSize)
-        {
-            int rst = write(file->nowFD, (char *)buffer + nowOffset, file->maxFileSize - fileOffset);
-            if (rst != file->maxFileSize - fileOffset)
-            {
-                aos_error_log("write buffer to file failed, file %s, offset %d, size %d, error %s",
-                              file->filePath,
-                              fileIndex + nowOffset,
-                              file->maxFileSize - fileOffset,
-                              strerror(errno));
-                return -1;
-            }
-            nowOffset += file->maxFileSize - fileOffset;
-            file->nowOffset += file->maxFileSize - fileOffset;
-            continue;
-        }
-        else
-        {
-            int rst = write(file->nowFD, (char *)buffer + nowOffset, buffer_size - nowOffset);
-            if (rst != buffer_size - nowOffset)
-            {
-                aos_error_log("write buffer to file failed, file %s, offset %d, size %d, error %s",
-                              file->filePath,
-                              fileIndex + nowOffset,
-                              buffer_size - nowOffset,
-                              strerror(errno));
-                return -1;
-            }
-            file->nowOffset = offset + buffer_size;
-            return buffer_size;
-        }
-    }
 
+        int writeSize = buffer_size - nowOffset;
+        if (file->maxFileSize - fileOffset == writeSize)
+        {
+            writeSize = file->maxFileSize - fileOffset;
+        }
+
+        int rst = write(file->nowFD, (char *)buffer + nowOffset, writeSize);
+        if (rst != writeSize)
+        {
+            aos_error_log("write buffer to file failed, file %s, offset %d, size %d, error %s",
+                          file->filePath,
+                          fileIndex + nowOffset,
+                          file->maxFileSize - fileOffset,
+                          strerror(errno));
+            return -1;
+        }
+        nowOffset += file->maxFileSize - fileOffset;
+        file->nowOffset += file->maxFileSize - fileOffset;
+    }
+    return buffer_size;
 }
 
 int log_ring_file_write(log_ring_file *file, uint64_t offset, int buffer_count,
@@ -181,7 +169,7 @@ int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
     int32_t fileIndex = 0;
     int32_t fileOffset = 0;
     size_t nowOffset = 0;
-    while (1)
+    while (nowOffset < buffer_size)
     {
         get_ring_file_offset(file, offset + nowOffset, &fileIndex, &fileOffset);
         if (log_ring_file_open_fd(file, offset, fileIndex, fileOffset) != 0)
@@ -189,64 +177,38 @@ int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
             return -1;
         }
         int rst = 0;
-        if (fileOffset + buffer_size - nowOffset > file->maxFileSize)
+        int readSize = buffer_size - nowOffset;
+        if (readSize > file->maxFileSize - fileOffset)
         {
-            if ((rst = read(file->nowFD, buffer + nowOffset, file->maxFileSize - fileOffset)) != file->maxFileSize - fileOffset)
-            {
-                if (errno == ENOENT)
-                {
-                    return 0;
-                }
-                if (rst > 0)
-                {
-                    file->nowOffset += rst;
-                    nowOffset += rst;
-                    continue;
-                }
-                if (rst == 0)
-                {
-                    return file->nowOffset - offset;
-                }
-                aos_error_log("read buffer from file failed, file %s, offset %d, size %d, error %s",
-                              file->filePath,
-                              fileIndex + nowOffset,
-                              file->maxFileSize - fileOffset,
-                              strerror(errno));
-                return -1;
-            }
-            nowOffset += file->maxFileSize - fileOffset;
-            file->nowOffset += file->maxFileSize - fileOffset;
+            readSize = file->maxFileSize - fileOffset;
         }
-        else
+        if ((rst = read(file->nowFD, buffer + nowOffset, readSize)) != readSize)
         {
-            if ((rst = read(file->nowFD, buffer + nowOffset, buffer_size - nowOffset)) != buffer_size - nowOffset)
+            if (errno == ENOENT)
             {
-                if (errno == ENOENT)
-                {
-                    return 0;
-                }
-                if (rst > 0)
-                {
-                    file->nowOffset += rst;
-                    nowOffset += rst;
-                    continue;
-                }
-                if (rst == 0)
-                {
-                    return file->nowOffset - offset;
-                }
-                aos_error_log("read buffer from file failed, file %s, offset %d, size %d, error %s",
-                              file->filePath,
-                              fileIndex + nowOffset,
-                              buffer_size - nowOffset,
-                              strerror(errno));
-                return -1;
+                return 0;
             }
-            file->nowOffset = offset + buffer_size;
-            return buffer_size;
+            if (rst > 0)
+            {
+                file->nowOffset += rst;
+                nowOffset += rst;
+                continue;
+            }
+            if (rst == 0)
+            {
+                return file->nowOffset - offset;
+            }
+            aos_error_log("read buffer from file failed, file %s, offset %d, size %d, error %s",
+                          file->filePath,
+                          fileIndex + nowOffset,
+                          file->maxFileSize - fileOffset,
+                          strerror(errno));
+            return -1;
         }
-
+        nowOffset += file->maxFileSize - fileOffset;
+        file->nowOffset += file->maxFileSize - fileOffset;
     }
+    return buffer_size;
 }
 
 int log_ring_file_flush(log_ring_file *file)

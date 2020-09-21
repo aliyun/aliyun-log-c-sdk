@@ -8,7 +8,7 @@
 #include "log_builder.h"
 #include "sds.h"
 
-#define MAX_CHECKPOINT_FILE_SIZE (sizeof(log_persistent_checkpoint) * 128)
+#define MAX_CHECKPOINT_FILE_SIZE (sizeof(log_persistent_checkpoint) * 1024)
 #define LOG_PERSISTENT_HEADER_MAGIC (0xf7216a5b76df67f5)
 
 static int32_t is_valid_log_checkpoint(log_persistent_checkpoint * checkpoint)
@@ -58,7 +58,7 @@ int save_log_checkpoint(log_persistent_manager * manager)
     log_persistent_checkpoint * checkpoint = &(manager->checkpoint);
     checkpoint->check_sum = checkpoint->start_log_uuid + checkpoint->now_log_uuid +
             checkpoint->start_file_offset + checkpoint->now_file_offset;
-    if (manager->checkpoint_file_size > MAX_CHECKPOINT_FILE_SIZE)
+    if (manager->checkpoint_file_size >= MAX_CHECKPOINT_FILE_SIZE)
     {
         if (manager->checkpoint_file_ptr != NULL)
         {
@@ -264,7 +264,8 @@ int log_persistent_manager_is_buffer_enough(log_persistent_manager *manager,
                                             size_t logSize)
 {
     if (manager->checkpoint.now_file_offset - manager->checkpoint.start_file_offset + logSize + 1024 >
-        (uint64_t)manager->config->maxPersistentFileCount * manager->config->maxPersistentFileSize)
+        (uint64_t)manager->config->maxPersistentFileCount * manager->config->maxPersistentFileSize &&
+        manager->checkpoint.now_log_uuid - manager->checkpoint.start_log_uuid < manager->config->maxPersistentLogCount - 1)
     {
         return 0;
     }
