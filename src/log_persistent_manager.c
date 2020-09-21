@@ -116,17 +116,21 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
         return;
     }
     log_persistent_manager * manager = (log_persistent_manager *)persistent_manager;
-    if (manager == NULL || manager->is_invalid == 1 || startId < 0 || endId < 0 || startId > endId)
+    if (manager == NULL)
     {
         return;
     }
-
-    // invalid id range
-    if (endId - startId > 1024 * 1024)
+    if (manager->is_invalid)
+    {
+        return;
+    }
+    if (startId < 0 || endId < 0 || startId > endId || endId - startId > 1024 * 1024)
     {
         aos_fatal_log("invalid id range %lld %lld", startId, endId);
         manager->is_invalid = 1;
+        return;
     }
+
     // multi thread send is not allowed, and this should never happen
     if (startId > manager->checkpoint.start_log_uuid)
     {
@@ -135,6 +139,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
                       manager->config->logstore,
                       startId,
                       manager->checkpoint.start_log_uuid);
+        manager->is_invalid = 1;
         return;
     }
     CS_ENTER(manager->lock);
@@ -413,9 +418,13 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
         return -4;
     }
 
-    // update new checkpoint
-    manager->checkpoint.now_log_uuid = logUUID + 1;
-    manager->checkpoint.now_file_offset = fileOffset;
+    // update new checkpoint when replay bin log success
+    if (fileOffset > manager->checkpoint.start_file_offset)
+    {
+        manager->checkpoint.now_log_uuid = logUUID + 1;
+        manager->checkpoint.now_file_offset = fileOffset;
+    }
+
     aos_info_log("project %s, logstore %s, replay bin log success, now checkpoint %lld %lld %lld %lld",
                  manager->config->project,
                  manager->config->logstore,

@@ -176,7 +176,7 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
-    if (persistent_manager != NULL)
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
         add_log_full(persistent_manager->builder, time(NULL), pair_count, keys, key_lens, values, val_lens);
@@ -224,7 +224,7 @@ log_producer_client_add_log_raw(log_producer_client *client, const char *logBuf,
     }
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
-    if (persistent_manager != NULL)
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
         if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
@@ -260,7 +260,7 @@ log_producer_client_add_log_with_array(log_producer_client *client,
     }
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
-    if (persistent_manager != NULL)
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
 
@@ -303,7 +303,7 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
-    if (persistent_manager != NULL)
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
         add_log_full_int32(persistent_manager->builder, time(NULL), pair_count, keys, key_lens, values, value_lens);
