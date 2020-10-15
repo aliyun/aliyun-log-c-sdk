@@ -54,6 +54,62 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream
     return totalLen;
 }
 
+
+static const char sls_month_snames[12][4] =
+        {
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        };
+static const char sls_day_snames[7][4] =
+        {
+                "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+        };
+
+void sls_rfc822_date(char *date_str, struct tm * xt)
+{
+    const char *s = NULL;
+    int real_year = 2000;
+
+
+    /* example: "Sat, 08 Jan 2000 18:31:41 GMT" */
+    /*           12345678901234567890123456789  */
+
+    s = &sls_day_snames[xt->tm_wday][0];
+    *date_str++ = *s++;
+    *date_str++ = *s++;
+    *date_str++ = *s++;
+    *date_str++ = ',';
+    *date_str++ = ' ';
+    *date_str++ = xt->tm_mday / 10 + '0';
+    *date_str++ = xt->tm_mday % 10 + '0';
+    *date_str++ = ' ';
+    s = &sls_month_snames[xt->tm_mon][0];
+    *date_str++ = *s++;
+    *date_str++ = *s++;
+    *date_str++ = *s++;
+    *date_str++ = ' ';
+    real_year = 1900 + xt->tm_year;
+    /* This routine isn't y10k ready. */
+    *date_str++ = real_year / 1000 + '0';
+    *date_str++ = real_year % 1000 / 100 + '0';
+    *date_str++ = real_year % 100 / 10 + '0';
+    *date_str++ = real_year % 10 + '0';
+    *date_str++ = ' ';
+    *date_str++ = xt->tm_hour / 10 + '0';
+    *date_str++ = xt->tm_hour % 10 + '0';
+    *date_str++ = ':';
+    *date_str++ = xt->tm_min / 10 + '0';
+    *date_str++ = xt->tm_min % 10 + '0';
+    *date_str++ = ':';
+    *date_str++ = xt->tm_sec / 10 + '0';
+    *date_str++ = xt->tm_sec % 10 + '0';
+    *date_str++ = ' ';
+    *date_str++ = 'G';
+    *date_str++ = 'M';
+    *date_str++ = 'T';
+    *date_str++ = 0;
+    return;
+}
+
 void get_now_time_str(char * buffer, int bufLen, int timeOffset)
 {
     time_t rawtime;
@@ -64,7 +120,7 @@ void get_now_time_str(char * buffer, int bufLen, int timeOffset)
       rawtime += timeOffset;
     }
     timeinfo = gmtime(&rawtime);
-    strftime(buffer, bufLen, "%a, %d %b %Y %H:%M:%S GMT", timeinfo);
+    sls_rfc822_date(buffer, timeinfo);
 }
 
 void post_log_result_destroy(post_log_result * result)
