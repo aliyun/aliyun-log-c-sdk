@@ -27,6 +27,18 @@ typedef int log_producer_result;
  */
 typedef void(*on_log_producer_send_done_function)(const char * config_name, log_producer_result result, size_t log_bytes, size_t compressed_bytes, const char * req_id, const char * error_message, const unsigned char * raw_buffer, void *user_param);
 
+typedef void(*on_log_producer_send_done_uuid_function)(const char * config_name,
+        log_producer_result result,
+        size_t log_bytes,
+        size_t compressed_bytes,
+        const char * req_id,
+        const char * error_message,
+        const unsigned char * raw_buffer,
+        void *user_param,
+        int64_t startId,
+        int64_t endId);
+
+
 extern log_producer_result LOG_PRODUCER_OK;
 extern log_producer_result LOG_PRODUCER_INVALID;
 extern log_producer_result LOG_PRODUCER_WRITE_ERROR;
@@ -38,6 +50,7 @@ extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED;
+extern log_producer_result LOG_PRODUCER_PERSISTENT_ERROR;
 
 /**
  * check if rst if ok

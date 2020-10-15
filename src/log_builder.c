@@ -105,6 +105,8 @@ log_group_builder* log_group_create()
     bder->grp = (log_group*)((char *)(bder) + sizeof(log_group_builder));
     bder->loggroup_size = sizeof(log_group) + sizeof(log_group_builder);
     bder->builder_time = time(NULL);
+    bder->start_uuid = -1;
+    bder->end_uuid = -1;
     return bder;
 }
 
@@ -159,6 +161,20 @@ void _adjust_buffer(log_tag * tag, uint32_t new_len)
     tag->buffer = (char *)realloc(tag->buffer, new_buffer_len);
     tag->now_buffer = tag->buffer + tag->now_buffer_len;
     tag->max_buffer_len = new_buffer_len;
+}
+
+void add_log_raw(log_group_builder *bder, const char *buffer, size_t size)
+{
+    ++bder->grp->n_logs;
+    log_tag * log = &(bder->grp->logs);
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + size)
+    {
+        _adjust_buffer(log, size);
+    }
+    memcpy(log->now_buffer, buffer, size);
+    bder->loggroup_size += size;
+    log->now_buffer_len += size;
+    log->now_buffer += size;
 }
 
 void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
@@ -433,7 +449,7 @@ void add_log_time(log_group_builder * bder, uint32_t logTime)
     bder->grp->log_now_buffer = (char *)buf;
 }
 
-void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len)
+void add_log_key_value(log_group_builder *bder, const char * key, size_t key_len, const char * value, size_t value_len)
 {
     // sum total size
     uint32_t kv_size = sizeof(char) * (key_len + value_len) + uint32_size((uint32_t)key_len) + uint32_size((uint32_t)value_len) + 2;
@@ -497,6 +513,94 @@ void add_log_end(log_group_builder * bder)
     logs->now_buffer_len += header_size + log_size;
     // update loggroup size
     bder->loggroup_size += header_size + log_size;
+}
+
+void clear_log_tag(log_tag *tag)
+{
+    tag->now_buffer = tag->buffer;
+    tag->now_buffer_len = 0;
+}
+
+void
+add_log_full_v2(log_group_builder *bder, uint32_t logTime, size_t logItemCount,
+                const char *logItemsBuf, const uint32_t *logItemsSize)
+{
+    if (logTime == 0)
+    {
+        logTime = time(NULL);
+    }
+    add_log_begin(bder);
+    add_log_time(bder, logTime);
+    size_t startOffset = 0;
+    logItemCount = (logItemCount >> 1) << 1;
+    for (size_t (i) = 0; (i) < logItemCount; i += 2)
+    {
+        uint32_t keySize = logItemsSize[i];
+        uint32_t valSize = logItemsSize[i+1];
+        add_log_key_value(bder, logItemsBuf + startOffset, keySize, logItemsBuf + startOffset + keySize, valSize);
+        startOffset += keySize + valSize;
+    }
+    add_log_end(bder);
+}
+
+void add_log_full_int32(log_group_builder *bder, uint32_t logTime,
+                        int32_t pair_count, char **keys, int32_t *key_lens,
+                        char **values, int32_t *val_lens)
+{
+    ++bder->grp->n_logs;
+
+    // limit logTime's min value, ensure varint size is 5
+    if (logTime < 1263563523)
+    {
+        logTime = 1263563523;
+    }
+
+    int32_t i = 0;
+    int32_t logSize = 6;
+    for (; i < pair_count; ++i)
+    {
+        uint32_t contSize = uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + key_lens[i] + val_lens[i] + 2;
+        logSize += 1 + uint32_size(contSize) + contSize;
+    }
+    int32_t totalBufferSize = logSize + 1 + uint32_size(logSize);
+
+    log_tag * log = &(bder->grp->logs);
+
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + totalBufferSize)
+    {
+        _adjust_buffer(log, totalBufferSize);
+    }
+
+
+    bder->loggroup_size += totalBufferSize;
+    uint8_t * buf = (uint8_t*)log->now_buffer;
+
+    *buf++ = 0x0A;
+    buf += uint32_pack(logSize, buf);
+
+    // time
+    *buf++=0x08;
+    buf += uint32_pack(logTime, buf);
+
+    // Content
+    // header
+    i = 0;
+    for (; i < pair_count; ++i)
+    {
+        *buf++ = 0x12;
+        buf += uint32_pack(uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + 2 + key_lens[i] + val_lens[i], buf);
+        *buf++ = 0x0A;
+        buf += uint32_pack(key_lens[i], buf);
+        memcpy(buf, keys[i], key_lens[i]);
+        buf += key_lens[i];
+        *buf++ = 0x12;
+        buf += uint32_pack(val_lens[i], buf);
+        memcpy(buf, values[i], val_lens[i]);
+        buf += val_lens[i];
+    }
+    assert(buf - (uint8_t*)log->now_buffer == totalBufferSize);
+    log->now_buffer_len += totalBufferSize;
+    log->now_buffer = (char *)buf;
 }
 
 #endif

@@ -13,6 +13,9 @@
 #include <stdint.h>
 
 #include "log_define.h"
+// always build
+#define LOG_KEY_VALUE_FLAG
+
 LOG_CPP_START
 
 typedef struct _log_tag{
@@ -21,6 +24,7 @@ typedef struct _log_tag{
     uint32_t max_buffer_len;
     uint32_t now_buffer_len;
 }log_tag;
+
 
 
 typedef struct _log_group{
@@ -45,6 +49,8 @@ typedef struct _log_group_builder{
     size_t loggroup_size;
     void * private_value;
     uint32_t builder_time;
+    int64_t start_uuid;
+    int64_t end_uuid;
 }log_group_builder;
 
 typedef struct _log_buffer {
@@ -59,11 +65,16 @@ extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();
 extern void log_group_destroy(log_group_builder* bder);
 extern void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens);
+extern void add_log_full_int32(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, int32_t * key_lens, char ** values, int32_t * val_lens);
+extern void add_log_full_v2(log_group_builder* bder, uint32_t logTime, size_t  logItemCount, const char * logItemsBuf, const uint32_t * logItemsSize);
+extern void add_log_raw(log_group_builder* bder, const char * buffer, size_t size);
 extern void add_source(log_group_builder* bder,const char* src,size_t len);
 extern void add_topic(log_group_builder* bder,const char* tpc,size_t len);
 extern void add_tag(log_group_builder* bder,const char* k,size_t k_len,const char* v,size_t v_len);
 extern void add_pack_id(log_group_builder* bder, const char* pack, size_t pack_len, size_t packNum);
 extern void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time);
+extern void clear_log_tag(log_tag * tag);
+
 
 // if you want to use this functions, add `-DADD_LOG_KEY_VALUE_FUN=ON` for cmake. eg `cmake . -DADD_LOG_KEY_VALUE_FUN=ON`
 #ifdef LOG_KEY_VALUE_FLAG
@@ -89,7 +100,7 @@ extern void add_log_time(log_group_builder * bder, uint32_t logTime);
  * @param value
  * @param value_len
  */
-extern void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len);
+extern void add_log_key_value(log_group_builder *bder, const char * key, size_t key_len, const char * value, size_t value_len);
 
 /**
  * add log end, call it when you add time and key&value done
