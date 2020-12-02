@@ -110,11 +110,15 @@ void sls_rfc822_date(char *date_str, struct tm * xt)
     return;
 }
 
-void get_now_time_str(char * buffer, int bufLen)
+void get_now_time_str(char * buffer, int bufLen, int timeOffset)
 {
     time_t rawtime;
     struct tm * timeinfo;
     time (&rawtime);
+    if (timeOffset != 0)
+    {
+        rawtime += timeOffset;
+    }
     timeinfo = gmtime(&rawtime);
     sls_rfc822_date(buffer, timeinfo);
 }
@@ -439,7 +443,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         // TODO: url
 
         char nowTime[64];
-        get_now_time_str(nowTime, 64);
+        get_now_time_str(nowTime, 64, option->ntp_time_offset);
 
         char md5Buf[33];
         md5Buf[32] = '\0';
