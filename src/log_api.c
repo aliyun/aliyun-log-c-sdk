@@ -3,11 +3,11 @@
 #include <string.h>
 #include "sds.h"
 
-int OS_HttpPost(const char *url,
-                char **header_array,
-                int header_count,
-                const void *data,
-                int data_len);
+int LOG_OS_HttpPost(const char *url,
+                    char **header_array,
+                    int header_count,
+                    const void *data,
+                    int data_len);
 
 log_status_t sls_log_init(int32_t log_global_flag)
 {
@@ -554,7 +554,8 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             h = h->next;
         }
 
-        int res = OS_HttpPost(url, header_array, header_count, (const void *)buffer->data, buffer->length);
+        int res = LOG_OS_HttpPost(url, header_array, header_count,
+                                  (const void *) buffer->data, buffer->length);
 
         result->statusCode = res;
         result->requestID  = req;

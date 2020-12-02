@@ -215,7 +215,7 @@ log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client *
 }
 
 log_producer_result
-log_producer_client_add_log_raw(log_producer_client *client, const char *logBuf,
+log_producer_client_add_log_raw(log_producer_client *client, char *logBuf,
                                 size_t logSize, int flush)
 {
     if (client == NULL || !client->valid_flag)

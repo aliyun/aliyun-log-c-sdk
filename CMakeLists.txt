@@ -59,7 +59,7 @@ INSTALL(FILES
   src/log_producer_client.h
   src/log_producer_common.h
   src/log_producer_config.h
-  src/http_interface.h
+  src/log_http_interface.h
   DESTINATION include/log_c_sdk)
 
 add_subdirectory(sample)

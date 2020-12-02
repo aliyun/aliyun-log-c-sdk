@@ -60,6 +60,10 @@ typedef struct _log_producer_config
     int32_t maxPersistentFileCount; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
     int32_t forceFlushDisk; // force flush disk
 
+    // if log's time if before than nowTime, it's time will be rewrite to nowTime if delta > maxLogDelayTime
+    // the default value is 7*24*3600
+    int32_t maxLogDelayTime;
+
 }log_producer_config;
 
 

@@ -68,7 +68,7 @@ extern log_producer_result log_producer_manager_add_log_int32(log_producer_manag
 
 
 extern log_producer_result log_producer_manager_add_log_raw(log_producer_manager * producer_manager,
-                                                             const char * logBuf,
+                                                             char * logBuf,
                                                              size_t logSize,
                                                              int flush,
                                                              int64_t uuid);

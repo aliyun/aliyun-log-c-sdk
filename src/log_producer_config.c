@@ -22,6 +22,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->compressType = 1;
     pConfig->ntpTimeOffset = 0;
     pConfig->using_https = 0;
+    pConfig->maxLogDelayTime = 7*24*3600;
 }
 
 

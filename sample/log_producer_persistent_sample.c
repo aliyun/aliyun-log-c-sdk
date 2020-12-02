@@ -112,6 +112,11 @@ void log_producer_post_logs()
                                         "content_key_9", "中文测试",
                                         "index", indexStr);
 
+            char * data = "1abcdefghijklmnopqrstuvwxyz0123456789";
+            uint32_t dataLen[4] = {1, 2, 3, 4};
+
+            rst = log_producer_client_add_log_with_array(client, 1263563523 + 1000, 2, data, dataLen, 0);
+
             if (rst != LOG_PRODUCER_OK)
             {
                 printf("add log error %d \n", rst);

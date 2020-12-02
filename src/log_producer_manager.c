@@ -501,10 +501,20 @@ log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * 
 
 log_producer_result
 log_producer_manager_add_log_raw(log_producer_manager *producer_manager,
-                                 const char *logBuf, size_t logSize, int flush,
+                                 char *logBuf, size_t logSize, int flush,
                                  int64_t uuid)
 {
     LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
+
+    uint32_t nowTimeUint32 = time(NULL);
+    uint32_t logTime = get_log_time(logBuf, logSize);
+    // reset to now time
+    if (logTime < nowTimeUint32 && nowTimeUint32 - logTime > producer_manager->producer_config->maxLogDelayTime)
+    {
+        fix_log_time(logBuf, logSize, nowTimeUint32);
+    }
+
+
 
     add_log_raw(producer_manager->builder, logBuf, logSize);
 
@@ -519,6 +529,13 @@ log_producer_manager_add_log_with_array(log_producer_manager *producer_manager,
                                         int64_t uuid)
 {
     LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
+
+    uint32_t nowTimeUint32 = time(NULL);
+    // reset to now time
+    if (logTime < nowTimeUint32 && nowTimeUint32 - logTime > producer_manager->producer_config->maxLogDelayTime)
+    {
+        logTime = nowTimeUint32;
+    }
 
     add_log_full_v2(producer_manager->builder, logTime, logItemCount, logItemsBuf, logItemsSize);
 
