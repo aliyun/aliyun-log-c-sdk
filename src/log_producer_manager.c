@@ -152,8 +152,21 @@ void * log_producer_flush_thread(void * param)
                     aos_error_log("serialize loggroup to proto buf with lz4 failed");
                     if (producer_manager->send_done_function)
                     {
-                      producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, builder->loggroup_size, 0,
-                        NULL, "serialize loggroup to proto buf with lz4 failed", NULL, producer_manager->user_param);
+                          producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, builder->loggroup_size, 0,
+                                                               NULL, "serialize loggroup to proto buf with lz4 failed", NULL, producer_manager->user_param);
+                    }
+                    if (producer_manager->uuid_send_done_function != NULL)
+                    {
+                        producer_manager->uuid_send_done_function(producer_manager->producer_config->logstore,
+                                                                  LOG_PRODUCER_INVALID,
+                                                                  builder->loggroup_size,
+                                                                  0,
+                                                                  NULL,
+                                                                  "invalid send param, magic num not found",
+                                                                  NULL,
+                                                                  producer_manager->uuid_user_param,
+                                                                  builder->start_uuid,
+                                                                  builder->end_uuid);
                     }
                 }
                 else
@@ -506,17 +519,30 @@ log_producer_manager_add_log_raw(log_producer_manager *producer_manager,
 {
     LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
 
-    uint32_t nowTimeUint32 = time(NULL);
-    uint32_t logTime = get_log_time(logBuf, logSize);
-    // reset to now time
-    if (logTime < nowTimeUint32 && nowTimeUint32 - logTime > producer_manager->producer_config->maxLogDelayTime)
+    int drop = 0;
+    if (producer_manager->producer_config->maxLogDelayTime > 0)
     {
-        fix_log_time(logBuf, logSize, nowTimeUint32);
+        uint32_t nowTimeUint32 = time(NULL);
+        uint32_t logTime = get_log_time(logBuf, logSize);
+        // reset to now time
+        if (logTime < nowTimeUint32 && nowTimeUint32 - logTime > producer_manager->producer_config->maxLogDelayTime)
+        {
+            if (producer_manager->producer_config->dropDelayLog == 0)
+            {
+                aos_error_log("fix log time because of too old log time, log time : %d, offset : %d", logTime, nowTimeUint32 - logTime);
+                fix_log_time(logBuf, logSize, nowTimeUint32);
+            }
+            else
+            {
+                aos_error_log("drop log because of too old log time, log time : %d, offset : %d", logTime, nowTimeUint32 - logTime);
+                drop = 1;
+            }
+        }
     }
-
-
-
-    add_log_raw(producer_manager->builder, logBuf, logSize);
+    if (drop == 0)
+    {
+        add_log_raw(producer_manager->builder, logBuf, logSize);
+    }
 
     LOG_PRODUCER_MANAGER_ADD_LOG_END;
 }
@@ -530,14 +556,32 @@ log_producer_manager_add_log_with_array(log_producer_manager *producer_manager,
 {
     LOG_PRODUCER_MANAGER_ADD_LOG_BEGIN;
 
-    uint32_t nowTimeUint32 = time(NULL);
-    // reset to now time
-    if (logTime < nowTimeUint32 && nowTimeUint32 - logTime > producer_manager->producer_config->maxLogDelayTime)
+    int drop = 0;
+    if (producer_manager->producer_config->maxLogDelayTime > 0)
     {
-        logTime = nowTimeUint32;
+        uint32_t nowTimeUint32 = time(NULL);
+        // reset to now time
+        if (logTime < nowTimeUint32 && nowTimeUint32 - logTime >
+                                       producer_manager->producer_config->maxLogDelayTime)
+        {
+            if (producer_manager->producer_config->dropDelayLog == 0)
+            {
+                logTime = nowTimeUint32;
+                aos_error_log("fix log time because of too old log time, log time : %d, offset : %d", logTime, nowTimeUint32 - logTime);
+            }
+            else
+            {
+                aos_error_log("drop log because of too old log time, log time : %d, offset : %d", logTime, nowTimeUint32 - logTime);
+                drop = 1;
+            }
+
+        }
     }
 
-    add_log_full_v2(producer_manager->builder, logTime, logItemCount, logItemsBuf, logItemsSize);
+    if (drop == 0)
+    {
+        add_log_full_v2(producer_manager->builder, logTime, logItemCount, logItemsBuf, logItemsSize);
+    }
 
     LOG_PRODUCER_MANAGER_ADD_LOG_END;
 }

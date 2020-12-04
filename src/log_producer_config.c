@@ -23,6 +23,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->ntpTimeOffset = 0;
     pConfig->using_https = 0;
     pConfig->maxLogDelayTime = 7*24*3600;
+    pConfig->dropDelayLog = 1;
 }
 
 
@@ -454,4 +455,20 @@ void log_producer_config_set_persistent_max_log_count(log_producer_config *confi
     if (config == NULL)
         return;
     config->maxPersistentLogCount = max_log_count;
+}
+
+void log_producer_config_set_max_log_delay_time(log_producer_config *config,
+                                                int32_t max_log_delay_time)
+{
+    if (config == NULL)
+        return;
+    config->maxLogDelayTime = max_log_delay_time;
+}
+
+void log_producer_config_set_drop_delay_log(log_producer_config *config,
+                                            int32_t drop_or_rewrite)
+{
+    if (config == NULL)
+        return;
+    config->dropDelayLog = drop_or_rewrite;
 }

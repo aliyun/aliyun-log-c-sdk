@@ -63,6 +63,7 @@ typedef struct _log_producer_config
     // if log's time if before than nowTime, it's time will be rewrite to nowTime if delta > maxLogDelayTime
     // the default value is 7*24*3600
     int32_t maxLogDelayTime;
+    int32_t dropDelayLog; // 1 true, 0 false, default 1
 
 }log_producer_config;
 
@@ -282,6 +283,20 @@ LOG_EXPORT void log_producer_config_set_persistent_force_flush(log_producer_conf
  * @param max_log_count
  */
 LOG_EXPORT void log_producer_config_set_persistent_max_log_count(log_producer_config * config, int32_t max_log_count);
+
+/**
+ * set max log delay time
+ * @param config
+ * @param max_log_delay_time
+ */
+LOG_EXPORT void log_producer_config_set_max_log_delay_time(log_producer_config * config, int32_t max_log_delay_time);
+
+/**
+ * set drop delay log or not
+ * @param config
+ * @param drop_or_rewrite
+ */
+LOG_EXPORT void log_producer_config_set_drop_delay_log(log_producer_config * config, int32_t drop_or_rewrite);
 
 /**
  * destroy config, this will free all memory allocated by this config
