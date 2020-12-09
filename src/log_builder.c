@@ -350,6 +350,55 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
 
 }
 
+void fix_log_time(char * pb_buffer, size_t len, uint32_t new_time)
+{
+    if (len == 0 || pb_buffer == NULL || new_time < 1263563523)
+    {
+        return;
+    }
+    if (pb_buffer[0] != 0x0A)
+    {
+        return;
+    }
+    ++pb_buffer;
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    unsigned logSizeLen = scan_varint(5, buf);
+    buf += logSizeLen;
+    // time
+    if (*buf == 0x08)
+    {
+        unsigned timeLen = scan_varint(5, buf + 1);
+        if (timeLen != 5)
+        {
+            return;
+        }
+        uint32_pack(new_time, buf + 1);
+    }
+}
+
+uint32_t get_log_time(const char * pb_buffer, size_t len)
+{
+    if (len == 0 || pb_buffer == NULL)
+    {
+        return time(NULL);
+    }
+    if (pb_buffer[0] != 0x0A)
+    {
+        return time(NULL);
+    }
+    ++pb_buffer;
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    unsigned logSizeLen = scan_varint(5, buf);
+    buf += logSizeLen;
+    // time
+    if (*buf == 0x08)
+    {
+        unsigned timeLen = scan_varint(5, buf + 1);
+        return parse_uint32(timeLen, buf + 1);
+    }
+    return time(NULL);
+}
+
 
 log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
@@ -525,7 +574,7 @@ void
 add_log_full_v2(log_group_builder *bder, uint32_t logTime, size_t logItemCount,
                 const char *logItemsBuf, const uint32_t *logItemsSize)
 {
-    if (logTime == 0)
+    if (logTime < 1263563523)
     {
         logTime = time(NULL);
     }

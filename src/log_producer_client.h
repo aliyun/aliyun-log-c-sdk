@@ -125,7 +125,7 @@ LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_int32(log_pr
  * @return same as log_producer_client_add_log_with_len
  */
 LOG_EXPORT log_producer_result log_producer_client_add_log_raw(log_producer_client * client,
-                                                                 const char * logBuf,
+                                                                 char * logBuf,
                                                                  size_t logSize,
                                                                  int flush);
 

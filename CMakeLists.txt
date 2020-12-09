@@ -34,22 +34,6 @@ IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
 ENDIF(ADD_LOG_KEY_VALUE_FUN)
 
-#curl-config
-FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
-  
-IF (CURL_CONFIG_BIN)
-    EXECUTE_PROCESS(
-        COMMAND ${CURL_CONFIG_BIN} --libs
-        OUTPUT_VARIABLE CURL_LIBRARIES
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-ELSE()
-    MESSAGE(FATAL_ERROR "Could not find curl-config")
-ENDIF()
-  
-# Compile and link lib_log_c_sdk
-include_directories(${CURL_INCLUDE_DIR})
-
 aux_source_directory(src SRC_LIST)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
@@ -75,6 +59,7 @@ INSTALL(FILES
   src/log_producer_client.h
   src/log_producer_common.h
   src/log_producer_config.h
+  src/log_http_interface.h
   DESTINATION include/log_c_sdk)
 
 add_subdirectory(sample)
