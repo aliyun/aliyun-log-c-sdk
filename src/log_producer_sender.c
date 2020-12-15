@@ -24,9 +24,9 @@ const char* LOGE_SHARD_WRITE_QUOTA_EXCEED = "ShardWriteQuotaExceed";
 const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_SLEEP_INTERVAL_MS 100
-#define MAX_NETWORK_ERROR_SLEEP_MS 2000
-#define BASE_NETWORK_ERROR_SLEEP_MS 500
-#define MAX_QUOTA_ERROR_SLEEP_MS 2000
+#define MAX_NETWORK_ERROR_SLEEP_MS 3000
+#define BASE_NETWORK_ERROR_SLEEP_MS 300
+#define MAX_QUOTA_ERROR_SLEEP_MS 10000
 #define BASE_QUOTA_ERROR_SLEEP_MS 500
 #define INVALID_TIME_TRY_INTERVAL 500
 
@@ -318,6 +318,23 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
             // discard data
             break;
 
+    }
+
+    // always try once when discard error
+    if (LOG_SEND_OK != send_result && error_info->last_send_error == 0)
+    {
+        error_info->last_send_error = LOG_SEND_DISCARD_ERROR;
+        error_info->last_sleep_ms = BASE_NETWORK_ERROR_SLEEP_MS;
+        error_info->first_error_time = time(NULL);
+        aos_warn_log("send fail, the error is discard data, retry once, project : %s, logstore : %s, buffer len : %d, raw len : %d, total buffer : %d,code : %d, error msg : %s",
+                     send_param->producer_config->project,
+                     send_param->producer_config->logstore,
+                     (int)send_param->log_buf->length,
+                     (int)send_param->log_buf->raw_length,
+                     (int)producer_manager->totalBufferSize,
+                     result->statusCode,
+                     result->errorMessage);
+        return BASE_NETWORK_ERROR_SLEEP_MS;
     }
 
     CS_ENTER(producer_manager->lock);
