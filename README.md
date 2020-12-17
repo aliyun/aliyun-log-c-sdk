@@ -122,6 +122,7 @@ C Producer Lite使用curl进行网络操作，您需要确认这些库已经安�
 | persistent_max_file_count | 持久化文件滚动个数，建议设置成10 | 整数，默认为0 | 
 | persistent_max_file_size | 每个持久化文件的大小，建议设置成1-10M | 整数，单位为字节，默认为 0 | 
 | persistent_max_log_count | 本地最多缓存的日志数，不建议超过1M，通常设置为65536即可 | 整数，默认为 0 |
+| drop_unauthorized_log | 是否丢弃鉴权失败的日志，0 不丢弃，1丢弃 | 整数，默认为 0，即不丢弃 |
 
 
 ### 样例代码
