@@ -248,6 +248,14 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                                                   send_param->start_uuid,
                                                   send_param->end_uuid);
     }
+    if (send_result == LOG_SEND_UNAUTHORIZED)
+    {
+        // if do not drop unauthorized log, change the code to LOG_PRODUCER_SEND_NETWORK_ERROR
+        if (producer_manager->producer_config->dropUnauthorizedLog == 0)
+        {
+            send_result = LOG_PRODUCER_SEND_NETWORK_ERROR;
+        }
+    }
     switch (send_result)
     {
         case LOG_SEND_OK:

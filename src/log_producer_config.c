@@ -472,3 +472,11 @@ void log_producer_config_set_drop_delay_log(log_producer_config *config,
         return;
     config->dropDelayLog = drop_or_rewrite;
 }
+
+void log_producer_config_set_drop_unauthorized_log(log_producer_config *config,
+                                                   int32_t drop_or_not)
+{
+    if (config == NULL)
+        return;
+    config->dropUnauthorizedLog = drop_or_not;
+}

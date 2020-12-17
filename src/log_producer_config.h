@@ -65,6 +65,8 @@ typedef struct _log_producer_config
     int32_t maxLogDelayTime;
     int32_t dropDelayLog; // 1 true, 0 false, default 1
 
+    int32_t dropUnauthorizedLog; // 1 true, 0 false, default 0
+
 }log_producer_config;
 
 
@@ -298,11 +300,20 @@ LOG_EXPORT void log_producer_config_set_max_log_delay_time(log_producer_config *
  */
 LOG_EXPORT void log_producer_config_set_drop_delay_log(log_producer_config * config, int32_t drop_or_rewrite);
 
+
+/**
+ * set drop unauthorized log or not
+ * @param config
+ * @param drop_or_not
+ */
+LOG_EXPORT void log_producer_config_set_drop_unauthorized_log(log_producer_config * config, int32_t drop_or_not);
+
 /**
  * destroy config, this will free all memory allocated by this config
  * @param config
  */
 LOG_EXPORT void destroy_log_producer_config(log_producer_config * config);
+
 
 
 #ifdef LOG_PRODUCER_DEBUG
