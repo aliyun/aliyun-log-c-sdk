@@ -329,3 +329,46 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
 
     return log_producer_manager_add_log_int32(manager, pair_count, keys, key_lens, values, value_lens, flush, -1);
 }
+
+
+log_producer_result
+log_producer_client_add_log_with_len_time_int32(log_producer_client *client,
+                                                uint32_t time_sec,
+                                                int32_t pair_count, char **keys,
+                                                int32_t *key_lens, char **values,
+                                                int32_t *value_lens, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+        add_log_full_int32(persistent_manager->builder, time_sec, pair_count, keys, key_lens, values, value_lens);
+        char * logBuf = persistent_manager->builder->grp->logs.buffer;
+        size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
+        clear_log_tag(&(persistent_manager->builder->grp->logs));
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
+
+    return log_producer_manager_add_log_int32(manager, pair_count, keys, key_lens, values, value_lens, flush, -1);
+}
+
