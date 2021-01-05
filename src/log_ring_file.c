@@ -106,7 +106,7 @@ int log_ring_file_write_single(log_ring_file *file, uint64_t offset,
         }
 
         int writeSize = buffer_size - nowOffset;
-        if (file->maxFileSize - fileOffset == writeSize)
+        if (file->maxFileSize - fileOffset <= writeSize)
         {
             writeSize = file->maxFileSize - fileOffset;
         }
@@ -121,8 +121,8 @@ int log_ring_file_write_single(log_ring_file *file, uint64_t offset,
                           strerror(errno));
             return -1;
         }
-        nowOffset += file->maxFileSize - fileOffset;
-        file->nowOffset += file->maxFileSize - fileOffset;
+        nowOffset += rst;
+        file->nowOffset += rst;
     }
     return buffer_size;
 }

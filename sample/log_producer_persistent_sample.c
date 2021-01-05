@@ -2,10 +2,22 @@
 // Created by ZhangCheng on 26/12/2017.
 //
 
+#include "log_http_interface.h"
 #include "log_api.h"
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 #include "inner_log.h"
+
+
+int returnCode = 200;
+
+int mocHttpPost(const char *url,
+char **header_array,
+int header_count,
+const void *data,
+int data_len) {
+    return returnCode;
+}
 
 void on_log_send_done(const char * config_name,
                       log_producer_result result,
@@ -68,6 +80,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_persistent_max_file_size(config, 1024*1024);
     log_producer_config_set_persistent_max_log_count(config, 65536);
 
+    log_set_http_post_func(mocHttpPost);
 
     return create_log_producer(config, on_send_done, NULL);
 }
@@ -92,8 +105,9 @@ void log_producer_post_logs()
         printf("create log producer client by config fail \n");
         exit(1);
     }
+    returnCode = 200;
 
-    //sleep(30000000);
+    sleep(30000000);
     int i = 0;
     for (; i < 100000; ++i)
     {
@@ -112,10 +126,10 @@ void log_producer_post_logs()
                                         "content_key_9", "中文测试",
                                         "index", indexStr);
 
-            char * data = "1abcdefghijklmnopqrstuvwxyz0123456789";
-            uint32_t dataLen[4] = {1, 2, 3, 4};
+            //char * data = "1abcdefghijklmnopqrstuvwxyz0123456789";
+            //uint32_t dataLen[4] = {1, 2, 3, 4};
 
-            rst = log_producer_client_add_log_with_array(client, 1263563523 + 1000, 2, data, dataLen, 0);
+            //rst = log_producer_client_add_log_with_array(client, 1263563523 + 1000, 2, data, dataLen, 0);
 
             if (rst != LOG_PRODUCER_OK)
             {
