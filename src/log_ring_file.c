@@ -17,7 +17,7 @@ static void get_ring_file_offset(log_ring_file * file,
 
 static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t fileIndex, int32_t fileOffset)
 {
-    if (file->nowFD > 0 && file->nowFileIndex == fileIndex && file->nowOffset == fileOffset)
+    if (file->nowFD > 0 && file->nowFileIndex == fileIndex && file->nowOffset % file->maxFileSize == fileOffset)
     {
         return 0;
     }

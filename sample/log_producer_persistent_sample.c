@@ -107,7 +107,7 @@ void log_producer_post_logs()
     }
     returnCode = 200;
 
-    sleep(30000000);
+    //sleep(30000000);
     int i = 0;
     for (; i < 100000; ++i)
     {

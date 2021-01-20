@@ -1,5 +1,6 @@
 #include "log_http_interface.h"
 #include <string.h>
+#include <time.h>
 
 
 LOG_CPP_START
@@ -12,12 +13,19 @@ void log_set_http_post_func(int (*f)(const char *url,
                                      const void *data,
                                      int data_len));
 
+__attribute__ ((visibility("default")))
+void log_set_get_time_unix_func(unsigned int (*f)());
+
 
 static int (*__LOG_OS_HttpPost)(const char *url,
                                 char **header_array,
                                 int header_count,
                                 const void *data,
                                 int data_len) = NULL;
+
+static unsigned int (*__LOG_GET_TIME)() = NULL;
+
+
 
 void log_set_http_post_func(int (*f)(const char *url,
                                      char **header_array,
@@ -26,6 +34,18 @@ void log_set_http_post_func(int (*f)(const char *url,
                                      int data_len))
 {
     __LOG_OS_HttpPost = f;
+}
+
+void log_set_get_time_unix_func(unsigned int (*f)())
+{
+    __LOG_GET_TIME = f;
+}
+
+unsigned int LOG_GET_TIME() {
+    if (__LOG_GET_TIME == NULL) {
+        return time(NULL);
+    }
+    return __LOG_GET_TIME();
 }
 
 int LOG_OS_HttpPost(const char *url,

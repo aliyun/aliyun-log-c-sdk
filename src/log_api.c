@@ -9,6 +9,8 @@ int LOG_OS_HttpPost(const char *url,
                     const void *data,
                     int data_len);
 
+unsigned int LOG_GET_TIME();
+
 log_status_t sls_log_init(int32_t log_global_flag)
 {
 #if 0
@@ -112,9 +114,8 @@ void sls_rfc822_date(char *date_str, struct tm * xt)
 
 void get_now_time_str(char * buffer, int bufLen, int timeOffset)
 {
-    time_t rawtime;
+    time_t rawtime = LOG_GET_TIME();
     struct tm * timeinfo;
-    time (&rawtime);
     if (timeOffset != 0)
     {
         rawtime += timeOffset;

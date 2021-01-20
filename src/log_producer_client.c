@@ -13,6 +13,8 @@
 static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
 
+unsigned int LOG_GET_TIME();
+
 typedef struct _producer_client_private {
 
     log_producer_manager * producer_manager;
@@ -179,7 +181,7 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
-        add_log_full(persistent_manager->builder, time(NULL), pair_count, keys, key_lens, values, val_lens);
+        add_log_full(persistent_manager->builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, val_lens);
         char * logBuf = persistent_manager->builder->grp->logs.buffer;
         size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
         clear_log_tag(&(persistent_manager->builder->grp->logs));
@@ -306,7 +308,7 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
         CS_ENTER(persistent_manager->lock);
-        add_log_full_int32(persistent_manager->builder, time(NULL), pair_count, keys, key_lens, values, value_lens);
+        add_log_full_int32(persistent_manager->builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, value_lens);
         char * logBuf = persistent_manager->builder->grp->logs.buffer;
         size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
         clear_log_tag(&(persistent_manager->builder->grp->logs));

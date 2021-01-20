@@ -16,6 +16,8 @@
 #include <unistd.h>
 #endif
 
+unsigned int LOG_GET_TIME();
+
 const char* LOGE_SERVER_BUSY = "ServerBusy";
 const char* LOGE_INTERNAL_SERVER_ERROR = "InternalServerError";
 const char* LOGE_UNAUTHORIZED = "Unauthorized";
@@ -55,7 +57,7 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
         aos_fatal_log("LZ4_decompress_safe error");
         return;
     }
-    uint32_t nowTime = time(NULL);
+    uint32_t nowTime = LOG_GET_TIME();
     fix_log_group_time(buf, lz4_buf->raw_length, nowTime);
 
     int compress_bound = LZ4_compressBound(lz4_buf->raw_length);
