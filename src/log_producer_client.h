@@ -39,6 +39,11 @@ LOG_EXPORT log_producer_result log_producer_env_init();
 LOG_EXPORT void log_producer_env_destroy();
 
 /**
+ * register get time function, the return value is unix time seconds, like time(NULL)
+ */
+LOG_EXPORT void log_set_get_time_function(unsigned int (*f)());
+
+/**
  * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it

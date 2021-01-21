@@ -13,6 +13,8 @@
 static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
 
+unsigned int (*__LOG_GET_TIME)() = NULL;
+
 typedef struct _producer_client_private {
 
     log_producer_manager * producer_manager;
@@ -51,6 +53,22 @@ void log_producer_env_destroy()
     s_init_flag = 0;
     sls_log_destroy();
 }
+
+void log_set_get_time_function(unsigned int (*f)())
+{
+    __LOG_GET_TIME = f;
+}
+
+unsigned int LOG_GET_TIME()
+{
+    if (__LOG_GET_TIME == NULL)
+    {
+        return time(NULL);
+    }
+    return __LOG_GET_TIME();
+}
+
+
 
 log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function, void *user_param)
 {

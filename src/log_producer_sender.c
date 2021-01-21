@@ -34,6 +34,8 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_TIME_INVALID_FIX
 
+unsigned int LOG_GET_TIME();
+
 typedef struct _send_error_info
 {
     log_producer_send_result last_send_error;
@@ -55,7 +57,7 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
         aos_fatal_log("LZ4_decompress_safe error");
         return;
     }
-    uint32_t nowTime = time(NULL);
+    uint32_t nowTime = LOG_GET_TIME();
     fix_log_group_time(buf, lz4_buf->raw_length, nowTime);
 
     int compress_bound = LZ4_compressBound(lz4_buf->raw_length);
