@@ -25,6 +25,9 @@ struct _log_producer {
     log_producer_client * root_client;
 };
 
+CRITICALSECTION g_last_timelock = NULL;
+int g_local_server_delta_time = 0; // server time - local time
+
 log_producer_result log_producer_env_init()
 {
     // if already init, just return s_last_result
@@ -33,6 +36,7 @@ log_producer_result log_producer_env_init()
         return s_last_result;
     }
     s_init_flag = 1;
+    g_last_timelock = CreateCriticalSection();
     if (0 != sls_log_init())
     {
         s_last_result = LOG_PRODUCER_INVALID;
@@ -51,6 +55,7 @@ void log_producer_env_destroy()
         return;
     }
     s_init_flag = 0;
+    ReleaseCriticalSection(g_last_timelock);
     sls_log_destroy();
 }
 
@@ -59,11 +64,21 @@ void log_set_get_time_function(unsigned int (*f)())
     __LOG_GET_TIME = f;
 }
 
+void log_set_local_server_delta_time(int serverTimeDeltaLocal)
+{
+    CS_ENTER(g_last_timelock);
+    g_local_server_delta_time = serverTimeDeltaLocal;
+    CS_LEAVE(g_last_timelock);
+}
+
 unsigned int LOG_GET_TIME()
 {
     if (__LOG_GET_TIME == NULL)
     {
-        return time(NULL);
+        CS_ENTER(g_last_timelock);
+        int deltaTime = g_local_server_delta_time;
+        CS_LEAVE(g_last_timelock);
+        return (unsigned int)((long long)time(NULL) + (long long)deltaTime);
     }
     return __LOG_GET_TIME();
 }

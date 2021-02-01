@@ -14,6 +14,7 @@
 #endif // WIN32
 
 unsigned int LOG_GET_TIME();
+void log_set_local_server_delta_time(int serverTimeDeltaLocal);
 
 log_status_t sls_log_init()
 {
@@ -33,7 +34,7 @@ void sls_log_destroy()
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     size_t totalLen = size * nmemb;
-    //printf("body  ---->  %d  %s \n", (int) (totalLen, (const char*) ptr);
+    //printf("body  ---->  %d  %s \n", (int) (totalLen), (const char*) ptr);
     sds * buffer = (sds *)stream;
     if (*buffer == NULL)
     {
@@ -43,15 +44,61 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
     return totalLen;
 }
 
+static void processUnixTimeFromHeader(char * ptr, int size)
+{
+    char buf[64];
+    memset(buf, 0, sizeof(buf));
+    int i = 0;
+    for (i = 0; i < size; ++i)
+    {
+        if (ptr[i] < '0' || ptr[i] > '9')
+        {
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    for (int j = 0; j < 60 && i < size; ++j, ++i)
+    {
+        if (ptr[i] >= '0' && ptr[i] <= '9')
+        {
+            buf[j] = ptr[i];
+        }
+        else
+        {
+            break;
+        }
+    }
+    long long serverTime = atoll(buf);
+    if (serverTime <= 1500000000 || serverTime > 4294967294)
+    {
+        // invalid time
+        return;
+    }
+    int deltaTime = serverTime - (long long)time(NULL);
+    if (deltaTime > 600 || deltaTime < -600)
+    {
+        log_set_local_server_delta_time(deltaTime);
+    }
+}
+
 static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream)
 {
     size_t totalLen = size * nmemb;
     //printf("header  ---->  %d  %s \n", (int) (totalLen), (const char*) ptr);
     sds * buffer = (sds *)stream;
+
+
     // only copy header start with x-log-
     if (totalLen > 6 && memcmp(ptr, "x-log-", 6) == 0)
     {
         *buffer = sdscpylen(*buffer, ptr, totalLen);
+    }
+    if (totalLen > 10 && memcmp(ptr, "x-sls-time", 10) == 0)
+    {
+        processUnixTimeFromHeader(ptr + 10, totalLen - 10);
     }
     return totalLen;
 }

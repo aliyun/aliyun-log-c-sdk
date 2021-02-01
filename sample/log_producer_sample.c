@@ -28,7 +28,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 {
     log_producer_config * config = create_log_producer_config();
     // endpoint list:  https://help.aliyun.com/document_detail/29008.html
-    log_producer_config_set_endpoint(config, "${your_endpoint}");
+    log_producer_config_set_endpoint(config, "cn-hangzhou.log.aliyuncs.com");
     log_producer_config_set_project(config, "${your_project}");
     log_producer_config_set_logstore(config, "${your_logstore}");
     log_producer_config_set_access_id(config, "${your_access_key_id}");
