@@ -96,7 +96,7 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream
     {
         *buffer = sdscpylen(*buffer, ptr, totalLen);
     }
-    if (totalLen > 10 && memcmp(ptr, "x-sls-time", 10) == 0)
+    if (totalLen > 10 && memcmp(ptr, "x-log-time", 10) == 0)
     {
         processUnixTimeFromHeader((char *)ptr + 10, totalLen - 10);
     }
