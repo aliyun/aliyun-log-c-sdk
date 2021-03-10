@@ -157,8 +157,8 @@ void * log_producer_send_fun(void * param)
         }
         lz4_log_buf * send_buf = send_param->log_buf;
 #ifdef SEND_TIME_INVALID_FIX
-        uint32_t nowTime = time(NULL);
-        if (nowTime - send_param->builder_time > 600 || send_param->builder_time > nowTime || error_info.last_send_error == LOG_SEND_TIME_ERROR)
+        uint32_t nowTime = LOG_GET_TIME();
+        if (nowTime - send_param->builder_time > 600 || send_param->builder_time - nowTime > 600 || error_info.last_send_error == LOG_SEND_TIME_ERROR)
         {
             _rebuild_time(send_param->log_buf, &send_buf);
             send_param->builder_time = nowTime;
