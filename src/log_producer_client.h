@@ -119,6 +119,7 @@ LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_produc
  * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
  *
  * @param client
+ * @param time_sec log time
  * @param pair_count key value pair count
  * @note pair_count not kv_count
  * @param keys the key array
