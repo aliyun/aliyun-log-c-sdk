@@ -209,3 +209,19 @@ log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client *
   log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
   return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
 }
+
+log_producer_result log_producer_client_add_log_with_len_time(log_producer_client *client,
+                                                uint32_t time_sec,
+                                                int32_t pair_count, char **keys,
+                                                size_t *key_lens, char **values,
+                                                size_t *value_lens, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    return log_producer_manager_add_log_with_time(manager, time_sec, pair_count, keys, key_lens, values, value_lens, flush);
+}

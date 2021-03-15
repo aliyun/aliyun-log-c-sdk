@@ -47,6 +47,8 @@ extern log_producer_result log_producer_manager_add_log(log_producer_manager * p
 
 extern log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
+extern log_producer_result log_producer_manager_add_log_with_time(log_producer_manager * producer_manager, uint32_t time_sec, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush);
+
 LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_MANAGER_H
