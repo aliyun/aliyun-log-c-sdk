@@ -114,6 +114,23 @@ LOG_EXPORT log_producer_result log_producer_client_add_log_with_len(log_producer
 */
 LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
+/**
+ * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.
+ * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
+ *
+ * @param client
+ * @param time_sec log time
+ * @param pair_count key value pair count
+ * @note pair_count not kv_count
+ * @param keys the key array
+ * @param key_lens the key len array
+ * @param values the value array
+ * @param value_lens the value len array
+ * @param flush if this log info need to send right, 1 mean flush and 0 means NO
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed, LOG_PRODUCER_PERSISTENT_ERROR is save binlog failed.
+ */
+LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_time(log_producer_client * client, uint32_t time_sec, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens, int flush);
+
 LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_CLIENT_H
