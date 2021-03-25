@@ -7,7 +7,8 @@
 #include "md5.h"
 #include "sds.h"
 
-#define LOG_PRODUCER_FLUSH_INTERVAL_MS 100
+// change from 100ms to 1000s, reduce wake up when app switch to back
+#define LOG_PRODUCER_FLUSH_INTERVAL_MS 1000
 
 
 #define MAX_LOGGROUP_QUEUE_SIZE 1024

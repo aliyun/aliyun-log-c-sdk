@@ -96,7 +96,8 @@ void * log_producer_send_thread(void * param)
 
     while (!producer_manager->shutdown)
     {
-        void * send_param = log_queue_pop(producer_manager->sender_data_queue, 30);
+        // change from 30ms to 1000s, reduce wake up when app switch to back
+        void * send_param = log_queue_pop(producer_manager->sender_data_queue, 1000);
         if (send_param != NULL)
         {
             ATOMICINT_INC(&producer_manager->multi_thread_send_count);
