@@ -41,6 +41,7 @@ typedef struct _log_producer_config
     int32_t logCountPerPackage;
     int32_t logBytesPerPackage;
     int32_t maxBufferBytes;
+    int32_t logQueueSize;
 
     char * netInterface;
     char * remote_address;
@@ -230,6 +231,16 @@ LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * conf
  * @param using_https
  */
 LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
+
+
+/**
+ * default http, 0 http, 1 https
+ * @param config
+ * @param log_queue_size
+ */
+LOG_EXPORT void log_producer_config_set_log_queue_size(log_producer_config * config, int32_t log_queue_size);
+
+
 
 /**
  * destroy config, this will free all memory allocated by this config

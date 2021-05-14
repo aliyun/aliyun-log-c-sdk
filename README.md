@@ -120,6 +120,7 @@ C Producer使用curl进行网络操作，您需要确认这些库已经安装，
 | packet_log_count      | 指定每个缓存的日志包中包含日志数量的最大值。                                         | 整数形式，取值为1~4096。默认2048。               |
 | packet_log_bytes      | 指定每个缓存的日志包的大小上限。                                                  | 整数形式，取值为1~5242880，单位为字节。默认为 3 * 1024 * 1024。 |
 | max_buffer_limit        | 指定单个Producer Client实例可以使用的内存的上限。                                           | 整数形式，单位为字节。默认为64 * 1024 * 1024。                  |
+| log_queue_size | 缓存队列的最大长度，默认通过 max_buffer_limit/packet_log_bytes + 10 自动计算，可以手动设置以获得更大的队列大小。                                           | 整数形式，支持32-128000。默认值max_buffer_limit/packet_log_bytes + 10。                  |
 | send_thread_count    | 指定发送线程数量，用于发送数据到日志服务。 | 整数形式，默认0，为0时发送与内部Flush公用一个线程，若您每秒日志发送不超过100条，无需设置此参数。                              |
 | net_interface | 网络发送绑定的网卡名 | 字符串，为空时表示自动选择可用网卡 |
 | connect_timeout_sec | 网络连接超时时间 | 整数，单位秒，默认为10 |
