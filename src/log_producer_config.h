@@ -41,6 +41,7 @@ typedef struct _log_producer_config
     int32_t logCountPerPackage;
     int32_t logBytesPerPackage;
     int32_t maxBufferBytes;
+    int32_t logQueueSize;
 
     char * netInterface;
     int32_t connectTimeoutSec;
@@ -216,6 +217,16 @@ LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * conf
 * @param ntp_time_diff
 */
 LOG_EXPORT void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32_t ntp_time_offset);
+
+
+
+/**
+ * default http, 0 http, 1 https
+ * @param config
+ * @param log_queue_size
+ */
+LOG_EXPORT void log_producer_config_set_log_queue_size(log_producer_config * config, int32_t log_queue_size);
+
 
 
 /**

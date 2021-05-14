@@ -10,7 +10,7 @@
 #define LOG_PRODUCER_FLUSH_INTERVAL_MS 100
 
 
-#define MAX_LOGGROUP_QUEUE_SIZE 1024
+#define MAX_LOGGROUP_QUEUE_SIZE 102400
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
 #define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
@@ -211,6 +211,10 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
     producer_manager->producer_config = producer_config;
 
     int32_t base_queue_size = producer_config->maxBufferBytes / (producer_config->logBytesPerPackage + 1) + 10;
+    if (producer_config->logQueueSize > 0)
+    {
+        base_queue_size = producer_config->logQueueSize;
+    }
     if (base_queue_size < MIN_LOGGROUP_QUEUE_SIZE)
     {
         base_queue_size = MIN_LOGGROUP_QUEUE_SIZE;

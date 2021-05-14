@@ -237,6 +237,15 @@ void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32
   config->ntpTimeOffset = ntp_time_offset;
 }
 
+void log_producer_config_set_log_queue_size(log_producer_config * config, int32_t log_queue_size)
+{
+    if (config == NULL || log_queue_size < 0)
+    {
+        return;
+    }
+    config->logQueueSize = log_queue_size;
+}
+
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
 {
     if(key == NULL || value == NULL)
