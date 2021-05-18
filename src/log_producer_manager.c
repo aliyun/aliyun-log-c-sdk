@@ -459,10 +459,15 @@ log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * 
     lz4_buf->length = compressed_bytes;
     lz4_buf->raw_length = log_bytes;
     memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
+
     CS_ENTER(producer_manager->lock);
     producer_manager->totalBufferSize += lz4_buf->length;
     CS_LEAVE(producer_manager->lock);
-    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
+
+    if (producer_manager->send_threads != NULL) {
+        return log_queue_push(producer_manager->sender_data_queue, send_param) == 0 ? LOG_PRODUCER_OK : LOG_PRODUCER_DROP_ERROR;
+    }
     return log_producer_send_data(send_param);
 }
 
