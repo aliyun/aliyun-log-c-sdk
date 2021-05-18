@@ -205,7 +205,8 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         curl_easy_setopt(curl, CURLOPT_URL, url);
 
         char nowTime[64];
-        get_now_time_str(nowTime, 64, option->ntp_time_offset);
+        int ntp_time_offset = option != NULL ? option->ntp_time_offset : 0;
+        get_now_time_str(nowTime, 64, ntp_time_offset);
 
         char md5Buf[33];
         md5Buf[32] = '\0';

@@ -383,13 +383,21 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
 
 log_producer_result log_producer_manager_send_raw_buffer(log_producer_manager * producer_manager, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
 {
-  // pack lz4_log_buf
-  lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
-  lz4_buf->length = compressed_bytes;
-  lz4_buf->raw_length = log_bytes;
-  memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
-  log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
-  return log_producer_send_data(send_param);
+    // pack lz4_log_buf
+    lz4_log_buf* lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_bytes);
+    lz4_buf->length = compressed_bytes;
+    lz4_buf->raw_length = log_bytes;
+    memcpy(lz4_buf->data, raw_buffer, compressed_bytes);
+    log_producer_send_param * send_param = create_log_producer_send_param(producer_manager->producer_config, producer_manager, lz4_buf, time(NULL));
+
+    CS_ENTER(producer_manager->lock);
+    producer_manager->totalBufferSize += lz4_buf->length;
+    CS_LEAVE(producer_manager->lock);
+
+    if (producer_manager->send_threads != NULL) {
+        return log_queue_push(producer_manager->sender_data_queue, send_param) == 0 ? LOG_PRODUCER_OK : LOG_PRODUCER_DROP_ERROR;
+    }
+    return log_producer_send_data(send_param);
 }
 
 log_producer_result log_producer_manager_add_log_with_time(log_producer_manager * producer_manager, uint32_t time_sec, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
