@@ -61,7 +61,8 @@ static void processUnixTimeFromHeader(char * ptr, int size)
             break;
         }
     }
-    for (int j = 0; j < 60 && i < size; ++j, ++i)
+    int j = 0;
+    for (j = 0; j < 60 && i < size; ++j, ++i)
     {
         if (ptr[i] >= '0' && ptr[i] <= '9')
         {

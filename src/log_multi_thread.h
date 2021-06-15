@@ -317,6 +317,7 @@ static inline int sema_wait_time_(sem_t* sema, unsigned int delayMs)
 
 #define SEMA_WAIT_TIME(sema,delay) sema_wait_time_(&sema,delay)
 
+#undef LOG_GET_UPTIME_SECONDS
 #define LOG_GET_UPTIME_SECONDS(val) do { \
     struct sysinfo info;                 \
     sysinfo(&info);                      \
@@ -342,9 +343,9 @@ typedef pthread_t THREAD;
 
 #define ATOMICINT volatile long
 
-#define ATOMICINT_INC(pAtopicInt) __sync_add_and_fetch(pAtopicInt, 1)
-#define ATOMICINT_DEC(pAtopicInt) __sync_add_and_fetch(pAtopicInt, -1)
-#define ATOMICINT_ADD(pAtopicInt, addVal) __sync_add_and_fetch(pAtopicInt, addVal)
+#define ATOMICINT_INC(pAtopicInt) (void)__sync_add_and_fetch((pAtopicInt), 1)
+#define ATOMICINT_DEC(pAtopicInt) (void)__sync_add_and_fetch((pAtopicInt), -1)
+#define ATOMICINT_ADD(pAtopicInt, addVal) (void)__sync_add_and_fetch((pAtopicInt), addVal)
 #define ATOMICINT_EXCHANGEADD(pAtopicInt, addVal) __sync_fetch_and_add(pAtopicInt, addVal)
 #define ATOMICINT_EXCHANGE(pAtopicInt, exchangeVal) __sync_val_compare_and_swap(pAtopicInt, *pAtopicInt, exchangeVal)
 #define ATOMICINT_COMPAREEXCAHNGE(pAtopicInt, exchangeVal, cmpVal) __sync_val_compare_and_swap(pAtopicInt, cmpVal, exchangeVal)
