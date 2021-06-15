@@ -191,16 +191,17 @@ void post_log_result_destroy(post_log_result * result)
 void fetch_server_time_from_sls(log_producer_config * config)
 {
     // must more than 1 count
-    lz4_log_buf buf[2];
-    buf->length = 2;
-    buf->raw_length = 2;
+    char buffer[64];
+    lz4_log_buf * logBuf = (lz4_log_buf *)buffer;
+    logBuf->length = 2;
+    logBuf->raw_length = 2;
     post_log_result * rst = post_logs_from_lz4buf(config->endpoint,
                                                   "slslogcsdksynctime",
                                                   "slslogcsdksynctime",
                                                   NULL,
                                                   config->endpoint,
                                                   "slslogcsdksynctime",
-                                                  &buf[0],
+                                                  logBuf,
                                                   NULL);
     post_log_result_destroy(rst);
 }
