@@ -109,6 +109,9 @@ typedef int BOOL;
 #define _strdup strdup
 #define _stricmp stricmp
 
+#include <sys/sysinfo.h>
+
+
 
 #endif
 

@@ -44,6 +44,20 @@ LOG_EXPORT void log_producer_env_destroy();
 LOG_EXPORT void log_set_get_time_function(unsigned int (*f)());
 
 /**
+ * fetch server time from sls
+ * @note this operation will send a packet to sls and parse the response time, this will block 30s at most.
+ * @param config
+ */
+LOG_EXPORT void fetch_server_time_from_sls(log_producer_config * config);
+
+/**
+ * async fetch server time from sls
+ * @note this operation will create a async task to get server time and will return immediately when task has been created
+ * @param config
+ */
+LOG_EXPORT void async_fetch_server_time_from_sls(log_producer_config * config);
+
+/**
  * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it

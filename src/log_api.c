@@ -8,13 +8,14 @@
 #include <string.h>
 #include "sds.h"
 #include "inner_log.h"
+#include "log_producer_config.h"
 
 #ifdef WIN32
 #undef interface
 #endif // WIN32
 
 unsigned int LOG_GET_TIME();
-void log_set_local_server_delta_time(int serverTimeDeltaLocal);
+void log_set_local_server_real_time(uint32_t serverTime);
 
 log_status_t sls_log_init()
 {
@@ -78,9 +79,9 @@ static void processUnixTimeFromHeader(char * ptr, int size)
         return;
     }
     int deltaTime = serverTime - (long long)time(NULL);
-    if (deltaTime > 600 || deltaTime < -600)
+    if (deltaTime > 30 || deltaTime < -30)
     {
-        log_set_local_server_delta_time(deltaTime);
+        log_set_local_server_real_time(serverTime);
     }
 }
 
@@ -184,6 +185,40 @@ void post_log_result_destroy(post_log_result * result)
         }
         free(result);
     }
+}
+
+void fetch_server_time_from_sls(log_producer_config * config)
+{
+    // must more than 1 count
+    lz4_log_buf buf[2];
+    buf->length = 2;
+    buf->raw_length = 2;
+    post_log_result * rst = post_logs_from_lz4buf(config->endpoint,
+                                                  "slslogcsdksynctime",
+                                                  "slslogcsdksynctime",
+                                                  NULL,
+                                                  config->endpoint,
+                                                  "slslogcsdksynctime",
+                                                  &buf[0],
+                                                  NULL);
+    post_log_result_destroy(rst);
+}
+
+#ifdef WIN32
+DWORD WINAPI log_fetch_server_time_from_sls_thread(LPVOID param)
+#else
+void * log_fetch_server_time_from_sls_thread(void * param)
+#endif
+{
+    log_producer_config * config = (log_producer_config *)param;
+    fetch_server_time_from_sls(config);
+    return NULL;
+}
+
+void async_fetch_server_time_from_sls(log_producer_config * config)
+{
+    THREAD thread;
+    THREAD_INIT(thread, log_fetch_server_time_from_sls_thread, config);
 }
 
 post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)

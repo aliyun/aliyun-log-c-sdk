@@ -26,7 +26,8 @@ struct _log_producer {
 };
 
 CRITICALSECTION g_last_timelock = NULL;
-int g_local_server_delta_time = 0; // server time - local time
+uint32_t g_local_server_time = 0; // server time - local time
+uint32_t g_last_server_up_time = 0;
 
 log_producer_result log_producer_env_init()
 {
@@ -64,10 +65,11 @@ void log_set_get_time_function(unsigned int (*f)())
     __LOG_GET_TIME = f;
 }
 
-void log_set_local_server_delta_time(int serverTimeDeltaLocal)
+void log_set_local_server_real_time(uint32_t serverTime)
 {
     CS_ENTER(g_last_timelock);
-    g_local_server_delta_time = serverTimeDeltaLocal;
+    g_local_server_time = serverTime;
+    LOG_GET_UPTIME_SECONDS(&g_last_server_up_time);
     CS_LEAVE(g_last_timelock);
 }
 
@@ -76,9 +78,18 @@ unsigned int LOG_GET_TIME()
     if (__LOG_GET_TIME == NULL)
     {
         CS_ENTER(g_last_timelock);
-        int deltaTime = g_local_server_delta_time;
+        uint32_t serverTime = g_local_server_time;
+        uint32_t lastUptime = g_last_server_up_time;
         CS_LEAVE(g_last_timelock);
-        return (unsigned int)((long long)time(NULL) + (long long)deltaTime);
+        if (serverTime == 0 || lastUptime == 0) {
+            return (unsigned int)time(NULL);
+        }
+        uint32_t nowUptime = 0;
+        LOG_GET_UPTIME_SECONDS(&nowUptime);
+        if (nowUptime < lastUptime) {
+            return nowUptime + serverTime;
+        }
+        return (unsigned int)(nowUptime - lastUptime + serverTime);
     }
     return __LOG_GET_TIME();
 }

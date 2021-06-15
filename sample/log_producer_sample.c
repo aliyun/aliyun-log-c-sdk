@@ -51,6 +51,10 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     // set send thread count
     log_producer_config_set_send_thread_count(config, 4);
 
+
+    // fix local time according to sls server time
+    async_fetch_server_time_from_sls(config);
+
     return create_log_producer(config, on_send_done, NULL);
 }
 
