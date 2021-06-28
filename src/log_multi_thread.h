@@ -3,11 +3,19 @@
 
 #include "log_inner_include.h"
 
+#ifdef LOG_GET_UPTIME_SECONDS
+#undef LOG_GET_UPTIME_SECONDS
+#endif
+
 // default get uptime implements : get time seconds
 #define LOG_GET_UPTIME_SECONDS(val) (*(val) = (uint32_t)(time(NULL)))
 
 //不同操作系统资源相关的工具宏定义
 #ifdef WIN32
+
+#ifdef LOG_GET_UPTIME_SECONDS
+#undef LOG_GET_UPTIME_SECONDS
+#endif
 
 #define LOG_GET_UPTIME_SECONDS(val) (*(val) = GetTickCount() / 1000)
 
@@ -317,7 +325,9 @@ static inline int sema_wait_time_(sem_t* sema, unsigned int delayMs)
 
 #define SEMA_WAIT_TIME(sema,delay) sema_wait_time_(&sema,delay)
 
+#ifdef LOG_GET_UPTIME_SECONDS
 #undef LOG_GET_UPTIME_SECONDS
+#endif
 #define LOG_GET_UPTIME_SECONDS(val) do { \
     struct sysinfo info;                 \
     sysinfo(&info);                      \
