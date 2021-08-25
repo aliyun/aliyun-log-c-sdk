@@ -35,7 +35,7 @@ void aos_log_format(int level,
 
     int len = snprintf(buffer, 1020, "[%s] [%s:%d] ",
                    _aos_log_level_str[level],
-                    file, line);
+                   file, line);
     
     va_start(args, fmt);
     len += vsnprintf(buffer + len, 1020 - len, fmt, args);

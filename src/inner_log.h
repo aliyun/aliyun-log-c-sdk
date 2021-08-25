@@ -1,5 +1,6 @@
 #ifndef LIBAOS_LOG_H
 #define LIBAOS_LOG_H
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -28,31 +29,33 @@ void aos_log_format(int level,
 void aos_log_set_level(aos_log_level_e level);
 
 #ifdef WIN32
+#define __FL_NME__ (strchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #define aos_fatal_log(format, ...) if(aos_log_level>=AOS_LOG_FATAL) \
-        aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_FATAL, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #define aos_error_log(format, ...) if(aos_log_level>=AOS_LOG_ERROR) \
-        aos_log_format(AOS_LOG_ERROR, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_ERROR, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #define aos_warn_log(format, ...) if(aos_log_level>=AOS_LOG_WARN)   \
-        aos_log_format(AOS_LOG_WARN, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_WARN, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #define aos_info_log(format, ...) if(aos_log_level>=AOS_LOG_INFO)   \
-        aos_log_format(AOS_LOG_INFO, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_INFO, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #define aos_debug_log(format, ...) if(aos_log_level>=AOS_LOG_DEBUG) \
-        aos_log_format(AOS_LOG_DEBUG, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_DEBUG, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #define aos_trace_log(format, ...) if(aos_log_level>=AOS_LOG_TRACE) \
-        aos_log_format(AOS_LOG_TRACE, __FILE__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
+        aos_log_format(AOS_LOG_TRACE, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)
 #else
+#define __FL_NME__ (strchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define aos_fatal_log(format, args...) if(aos_log_level>=AOS_LOG_FATAL) \
-        aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_FATAL, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_error_log(format, args...) if(aos_log_level>=AOS_LOG_ERROR) \
-        aos_log_format(AOS_LOG_ERROR, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_ERROR, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_warn_log(format, args...) if(aos_log_level>=AOS_LOG_WARN)   \
-        aos_log_format(AOS_LOG_WARN, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_WARN, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_info_log(format, args...) if(aos_log_level>=AOS_LOG_INFO)   \
-        aos_log_format(AOS_LOG_INFO, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_INFO, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_debug_log(format, args...) if(aos_log_level>=AOS_LOG_DEBUG) \
-        aos_log_format(AOS_LOG_DEBUG, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_DEBUG, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #define aos_trace_log(format, args...) if(aos_log_level>=AOS_LOG_TRACE) \
-        aos_log_format(AOS_LOG_TRACE, __FILE__, __LINE__, __FUNCTION__, format, ## args)
+        aos_log_format(AOS_LOG_TRACE, __FL_NME__, __LINE__, __FUNCTION__, format, ## args)
 #endif
 
 #ifdef __cplusplus
