@@ -1,6 +1,22 @@
 # Mac OS X
 .DS_Store
+# Project
+Testing
 
 # CMake
 CMakeCache.txt
+CMakeFiles
+build
+Makefile
+cmake_install.cmake
+install_manifest.txt
+log_c_sdk.cbp
+sample/CMakeFiles
+sample/Makefile
+sample/cmake_install.cmake
+sample/log_c_sdk_sample.cbp
+
+# IDEA
+.idea
+
 
