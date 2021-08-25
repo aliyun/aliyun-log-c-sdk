@@ -5,6 +5,7 @@
 #include "log_ring_file.h"
 #include "sds.h"
 #include "inner_log.h"
+#include <fcntl.h>
 
 static void get_ring_file_offset(log_ring_file * file,
                                  uint64_t offset,
