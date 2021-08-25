@@ -6,6 +6,7 @@
 #include "inner_log.h"
 #include "md5.h"
 #include "sds.h"
+#include <sys/time.h>
 
 // change from 100ms to 1000s, reduce wake up when app switch to back
 #define LOG_PRODUCER_FLUSH_INTERVAL_MS 1000
@@ -23,10 +24,24 @@ DWORD WINAPI log_producer_send_thread(LPVOID param);
 void * log_producer_send_thread(void * param);
 #endif
 
+void _generate_pack_id_timestamp(long *timestamp)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    *(timestamp) = ts.tv_nsec;
+}
+
 char * _get_pack_id(const char * configName, const char * ip)
 {
+    long timestamp;
+    _generate_pack_id_timestamp(&timestamp);
+
+    char *prefix = (char *) malloc(100 * sizeof (char));
+    strcpy(prefix, configName);
+    sprintf(prefix, "%s%ld", prefix, timestamp);
+
     unsigned char md5Buf[16];
-    mbedtls_md5((const unsigned char *)configName, strlen(configName), md5Buf);
+    mbedtls_md5((const unsigned char *)prefix, strlen(prefix), md5Buf);
     int loop = 0;
     char * val = (char *)malloc(sizeof(char) * 32);
     memset(val, 0, sizeof(char) * 32);
