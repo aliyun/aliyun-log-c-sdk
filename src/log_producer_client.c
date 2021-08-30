@@ -9,7 +9,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include "log_persistent_manager.h"
-#include "sds.h"
 
 static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
@@ -135,10 +134,6 @@ void log_producer_client_network_recover(log_producer_client * client)
     manager->networkRecover = 1;
 }
 
-log_group_builder * log_producer_client_new_log_group_builer() {
-    return log_group_create();
-}
-
 log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...)
 {
     if (client == NULL || !client->valid_flag)
@@ -174,71 +169,6 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
     return rst;
 }
 
-log_producer_result log_producer_client_send_log(log_producer_manager * producer_manager, log_group_builder * builder)
-{
-    log_producer_config * config = producer_manager->producer_config;
-    int i = 0;
-    for (i = 0; i < config->tagCount; ++i)
-    {
-        add_tag(builder, config->tags[i].key, strlen(config->tags[i].key), config->tags[i].value, strlen(config->tags[i].value));
-    }
-    if (config->topic != NULL)
-    {
-        add_topic(builder, config->topic, strlen(config->topic));
-    }
-    if (producer_manager->source != NULL)
-    {
-        add_source(builder, producer_manager->source, strlen(producer_manager->source));
-    }
-    if (producer_manager->pack_prefix != NULL)
-    {
-        add_pack_id(builder, producer_manager->pack_prefix, strlen(producer_manager->pack_prefix), producer_manager->pack_index++);
-    }
-
-    lz4_log_buf * lz4_buf = NULL;
-    // check compress type
-    if (config->compressType == 1)
-    {
-        lz4_buf = serialize_to_proto_buf_with_malloc_lz4(builder);
-    }
-    else
-    {
-        lz4_buf = serialize_to_proto_buf_with_malloc_no_lz4(builder);
-    }
-    log_group_destroy(builder);
-    if (lz4_buf == NULL)
-    {
-        return LOG_PRODUCER_DROP_ERROR;
-    }
-
-    log_post_option option;
-    memset(&option, 0, sizeof(log_post_option));
-    option.connect_timeout = config->connectTimeoutSec;
-    option.operation_timeout = config->sendTimeoutSec;
-    option.interface = config->netInterface;
-    option.compress_type = config->compressType;
-    option.using_https = config->using_https;
-    option.ntp_time_offset = config->ntpTimeOffset;
-    sds accessKeyId = NULL;
-    sds accessKey = NULL;
-    sds stsToken = NULL;
-    log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
-    post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId, accessKey, stsToken, config->project, config->logstore, lz4_buf, &option);
-    sdsfree(accessKeyId);
-    sdsfree(accessKey);
-    sdsfree(stsToken);
-
-    log_producer_send_result send_result = AosStatusToResult(rst);
-
-    post_log_result_destroy(rst);
-    free_lz4_log_buf(lz4_buf);
-
-    return send_result == LOG_SEND_OK ?
-            LOG_PRODUCER_OK :
-            (LOG_PRODUCER_SEND_NETWORK_ERROR + send_result - LOG_SEND_NETWORK_ERROR);
-
-}
-
 log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
 {
     if (client == NULL || !client->valid_flag)
@@ -247,13 +177,6 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     }
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-    if (flush != 0)
-    {
-        log_group_builder * builder = log_producer_client_new_log_group_builer();
-        add_log_full(builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, val_lens);
-        return log_producer_client_send_log(manager, builder);
-    }
-
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
@@ -302,12 +225,6 @@ log_producer_client_add_log_raw(log_producer_client *client, char *logBuf,
         return LOG_PRODUCER_INVALID;
     }
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-    if (flush != 0)
-    {
-        log_group_builder * builder = log_producer_client_new_log_group_builer();
-        add_log_raw(builder, logBuf, logSize);
-        return log_producer_client_send_log(manager, builder);
-    }
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
@@ -344,12 +261,6 @@ log_producer_client_add_log_with_array(log_producer_client *client,
         return LOG_PRODUCER_INVALID;
     }
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-    if (flush != 0)
-    {
-        log_group_builder * builder = log_producer_client_new_log_group_builer();
-        add_log_full_v2(builder, logTime, logItemCount, logItemsBuf, logItemsSize);
-        return log_producer_client_send_log(manager, builder);
-    }
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
@@ -393,12 +304,6 @@ log_producer_client_add_log_with_len_int32(log_producer_client *client,
     }
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-    if (flush != 0)
-    {
-        log_group_builder * builder = log_producer_client_new_log_group_builer();
-        add_log_full_int32(builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, value_lens);
-        return log_producer_client_send_log(manager, builder);
-    }
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {
@@ -441,12 +346,6 @@ log_producer_client_add_log_with_len_time_int32(log_producer_client *client,
     }
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-    if (flush != 0)
-    {
-        log_group_builder * builder = log_producer_client_new_log_group_builer();
-        add_log_full_int32(builder, time_sec, pair_count, keys, key_lens, values, value_lens);
-        return log_producer_client_send_log(manager, builder);
-    }
     log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
     if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
     {

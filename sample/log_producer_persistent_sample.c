@@ -7,136 +7,16 @@
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 #include "inner_log.h"
-#include "curl/curl.h"
-#include "sds.h"
 
-static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t totalLen = size * nmemb;
-    //printf("body  ---->  %d  %s \n", (int) (totalLen, (const char*) ptr);
-    sds * buffer = (sds *)stream;
-    if (*buffer == NULL)
-    {
-        *buffer = sdsnewEmpty(256);
-    }
-    *buffer = sdscpylen(*buffer, ptr, totalLen);
-    return totalLen;
-}
 
-static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream)
-{
-    size_t totalLen = size * nmemb;
-    //printf("header  ---->  %d  %s \n", (int) (totalLen), (const char*) ptr);
-    sds * buffer = (sds *)stream;
-    // only copy header start with x-log-
-    if (totalLen > 6 && memcmp(ptr, "x-log-", 6) == 0)
-    {
-        *buffer = sdscpylen(*buffer, ptr, totalLen);
-    }
-    return totalLen;
-}
-
+int returnCode = 200;
 
 int mocHttpPost(const char *url,
 char **header_array,
 int header_count,
 const void *data,
 int data_len) {
-    post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
-    memset(result, 0, sizeof(post_log_result));
-    CURL *curl = curl_easy_init();
-    if (curl != NULL)
-    {
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-
-        struct curl_slist* headers = NULL;
-
-        for (int i = 0; i < header_count; ++i)
-        {
-            headers = curl_slist_append(headers, header_array[i]);
-        }
-
-
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
-
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)data);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, data_len);
-        curl_easy_setopt(curl, CURLOPT_FILETIME, 1);
-        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
-        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1);
-        curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1);
-        curl_easy_setopt(curl, CURLOPT_NETRC, CURL_NETRC_IGNORED);
-
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "log-c-lite_0.1.0");
-
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15);
-
-        sds header = sdsnewEmpty(64);
-        sds body = NULL;
-
-
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
-        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &body);
-
-        //curl_easy_setopt(curl,CURLOPT_VERBOSE,1); //打印调试信息
-
-        CURLcode res = curl_easy_perform(curl);
-        //printf("result : %s \n", curl_easy_strerror(res));
-        long http_code;
-        if (res == CURLE_OK)
-        {
-            if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code)) != CURLE_OK)
-            {
-                printf("get info result : %s \n", curl_easy_strerror(res));
-                result->statusCode = -2;
-            } else {
-                result->statusCode = http_code;
-            }
-        }
-        else
-        {
-            if (body == NULL)
-            {
-                body = sdsnew(curl_easy_strerror(res));
-            }
-            else
-            {
-                body = sdscpy(body, curl_easy_strerror(res));
-            }
-            result->statusCode = -1 * (int)res;
-        }
-        // header and body 's pointer may be modified in callback (size > 256)
-        if (sdslen(header) > 0)
-        {
-            result->requestID = header;
-        }
-        else
-        {
-            sdsfree(header);
-            header = NULL;
-        }
-        // body will be NULL or a error string(net error or request error)
-        result->errorMessage = body;
-
-
-        curl_slist_free_all(headers); /* free the list again */
-        /* always cleanup */
-        curl_easy_cleanup(curl);
-    }
-
-
-    int code = result->statusCode;
-    if (result->statusCode != 200) {
-        printf("Code : %d, ReqId : %s, Error : %s \n", result->statusCode, result->requestID, result->errorMessage);
-    }
-    post_log_result_destroy(result);
-    return code;
+    return returnCode;
 }
 
 void on_log_send_done(const char * config_name,
@@ -173,7 +53,6 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_logstore(config, "${your_logstore}");
     log_producer_config_set_access_id(config, "${your_access_key_id}");
     log_producer_config_set_access_key(config, "${your_access_key_secret}");
-
 
 
     // if you do not need topic or tag, comment it
@@ -226,10 +105,11 @@ void log_producer_post_logs()
         printf("create log producer client by config fail \n");
         exit(1);
     }
+    returnCode = 200;
 
     //sleep(30000000);
     int i = 0;
-    for (; i < 10000000; ++i)
+    for (; i < 100000; ++i)
     {
         char indexStr[32];
         sprintf(indexStr, "%d", i);
@@ -246,10 +126,10 @@ void log_producer_post_logs()
                                         "content_key_9", "中文测试",
                                         "index", indexStr);
 
-            char * data = "1abcdefghijklmnopqrstuvwxyz0123456789";
-            uint32_t dataLen[4] = {1, 2, 3, 4};
+            //char * data = "1abcdefghijklmnopqrstuvwxyz0123456789";
+            //uint32_t dataLen[4] = {1, 2, 3, 4};
 
-            rst = log_producer_client_add_log_with_array(client, time(NULL), 2, data, dataLen, 1);
+            //rst = log_producer_client_add_log_with_array(client, 1263563523 + 1000, 2, data, dataLen, 0);
 
             if (rst != LOG_PRODUCER_OK)
             {
