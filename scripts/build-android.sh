@@ -28,3 +28,7 @@ rm -rf $OUTPUT_DIR/armeabi-v7a/objs
 rm -rf $OUTPUT_DIR/x86/objs
 rm -rf $OUTPUT_DIR/x86_64/objs
 rm -rf ./projects/android/obj
+
+OUTPUT_DIR=$OUTPUT_DIR/"include"
+mkdir -p $OUTPUT_DIR
+cp -r ./src/*.h $OUTPUT_DIR/
