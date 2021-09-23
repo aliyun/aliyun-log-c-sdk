@@ -26,7 +26,14 @@ void aos_log_format(int level,
                      const char *function,
                      const char *fmt, ...);
 
+void aos_print_log_android(int level, char *log);
+
 void aos_log_set_level(aos_log_level_e level);
+#ifdef __ANDROID__
+#define print_log(level, log) aos_print_log_android(level, log)
+#else
+#define print_log(level, log) puts(log)
+#endif
 
 #ifdef WIN32
 #define __FL_NME__ (strchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)

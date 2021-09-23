@@ -30,10 +30,17 @@ static void _set_default_producer_config(log_producer_config * pConfig)
 
 static void _copy_config_string(const char * value, sds * src_value)
 {
-    if (value == NULL || src_value == NULL)
+    if (src_value == NULL)
     {
         return;
     }
+
+    if (value == NULL)
+    {
+        *src_value = NULL;
+        return;
+    }
+
     size_t strLen = strlen(value);
     if (*src_value == NULL)
     {
@@ -278,6 +285,11 @@ void log_producer_config_add_tag(log_producer_config * pConfig, const char * key
 
 void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint)
 {
+    if (!endpoint) {
+        _copy_config_string(NULL, &config->endpoint);
+        return;
+    }
+
     if (strlen(endpoint) < 8) {
         return;
     }
@@ -362,12 +374,12 @@ int log_producer_config_is_valid(log_producer_config * config)
     if (config->endpoint == NULL || config->project == NULL || config->logstore == NULL)
     {
         aos_error_log("invalid producer config destination params");
-        return 0;
+//        return 0;
     }
     if (config->accessKey == NULL || config->accessKeyId == NULL)
     {
         aos_error_log("invalid producer config authority params");
-        return 0;
+//        return 0;
     }
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {

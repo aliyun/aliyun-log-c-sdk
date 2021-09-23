@@ -300,6 +300,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
             return error_info->last_sleep_ms;
         case LOG_SEND_SERVER_ERROR :
         case LOG_SEND_NETWORK_ERROR:
+        case LOG_SEND_PARAMETERS_ERROR:
             if (error_info->last_send_error != LOG_SEND_NETWORK_ERROR)
             {
                 error_info->last_send_error = LOG_SEND_NETWORK_ERROR;
@@ -417,9 +418,9 @@ log_producer_send_result AosStatusToResult(post_log_result * result)
     {
         return LOG_SEND_NETWORK_ERROR;
     }
-    if (result->statusCode >= 500 || result->requestID == NULL)
+    if (result->statusCode == 405)
     {
-        return LOG_SEND_SERVER_ERROR;
+        return LOG_SEND_PARAMETERS_ERROR;
     }
     if (result->statusCode == 403)
     {
@@ -428,6 +429,10 @@ log_producer_send_result AosStatusToResult(post_log_result * result)
     if (result->statusCode == 401 || result->statusCode == 404)
     {
         return LOG_SEND_UNAUTHORIZED;
+    }
+    if (result->statusCode >= 500 || result->requestID == NULL)
+    {
+        return LOG_SEND_SERVER_ERROR;
     }
     if (result->errorMessage != NULL && strstr(result->errorMessage, LOGE_TIME_EXPIRED) != NULL)
     {

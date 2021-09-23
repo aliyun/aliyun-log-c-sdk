@@ -420,10 +420,41 @@ void cur_slist_free_all(struct cur_slist *lst)
     }
 }
 
+static int is_str_empty(const char *str)
+{
+    if (!str)
+    {
+        return 1;
+    }
+
+    if (strcmp(str, "") == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
 {
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
+
+    // pre-check parameters
+    if (is_str_empty(endpoint) || is_str_empty(project) || is_str_empty(logstore))
+    {
+        result->statusCode = 405;
+        result->requestID  =  sdsnewEmpty(64);
+        result->errorMessage = sdsnew("Invalid producer config destination params");
+        return result;
+    }
+
+    if (is_str_empty(accesskeyId) || is_str_empty(accessKey))
+    {
+        result->statusCode = 405;
+        result->requestID  =  sdsnewEmpty(64);
+        result->errorMessage = sdsnew("Invalid producer config authority params");
+        return result;
+    }
 
     {
         // url

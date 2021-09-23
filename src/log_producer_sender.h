@@ -22,6 +22,7 @@ typedef int32_t log_producer_send_result;
 #define LOG_SEND_SERVER_ERROR 4
 #define LOG_SEND_DISCARD_ERROR 5
 #define LOG_SEND_TIME_ERROR 6
+#define LOG_SEND_PARAMETERS_ERROR 8
 
 extern const char* LOGE_SERVER_BUSY;//= "ServerBusy";
 extern const char* LOGE_INTERNAL_SERVER_ERROR;//= "InternalServerError";

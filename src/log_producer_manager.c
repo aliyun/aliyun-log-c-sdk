@@ -277,8 +277,15 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
         producer_manager->source = sdsnew("undefined");
     }
 
+    if (producer_config->logstore != NULL)
+    {
+        producer_manager->pack_prefix = _get_pack_id(producer_config->logstore, producer_manager->source);
+    }
+    else
+    {
+        producer_manager->pack_prefix = _get_pack_id("default_logstore", producer_manager->source);
+    }
 
-    producer_manager->pack_prefix = _get_pack_id(producer_config->logstore, producer_manager->source);
     if (producer_manager->pack_prefix == NULL)
     {
         producer_manager->pack_prefix = (char *)malloc(32);

@@ -50,6 +50,7 @@ extern log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_TIME_ERROR;
 extern log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED;
+extern log_producer_result LOG_PRODUCER_PARAMETERS_INVALID;
 extern log_producer_result LOG_PRODUCER_PERSISTENT_ERROR;
 
 /**
