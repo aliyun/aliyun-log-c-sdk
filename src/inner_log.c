@@ -25,25 +25,46 @@ void aos_log_set_level(aos_log_level_e level)
 
 
 void aos_log_format(int level,
-                            const char *file,
-                            int line,
-                            const char *function,
-                            const char *fmt, ...)
+                    const char *file,
+                    int line,
+                    const char *function,
+                    const char *fmt, ...)
 {
     va_list args;
     char buffer[1024];
+    int maxLen = 1020;
 
-    int len = snprintf(buffer, 1020, "[%s] [%s:%d] ",
-                   _aos_log_level_str[level],
-                    file, line);
-    
+    // @note return value maybe < 0 || > maxLen
+    int len = snprintf(buffer, maxLen, "[%s] [%s:%d] ",
+                       _aos_log_level_str[level],
+                       file, line);
+    // should never happen
+    if (len < 0 || len > maxLen) {
+        puts("[aos_log_format] error log fmt\n");
+        return;
+    }
+
     va_start(args, fmt);
-    len += vsnprintf(buffer + len, 1020 - len, fmt, args);
+    // @note return value maybe < 0 || > maxLen
+    int rst = vsnprintf(buffer + len, maxLen - len, fmt, args);
     va_end(args);
+    if (rst < 0) {
+        puts("[aos_log_format] error log fmt\n");
+        return;
+    }
 
-    while (buffer[len -1] == '\n') len--;
+    if (rst > maxLen - len) {
+        rst = maxLen - len;
+    }
+    len += rst;
+
+
+    while (len > 0 && buffer[len -1] == '\n')
+    {
+        len--;
+    }
+    buffer[len++] = '\n';
     buffer[len] = '\0';
 
     puts(buffer);
 }
-
