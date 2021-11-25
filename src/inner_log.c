@@ -40,7 +40,7 @@ void aos_log_format(int level,
                        file, function, line);
     // should never happen
     if (len < 0 || len > maxLen) {
-        puts("[aos_log_format] error log fmt\n");
+        print_log(AOS_LOG_ERROR, "[aos_log_format] error log fmt\n");
         return;
     }
 
@@ -49,7 +49,7 @@ void aos_log_format(int level,
     int rst = vsnprintf(buffer + len, maxLen - len, fmt, args);
     va_end(args);
     if (rst < 0) {
-        puts("[aos_log_format] error log fmt\n");
+        print_log(AOS_LOG_ERROR, "[aos_log_format] error log fmt\n");
         return;
     }
 
