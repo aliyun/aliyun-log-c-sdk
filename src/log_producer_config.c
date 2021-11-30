@@ -25,6 +25,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->maxLogDelayTime = 7*24*3600;
     pConfig->dropDelayLog = 1;
     pConfig->callbackFromSenderThread = 1;
+    pConfig->webTracking = 0;
 }
 
 
@@ -496,10 +497,20 @@ void log_producer_config_set_drop_unauthorized_log(log_producer_config *config,
 
 void log_producer_config_set_callback_from_sender_thread(log_producer_config * config,
                                                          int32_t callback_from_sender_thread)
-                                                         {
+{
     if (NULL == config) {
         return;
     }
 
     config->callbackFromSenderThread = callback_from_sender_thread;
-                                                         }
+}
+
+LOG_EXPORT void log_producer_config_set_use_webtracking(log_producer_config * config, int32_t webtracking)
+{
+    if (NULL == config)
+    {
+        return;
+    }
+
+    config->webTracking =  webtracking;
+}

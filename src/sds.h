@@ -84,6 +84,8 @@ sds sdscpy(sds s, const char *t);
 
 sds sdscatvprintf(sds s, const char *fmt, va_list ap);
 
+sds sdscatrepr(sds s, const char *p, size_t len);
+
 #ifdef __GNUC__
 
 sds sdscatprintf(sds s, const char *fmt, ...)
