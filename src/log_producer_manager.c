@@ -26,8 +26,23 @@ unsigned int LOG_GET_TIME();
 
 char * _get_pack_id(const char * configName, const char * ip)
 {
+    sds buf = sdsnew(configName);
+    buf = sdscat(buf, ip);
+    char timeAndRandomBuf[9];
+    uint32_t now_time = time(NULL);
+    timeAndRandomBuf[0] = now_time & 0xFF;
+    timeAndRandomBuf[1] = (now_time >> 8 ) & 0xFF;
+    timeAndRandomBuf[2] = (now_time >> 16 ) & 0xFF;
+    timeAndRandomBuf[3] = (now_time >> 24 ) & 0xFF;
+    timeAndRandomBuf[4] = rand() % 128;
+    timeAndRandomBuf[5] = rand() % 128;
+    timeAndRandomBuf[6] = rand() % 128;
+    timeAndRandomBuf[7] = rand() % 128;
+    timeAndRandomBuf[8] = '\0';
+    buf = sdscat(buf, timeAndRandomBuf);
     unsigned char md5Buf[16];
-    mbedtls_md5((const unsigned char *)configName, strlen(configName), md5Buf);
+    mbedtls_md5((const unsigned char *)buf, sdslen(buf), md5Buf);
+    sdsfree(buf);
     int loop = 0;
     char * val = (char *)malloc(sizeof(char) * 32);
     memset(val, 0, sizeof(char) * 32);
