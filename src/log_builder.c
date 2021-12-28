@@ -371,9 +371,37 @@ sds put_kv_with_comma(sds s, char *key, char *val, int comma)
     return s;
 }
 
+
+sds escape_json(char **value) {
+    size_t len = strlen(*value);
+    sds result = sdsnewEmpty(len);
+    for (int i = 0; i < len; i ++) {
+        switch ((*value)[i]) {
+            case '"': result = sdscat(result, "\\\""); break;
+            case '\\': result = sdscat(result, "\\\\"); break;
+            case '\b': result = sdscat(result, "\\b"); break;
+            case '\f': result = sdscat(result, "\\f"); break;
+            case '\n': result = sdscat(result, "\\n"); break;
+            case '\r': result = sdscat(result, "\\r"); break;
+            case '\t': result = sdscat(result, "\\t"); break;
+            default:
+                if ('\x00' <= (*value)[i] && (*value)[i] <= '\x1f') {
+                    result = sdscatprintf(result, "%s%04X","\\u", (int)(*value)[i]);
+                } else {
+                    result = sdscatchar(result, (*value)[i]);
+                }
+        }
+    }
+    return result;
+}
+
 sds put_kv(sds s, char *key, char *val)
 {
-    return put_kv_with_comma(s, key, val, 1);
+    sds v = escape_json(&val);
+    s =  put_kv_with_comma(s, key, v, 1);
+    sdsfree(v);
+
+    return s;
 }
 
 sds put_kv_no_comma(sds s, char *key, char *val)
