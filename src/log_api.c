@@ -104,10 +104,10 @@ void sls_rfc822_date(char *date_str, struct tm * xt)
 void get_now_time_str(char * buffer, int bufLen)
 {
     time_t rawtime;
-    struct tm * timeinfo;
+    struct tm timeinfo;
     time (&rawtime);
-    timeinfo = gmtime(&rawtime);
-    sls_rfc822_date(buffer, timeinfo);
+    gmtime_r(&rawtime, &timeinfo);
+    sls_rfc822_date(buffer, &timeinfo);
 }
 
 void post_log_result_destroy(post_log_result * result)
