@@ -115,13 +115,13 @@ void sls_rfc822_date(char *date_str, struct tm * xt)
 void get_now_time_str(char * buffer, int bufLen, int timeOffset)
 {
     time_t rawtime = LOG_GET_TIME();
-    struct tm * timeinfo;
+    struct tm timeinfo;
     if (timeOffset != 0)
     {
         rawtime += timeOffset;
     }
-    timeinfo = gmtime(&rawtime);
-    sls_rfc822_date(buffer, timeinfo);
+    gmtime_r(&rawtime, &timeinfo);
+    sls_rfc822_date(buffer, &timeinfo);
 }
 
 void post_log_result_destroy(post_log_result * result)
