@@ -182,6 +182,7 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
 
     log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens);
+    va_end(argp);
     free(keys);
     free(values);
     free(key_lens);
