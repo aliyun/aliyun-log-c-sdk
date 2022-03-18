@@ -67,6 +67,7 @@ typedef struct _log_producer_config
 
     int32_t dropUnauthorizedLog; // 1 true, 0 false, default 0
     int32_t callbackFromSenderThread; // 1 true, 0 false, default 1int32_t callbackFromSenderThread;
+    int32_t webTracking; // 1 webtracking, default 0
 
 }log_producer_config;
 
@@ -315,6 +316,8 @@ LOG_EXPORT void log_producer_config_set_drop_unauthorized_log(log_producer_confi
  * @param callback_from_sender_thread
  */
 LOG_EXPORT void log_producer_config_set_callback_from_sender_thread(log_producer_config * config, int32_t callback_from_sender_thread);
+
+LOG_EXPORT void log_producer_config_set_use_webtracking(log_producer_config * config, int32_t webtracking);
 
 /**
  * destroy config, this will free all memory allocated by this config

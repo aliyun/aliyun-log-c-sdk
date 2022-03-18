@@ -53,6 +53,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_logstore(config, "${your_logstore}");
     log_producer_config_set_access_id(config, "${your_access_key_id}");
     log_producer_config_set_access_key(config, "${your_access_key_secret}");
+    log_producer_config_set_use_webtracking(config, 1);
 
 
     // if you do not need topic or tag, comment it
@@ -74,7 +75,7 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 
     // set persistent
     log_producer_config_set_persistent(config, 1);
-    log_producer_config_set_persistent_file_path(config, "/Users/zhangcheng/Downloads/data/log.dat");
+    log_producer_config_set_persistent_file_path(config, "/Users/gordon/Downloads/data/log.dat");
     log_producer_config_set_persistent_force_flush(config, 1);
     log_producer_config_set_persistent_max_file_count(config, 10);
     log_producer_config_set_persistent_max_file_size(config, 1024*1024);

@@ -15,6 +15,7 @@ sample/CMakeFiles
 sample/Makefile
 sample/cmake_install.cmake
 sample/log_c_sdk_sample.cbp
+.cmake
 
 # IDEA
 .idea

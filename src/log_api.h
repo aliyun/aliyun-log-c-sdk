@@ -26,6 +26,8 @@ void sls_log_destroy();
 
 post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option);
 
+post_log_result * post_logs_from_lz4buf_webtracking(const char *endpoint, const char *project, const char *logstore, lz4_log_buf *buffer, log_post_option *option);
+
 void post_log_result_destroy(post_log_result * result);
 
 LOG_CPP_END

@@ -47,6 +47,38 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
 
 #ifdef SEND_TIME_INVALID_FIX
 
+void pb_to_webtracking(lz4_log_buf *lz4_buf, lz4_log_buf **new_lz4_buf)
+{
+    aos_debug_log("pb_to_webtracking start.");
+    char * buf = (char *)malloc(lz4_buf->raw_length);
+    if (LZ4_decompress_safe((const char* )lz4_buf->data, buf, lz4_buf->length, lz4_buf->raw_length) <= 0)
+    {
+        free(buf);
+        aos_fatal_log("pb_to_webtracking, LZ4_decompress_safe error");
+        return;
+    }
+
+    size_t len = serialize_pb_buffer_to_webtracking(buf, lz4_buf->raw_length, &buf);
+
+    int compress_bound = LZ4_compressBound(len);
+    char *compress_data = (char *)malloc(compress_bound);
+    int compressed_size = LZ4_compress_default((char *)buf, compress_data, len, compress_bound);
+    if(compressed_size <= 0)
+    {
+        aos_fatal_log("pb_to_webtracking, LZ4_compress_default error");
+        free(buf);
+        free(compress_data);
+        return;
+    }
+    *new_lz4_buf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_size);
+    (*new_lz4_buf)->length = compressed_size;
+    (*new_lz4_buf)->raw_length = len;
+    memcpy((*new_lz4_buf)->data, compress_data, compressed_size);
+    free(buf);
+    free(compress_data);
+    aos_debug_log("pb_to_webtracking end.");
+}
+
 void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 {
     aos_debug_log("rebuild log.");
@@ -111,6 +143,7 @@ void * log_producer_send_thread(void * param)
 
 void * log_producer_send_fun(void * param)
 {
+    aos_info_log("start send log data.");
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
     {
@@ -173,14 +206,24 @@ void * log_producer_send_fun(void * param)
         option.compress_type = config->compressType;
         option.using_https = config->using_https;
         option.ntp_time_offset = config->ntpTimeOffset;
-        sds accessKeyId = NULL;
-        sds accessKey = NULL;
-        sds stsToken = NULL;
-        log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
-        post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId, accessKey, stsToken, config->project, config->logstore, send_buf, &option);
-        sdsfree(accessKeyId);
-        sdsfree(accessKey);
-        sdsfree(stsToken);
+        post_log_result * rst;
+        if (config->webTracking)
+        {
+            pb_to_webtracking(send_param->log_buf, &send_buf);
+            rst = post_logs_from_lz4buf_webtracking(config->endpoint, config->project, config->logstore, send_buf, &option);
+        }
+        else
+        {
+            sds accessKeyId = NULL;
+            sds accessKey = NULL;
+            sds stsToken = NULL;
+            log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+            rst = post_logs_from_lz4buf(config->endpoint, accessKeyId, accessKey, stsToken, config->project, config->logstore, send_buf, &option);
+            sdsfree(accessKeyId);
+            sdsfree(accessKey);
+            sdsfree(stsToken);
+        }
+
         int32_t sleepMs = log_producer_on_send_done(send_param, rst, &error_info);
 
         post_log_result_destroy(rst);

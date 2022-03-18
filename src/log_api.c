@@ -2,6 +2,7 @@
 #include "log_api.h"
 #include <string.h>
 #include "sds.h"
+#include "inner_log.h"
 
 int LOG_OS_HttpPost(const char *url,
                     char **header_array,
@@ -436,6 +437,7 @@ static int is_str_empty(const char *str)
 
 post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
 {
+    aos_info_log("start post_logs_from_lz4buf.");
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
 
@@ -590,8 +592,10 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             h = h->next;
         }
 
+        aos_info_log("start LOG_OS_HttpPost.");
         int res = LOG_OS_HttpPost(url, header_array, header_count,
                                   (const void *) buffer->data, buffer->length);
+        aos_info_log("LOG_OS_HttpPost res: %d.", res);
 
         result->statusCode = res;
         result->requestID  = req;
@@ -608,6 +612,84 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sdsfree(headerSig);
     }
 
+
+    return result;
+}
+
+post_log_result * post_logs_from_lz4buf_webtracking(const char *endpoint, const char *project, const char *logstore, lz4_log_buf *buffer, log_post_option *option)
+{
+    aos_info_log("post_logs_from_lz4buf_webtracking start.");
+    post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
+    memset(result, 0, sizeof(post_log_result));
+
+    // pre-check parameters
+    if (is_str_empty(endpoint) || is_str_empty(project) || is_str_empty(logstore))
+    {
+        result->statusCode = 405;
+        result->requestID  =  sdsnewEmpty(64);
+        result->errorMessage = sdsnew("Invalid producer config destination params");
+        return result;
+    }
+
+    {
+        // url
+        sds url = NULL;
+        if (option->using_https) {
+            url = sdsnew("https://");
+        } else {
+            url = sdsnew("http://");
+        }
+
+        url = sdscat(url, project);
+        url = sdscat(url, ".");
+        url = sdscat(url, endpoint);
+        url = sdscat(url, "/logstores/");
+        url = sdscat(url, logstore);
+        url = sdscat(url, "/track");
+
+        char nowTime[64];
+        get_now_time_str(nowTime, 64, option->ntp_time_offset);
+
+        int lz4Flag = option->compress_type == 1;
+
+        struct cur_slist* headers = NULL;
+
+        headers=cur_slist_append(headers, "x-log-apiversion:0.6.0");
+        if (lz4Flag)
+        {
+            headers=cur_slist_append(headers, "x-log-compresstype:lz4");
+        }
+
+        sds headerRawLen = sdsnewEmpty(64);
+        headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+        headers=cur_slist_append(headers, headerRawLen);
+
+        sds req = sdsnewEmpty(64);
+        sds err = sdsnew("n/a");
+
+        const int max_header_count = 50;
+        char *header_array[max_header_count];
+        int header_count = 0;
+        struct cur_slist *h = headers;
+        while(h != NULL) {
+            header_array[header_count] = h->data;
+            header_count++;
+            h = h->next;
+        }
+
+        aos_info_log("post_logs_from_lz4buf_webtracking, start LOG_OS_HttpPost.");
+        int res = LOG_OS_HttpPost(url, header_array, header_count,
+                                  (const void *) buffer->data, buffer->length);
+        aos_info_log("post_logs_from_lz4buf_webtracking, LOG_OS_HttpPost res: %d.", res);
+
+        result->statusCode = res;
+        result->requestID  = req;
+        result->errorMessage = err;
+
+        cur_slist_free_all(headers); /* free the list again */
+        sdsfree(url);
+        sdsfree(headerRawLen);
+    }
 
     return result;
 }

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "inner_log.h"
 
 // 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
 #define INIT_LOG_SIZE_BYTES 3
@@ -348,6 +349,278 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
         buf += logSize;
     }
 
+}
+
+sds put_val(sds s, char* val)
+{
+    s = sdscat(s, "\"");
+    s = sdscat(s, val);
+    s = sdscat(s, "\"");
+    return s;
+}
+
+sds put_kv_with_comma(sds s, char *key, char *val, int comma)
+{
+    s = put_val(s, key);
+    s = sdscat(s, ":");
+    s = put_val(s, val);
+    if (comma)
+    {
+        s = sdscat(s, ",");
+    }
+    return s;
+}
+
+
+sds escape_json(char **value) {
+    size_t len = strlen(*value);
+    sds result = sdsnewEmpty(len);
+    for (int i = 0; i < len; i ++) {
+        switch ((*value)[i]) {
+            case '"': result = sdscat(result, "\\\""); break;
+            case '\\': result = sdscat(result, "\\\\"); break;
+            case '\b': result = sdscat(result, "\\b"); break;
+            case '\f': result = sdscat(result, "\\f"); break;
+            case '\n': result = sdscat(result, "\\n"); break;
+            case '\r': result = sdscat(result, "\\r"); break;
+            case '\t': result = sdscat(result, "\\t"); break;
+            default:
+                if ('\x00' <= (*value)[i] && (*value)[i] <= '\x1f') {
+                    result = sdscatprintf(result, "%s%04X","\\u", (int)(*value)[i]);
+                } else {
+                    result = sdscatchar(result, (*value)[i]);
+                }
+        }
+    }
+    return result;
+}
+
+sds put_kv(sds s, char *key, char *val)
+{
+    sds v = escape_json(&val);
+    s =  put_kv_with_comma(s, key, v, 1);
+    sdsfree(v);
+
+    return s;
+}
+
+sds put_kv_no_comma(sds s, char *key, char *val)
+{
+    return put_kv_with_comma(s, key, val, 0);
+}
+
+sds put_array(sds s, char *key, sds array)
+{
+    s = put_val(s, key);
+    s = sdscat(s, ":");
+    s = sdscat(s, array);
+    return s;
+}
+
+sds remove_comma(sds s) {
+    sds ns = sdsnewlen(s, sdslen(s) - 1);
+    sdsfree(s);
+    return ns;
+}
+
+unsigned int read_length_from_pb(const uint8_t *data)
+{
+    return scan_varint(5, data);
+}
+
+uint32_t read_chars_from_pb(uint8_t **data, char **chars)
+{
+    (*data) ++;
+    unsigned int len = read_length_from_pb(*data);
+    uint32_t _len = parse_uint32(len, *data);
+    (*data) += len;
+
+    *chars = (char *) malloc(sizeof (char) * (_len + 1) );
+    memset(*chars, 0, _len + 1);
+    memcpy(*chars, *data, _len + 1);
+    (*chars)[_len] = '\0';
+
+    (*data) += _len;
+
+    return _len;
+}
+
+extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, char **new_buffer)
+{
+    if (0 == len || NULL == pb_buffer)
+    {
+        return 0;
+    }
+
+    if (0x0A != pb_buffer[0])
+    {
+        return 0;
+    }
+
+    sds root = sdsnew("{");
+    sds _root_logs_ = sdsnew("[");
+    sds _root_tags_ = sdsnew("{");
+
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    uint8_t * startBuf = (uint8_t *)pb_buffer;
+    // log package
+    while (buf - startBuf < len && *buf == 0x0A)
+    {
+        aos_info_log("serialize_pb_buffer_to_webtracking, start process single log.");
+
+        ++buf;
+        unsigned logSizeLen = read_length_from_pb(buf);
+        buf += logSizeLen;
+
+        uint32_t time = 0;
+        // time
+        if (*buf == 0x08)
+        {
+            buf++;
+            unsigned timeLen = read_length_from_pb(buf);
+            if (timeLen != 5)
+            {
+                return 0;
+            }
+            time = parse_uint32(timeLen, buf);
+            buf += timeLen;
+
+            aos_info_log("serialize_pb_buffer_to_webtracking, time: %d", time);
+        }
+
+        sds _log_ = sdsnew("{");
+        if (time)
+        {
+            _log_ = sdscatprintf(_log_, "\"__time__\":%u,", time);
+        }
+
+        // Content
+        // Header
+        while (*buf == 0x12)
+        {
+            buf++;
+            unsigned kvLen = read_length_from_pb(buf);
+            buf += kvLen;
+
+            char *key = NULL;
+            char *val = NULL;
+            // key
+            if (*buf == 0x0A)
+            {
+                read_chars_from_pb(&buf, &key);
+            }
+
+            // value
+            if (*buf == 0x12)
+            {
+                read_chars_from_pb(&buf, &val);
+            }
+
+            if (key && val)
+            {
+                _log_ = put_kv(_log_, key, val);
+            }
+
+            aos_info_log("serialize_pb_buffer_to_webtracking, content {%s: %s}", key, val);
+
+            free(key);
+            free(val);
+        }
+
+        if (sdslen(_log_) > 1)
+        {
+            // remove last ','
+            _log_ = remove_comma(_log_);
+        }
+
+        _log_ = sdscat(_log_, "}");
+        _root_logs_ = sdscat(_root_logs_, _log_);
+        _root_logs_ = sdscat(_root_logs_, ",");
+        sdsfree(_log_);
+
+        // Topic
+        if (0x1A == *buf)
+        {
+            char *topic;
+            read_chars_from_pb(&buf, &topic);
+            aos_info_log("serialize_pb_buffer_to_webtracking, topic: %s", topic);
+            root = put_kv(root, "__topic__", topic);
+            free(topic);
+        }
+
+        // Source
+        if (0x22 == *buf)
+        {
+            char *source;
+            read_chars_from_pb(&buf, &source);
+            aos_info_log("serialize_pb_buffer_to_webtracking, source: %s", source);
+
+            root = put_kv(root, "__source__", source);
+            free(source);
+        }
+
+        // Tag
+        while (0x32 == *buf)
+        {
+            buf ++;
+
+            unsigned int tagLen = read_length_from_pb(buf);
+            buf += tagLen;
+
+            char *key = NULL;
+            char *val = NULL;
+            // key
+            if (*buf == 0x0A)
+            {
+                read_chars_from_pb(&buf, &key);
+            }
+
+            // value
+            if (*buf == 0x12)
+            {
+                read_chars_from_pb(&buf, &val);
+            }
+
+            if (key && val)
+            {
+                _root_tags_ = put_kv(_root_tags_, key, val);
+            }
+
+            aos_info_log("serialize_pb_buffer_to_webtracking, tag {%s: %s}", key, val);
+
+            free(key);
+            free(val);
+        }
+    }
+
+    aos_info_log("serialize_pb_buffer_to_webtracking, log package has been processed.");
+
+    if (sdslen(_root_logs_) > 1)
+    {
+        _root_logs_ = remove_comma(_root_logs_);
+    }
+    _root_logs_ = sdscat(_root_logs_, "]");
+    _root_logs_ = sdscat(_root_logs_, ",");
+    root = put_array(root, "__logs__", _root_logs_);
+
+    if (sdslen(_root_tags_) > 1)
+    {
+        _root_tags_ = remove_comma(_root_tags_);
+    }
+    _root_tags_ = sdscat(_root_tags_, "}");
+    root = put_array(root, "__tags__", _root_tags_);
+    root = sdscat(root, "}");
+
+    size_t root_len = sdslen(root);
+    *new_buffer = (char *)malloc(sizeof(char) * root_len);
+    memcpy(*new_buffer, root, root_len);
+
+    sdsfree(_root_logs_);
+    sdsfree(_root_tags_);
+    sdsfree(root);
+
+    aos_info_log("serialize_pb_buffer_to_webtracking, json: %s", *new_buffer);
+    return root_len;
 }
 
 void fix_log_time(char * pb_buffer, size_t len, uint32_t new_time)
