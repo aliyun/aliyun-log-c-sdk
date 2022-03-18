@@ -369,7 +369,9 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     // destroy root resources
     COND_SIGNAL(manager->triger_cond);
     aos_info_log("join flush thread begin");
-    THREAD_JOIN(manager->flush_thread);
+    if (manager->flush_thread) {
+        THREAD_JOIN(manager->flush_thread);
+    }
     aos_info_log("join flush thread success");
     if (manager->send_threads != NULL)
     {
@@ -377,7 +379,9 @@ void destroy_log_producer_manager(log_producer_manager * manager)
         int32_t threadId = 0;
         for (; threadId < manager->producer_config->sendThreadCount; ++threadId)
         {
-            THREAD_JOIN(manager->send_threads[threadId]);
+            if (manager->send_threads[threadId]) {
+                THREAD_JOIN(manager->send_threads[threadId]);
+            }
         }
         free(manager->send_threads);
         aos_info_log("join sender thread pool success");
