@@ -51,6 +51,8 @@ char * _get_pack_id(const char * configName, const char * ip)
         val[loop<<1] = a > 9 ? (a - 10 + 'A') : (a + '0');
         val[(loop<<1)|1] = b > 9 ? (b - 10 + 'A') : (b + '0');
     }
+
+    free(prefix);
     return val;
 }
 
