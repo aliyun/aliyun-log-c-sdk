@@ -8,10 +8,6 @@
 #include "sds.h"
 #include <sys/time.h>
 
-// change from 100ms to 1000s, reduce wake up when app switch to back
-#define LOG_PRODUCER_FLUSH_INTERVAL_MS 1000
-
-
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
@@ -99,21 +95,15 @@ void * log_producer_flush_thread(void * param)
 #endif
 {
     log_producer_manager * root_producer_manager = (log_producer_manager*)param;
-    aos_info_log("start run flusher thread, config : %s", root_producer_manager->producer_config->logstore);
+    int32_t interval = root_producer_manager->producer_config->flushIntervalInMS;
+    aos_info_log("[flusher] start run flusher thread, config : %s, flush interval: %d", root_producer_manager->producer_config->logstore, interval);
     while (root_producer_manager->shutdown == 0)
     {
-
         CS_ENTER(root_producer_manager->lock);
         COND_WAIT_TIME(root_producer_manager->triger_cond,
                        root_producer_manager->lock,
-                       LOG_PRODUCER_FLUSH_INTERVAL_MS);
+                       interval);
         CS_LEAVE(root_producer_manager->lock);
-
-
-//        aos_debug_log("run flusher thread, config : %s, now loggroup size : %d, delta time : %d",
-//                      producer_manager->producer_config->configName,
-//                      producer_manager->builder != NULL ? (int)producer_manager->builder->loggroup_size : 0,
-//                      (int)(now_time - producer_manager->firstLogTime));
 
         // try read queue
         do
@@ -167,7 +157,7 @@ void * log_producer_flush_thread(void * param)
 
                 if (lz4_buf == NULL)
                 {
-                    aos_error_log("serialize loggroup to proto buf with lz4 failed");
+                    aos_error_log("[flusher] serialize loggroup to proto buf with lz4 failed");
                     if (producer_manager->send_done_function)
                     {
                           producer_manager->send_done_function(producer_manager->producer_config->logstore, LOG_PRODUCER_DROP_ERROR, builder->loggroup_size, 0,
@@ -193,7 +183,7 @@ void * log_producer_flush_thread(void * param)
                     producer_manager->totalBufferSize += lz4_buf->length;
                     CS_LEAVE(root_producer_manager->lock);
 
-                    aos_debug_log("push loggroup to sender, config %s, loggroup size %d, lz4 size %d, now buffer size %d",
+                    aos_debug_log("[flusher] push loggroup to sender, config %s, loggroup size %d, lz4 size %d, now buffer size %d",
                                   config->logstore, (int)lz4_buf->raw_length, (int)lz4_buf->length, (int)producer_manager->totalBufferSize);
                     // if use multi thread, should change producer_manager->send_pool to NULL
                     //apr_pool_t * pool = config->sendThreadCount == 1 ? producer_manager->send_pool : NULL;
@@ -227,7 +217,7 @@ void * log_producer_flush_thread(void * param)
             log_producer_send_data(send_param);
         }
     }
-    aos_info_log("exit flusher thread, config : %s", root_producer_manager->producer_config->logstore);
+    aos_info_log("[flusher] exit flusher thread, config : %s", root_producer_manager->producer_config->logstore);
     return 0;
 }
 

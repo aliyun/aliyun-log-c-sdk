@@ -48,12 +48,13 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 {
     log_producer_config * config = create_log_producer_config();
     // endpoint list:  https://help.aliyun.com/document_detail/29008.html
+    aos_log_set_level(AOS_LOG_ALL);
     log_producer_config_set_endpoint(config, "${your_endpoint}");
     log_producer_config_set_project(config, "${your_project}");
     log_producer_config_set_logstore(config, "${your_logstore}");
     log_producer_config_set_access_id(config, "${your_access_key_id}");
     log_producer_config_set_access_key(config, "${your_access_key_secret}");
-    log_producer_config_set_use_webtracking(config, 1);
+    log_producer_config_set_use_webtracking(config, 0);
 
 
     // if you do not need topic or tag, comment it
@@ -69,6 +70,8 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_packet_log_count(config, 4096);
     log_producer_config_set_packet_timeout(config, 3000);
     log_producer_config_set_max_buffer_limit(config, 4*1024*1024);
+    log_producer_config_set_flush_interval(config, 10000);
+    log_producer_config_set_log_queue_interval(config, 10000);
 
     // @note only 1 thread count, persistent client only support 1 thread
     log_producer_config_set_send_thread_count(config, 1);

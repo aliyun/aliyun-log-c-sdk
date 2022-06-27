@@ -11,6 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "log_multi_thread.h"
+
+// change from 100ms to 1000s, reduce wake up when app switch to back
+#define LOG_PRODUCER_FLUSH_INTERVAL_MS 1000
+#define LOG_PRODUCER_QUEUE_POP_INTERVAL_MS 1000
+
 LOG_CPP_START
 
 
@@ -41,6 +46,8 @@ typedef struct _log_producer_config
     int32_t logCountPerPackage;
     int32_t logBytesPerPackage;
     int32_t maxBufferBytes;
+    int32_t flushIntervalInMS;
+    int32_t logQueuePopIntervalInMS;
 
     char * netInterface;
     int32_t connectTimeoutSec;
@@ -186,6 +193,22 @@ LOG_EXPORT void log_producer_config_set_packet_log_bytes(log_producer_config * c
  * @param max_buffer_bytes
  */
 LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes);
+
+/**
+ * set flush interval time in ms.
+ * @note interval time should > 30ms.
+ * @param config
+ * @param flush_interval_in_ms
+ */
+LOG_EXPORT void log_producer_config_set_flush_interval(log_producer_config * config, int32_t flush_interval_in_ms);
+
+/**
+ * set log queue pop interval time in ms.
+ * @note interval time should > 30ms.
+ * @param config
+ * @param log_queue_in_ms
+ */
+LOG_EXPORT void log_producer_config_set_log_queue_interval(log_producer_config * config, int32_t log_queue_in_ms);
 
 /**
  * set send thread count, default is 0.

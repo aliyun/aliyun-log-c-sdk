@@ -14,6 +14,8 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->logCountPerPackage = 2048;
     pConfig->packageTimeoutInMS = 3000;
     pConfig->maxBufferBytes = 64 * 1024 * 1024;
+    pConfig->flushIntervalInMS = LOG_PRODUCER_FLUSH_INTERVAL_MS;
+    pConfig->logQueuePopIntervalInMS = LOG_PRODUCER_QUEUE_POP_INTERVAL_MS;
 
     pConfig->connectTimeoutSec = 10;
     pConfig->sendTimeoutSec = 15;
@@ -178,6 +180,24 @@ void log_producer_config_set_max_buffer_limit(log_producer_config * config, int6
         return;
     }
     config->maxBufferBytes = max_buffer_bytes;
+}
+
+void log_producer_config_set_flush_interval(log_producer_config * config, int32_t flush_interval_in_ms)
+{
+    if (NULL == config || flush_interval_in_ms < 500)
+    {
+        return;
+    }
+    config->flushIntervalInMS = flush_interval_in_ms;
+}
+
+void log_producer_config_set_log_queue_interval(log_producer_config * config, int32_t log_queue_in_ms)
+{
+    if (NULL == config || log_queue_in_ms < 500)
+    {
+        return;
+    }
+    config->logQueuePopIntervalInMS = log_queue_in_ms;
 }
 
 void log_producer_config_set_send_thread_count(log_producer_config * config, int32_t thread_count)
