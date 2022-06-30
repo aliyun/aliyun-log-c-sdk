@@ -30,6 +30,8 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 #define BASE_NETWORK_ERROR_SLEEP_MS 300
 #define MAX_QUOTA_ERROR_SLEEP_MS 10000
 #define BASE_QUOTA_ERROR_SLEEP_MS 500
+#define MAX_PARAMETER_ERROR_SLEEP_MS 3000
+#define BASE_PARAMETER_ERROR_SLEEP_MS 300
 #define INVALID_TIME_TRY_INTERVAL 500
 
 #define DROP_FAIL_DATA_TIME_SECOND 86400
@@ -347,7 +349,6 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
             return error_info->last_sleep_ms;
         case LOG_SEND_SERVER_ERROR :
         case LOG_SEND_NETWORK_ERROR:
-        case LOG_SEND_PARAMETERS_ERROR:
             if (error_info->last_send_error != LOG_SEND_NETWORK_ERROR)
             {
                 error_info->last_send_error = LOG_SEND_NETWORK_ERROR;
@@ -366,6 +367,32 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                 }
             }
             aos_warn_log("[sender] send network error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
+                         send_param->producer_config->project,
+                         send_param->producer_config->logstore,
+                         (int)send_param->log_buf->length,
+                         (int)send_param->log_buf->raw_length,
+                         result->statusCode,
+                         result->errorMessage);
+            return error_info->last_sleep_ms;
+        case LOG_SEND_PARAMETERS_ERROR:
+            if (error_info->last_send_error != LOG_SEND_PARAMETERS_ERROR)
+            {
+                error_info->last_send_error = LOG_SEND_PARAMETERS_ERROR;
+                error_info->last_sleep_ms = BASE_PARAMETER_ERROR_SLEEP_MS;
+                error_info->first_error_time = time(NULL);
+            }
+            else
+            {
+                if (error_info->last_sleep_ms < MAX_PARAMETER_ERROR_SLEEP_MS)
+                {
+                    error_info->last_sleep_ms *= 2;
+                }
+                if (time(NULL) - error_info->first_error_time > DROP_FAIL_DATA_TIME_SECOND)
+                {
+                    break;
+                }
+            }
+            aos_warn_log("[sender] send parameters error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
                          send_param->producer_config->project,
                          send_param->producer_config->logstore,
                          (int)send_param->log_buf->length,
