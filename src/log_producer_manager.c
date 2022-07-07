@@ -8,6 +8,12 @@
 #include "sds.h"
 #include <sys/time.h>
 
+#ifdef __MACH__
+#include <stdio.h>
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 #define MAX_LOGGROUP_QUEUE_SIZE 1024
 #define MIN_LOGGROUP_QUEUE_SIZE 32
 
@@ -23,7 +29,17 @@ void * log_producer_send_thread(void * param);
 void _generate_pack_id_timestamp(long *timestamp)
 {
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+    clock_get_time(cclock, &mts);
+    mach_port_deallocate(mach_task_self(), cclock);
+    ts.tv_sec = mts.tv_sec;
+    ts.tv_nsec = mts.tv_nsec;
+#else
+    clock_gettime(CLOCK_REALTIME, &ts);
+#endif
     *(timestamp) = ts.tv_nsec;
 }
 
