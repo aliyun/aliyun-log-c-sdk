@@ -209,6 +209,8 @@ void * log_producer_send_fun(void * param)
         option.compress_type = config->compressType;
         option.using_https = config->using_https;
         option.ntp_time_offset = config->ntpTimeOffset;
+        option.mode = config->mode;
+        option.shardKey = config->shardKey;
         post_log_result * rst;
         if (config->webTracking)
         {

@@ -28,6 +28,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->dropDelayLog = 1;
     pConfig->callbackFromSenderThread = 1;
     pConfig->webTracking = 0;
+    pConfig->mode = 0;
 }
 
 
@@ -117,6 +118,9 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     if (pConfig->persistentFilePath != NULL)
     {
         sdsfree(pConfig->persistentFilePath);
+    }
+    if (pConfig->mode == 1 && NULL != pConfig->shardKey) {
+        sdsfree(pConfig->shardKey);
     }
     free(pConfig);
 }
@@ -533,4 +537,22 @@ LOG_EXPORT void log_producer_config_set_use_webtracking(log_producer_config * co
     }
 
     config->webTracking =  webtracking;
+}
+
+void log_producer_config_set_mode(log_producer_config *config, int32_t mode) {
+    if (NULL == config)
+    {
+        return;
+    }
+
+    config->mode = mode;
+}
+
+void log_producer_config_set_shardkey(log_producer_config *config, const char *shardKey) {
+    if (NULL == config)
+    {
+        return;
+    }
+
+    _copy_config_string(shardKey, &config->shardKey);
 }

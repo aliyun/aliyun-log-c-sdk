@@ -18,6 +18,8 @@ struct _log_post_option
   int compress_type; // 0 no compress, 1 lz4
   int ntp_time_offset; //time offset between local time and server time
   int using_https; // 0 http, 1 https
+  int mode; // 0, LoadBalance; 1 KeyShard
+  char *shardKey;
 };
 typedef struct _log_post_option log_post_option;
 
