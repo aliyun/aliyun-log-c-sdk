@@ -223,7 +223,7 @@ void * log_producer_send_fun(void * param)
             sds accessKey = NULL;
             sds stsToken = NULL;
             log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
-            rst = post_logs_from_lz4buf(config->endpoint, accessKeyId, accessKey, stsToken, config->project, config->logstore, send_buf, &option);
+            rst = post_logs_from_lz4buf_with_config(config, config->endpoint, config->project, config->logstore, accessKeyId, accessKey, stsToken, send_buf, &option);
             sdsfree(accessKeyId);
             sdsfree(accessKey);
             sdsfree(stsToken);

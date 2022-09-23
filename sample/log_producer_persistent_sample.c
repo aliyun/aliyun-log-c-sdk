@@ -16,6 +16,9 @@ char **header_array,
 int header_count,
 const void *data,
 int data_len) {
+    for (int i = 0; i < header_count; ++i) {
+        printf("header: %s\n", header_array[i]);
+    }
     return returnCode;
 }
 
@@ -41,6 +44,31 @@ void on_log_send_done(const char * config_name,
                config_name, (result),
                (int)log_bytes, (int)compressed_bytes, req_id, message);
     }
+
+}
+
+void sample_log_set_http_inject_header(log_producer_config *config, char **src_headers, int src_count, char **dest_headers, int *dest_count)
+{
+    for (int i = 0; i < src_count; ++i) {
+        dest_headers[i] = src_headers[i];
+    }
+
+    dest_headers[src_count] = "User-agent: sls-android/test;";
+    dest_headers[src_count + 1] = "testHeader: test";
+    *dest_count = src_count + 2;
+
+
+    for (int i = 0; i < src_count; ++i) {
+        printf("src_header: %s \n", src_headers[i]);
+    }
+
+    for (int i = 0; i < *dest_count; ++i) {
+        printf("dest_header: %s \n", dest_headers[i]);
+    }
+}
+
+void sample_log_set_http_release_inject_header(log_producer_config *config, char **dest_headers, int dest_count)
+{
 
 }
 
@@ -72,6 +100,8 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
     log_producer_config_set_max_buffer_limit(config, 4*1024*1024);
     log_producer_config_set_flush_interval(config, 10000);
     log_producer_config_set_log_queue_interval(config, 10000);
+    log_set_http_header_inject_func(sample_log_set_http_inject_header);
+    log_set_http_header_release_inject_func(sample_log_set_http_release_inject_header);
 
     // @note only 1 thread count, persistent client only support 1 thread
     log_producer_config_set_send_thread_count(config, 1);
@@ -113,7 +143,7 @@ void log_producer_post_logs()
 
     //sleep(30000000);
     int i = 0;
-    for (; i < 100000; ++i)
+    for (; i < 1; ++i)
     {
         char indexStr[32];
         sprintf(indexStr, "%d", i);

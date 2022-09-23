@@ -29,6 +29,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->callbackFromSenderThread = 1;
     pConfig->webTracking = 0;
     pConfig->mode = 0;
+    pConfig->user_params = NULL;
 }
 
 

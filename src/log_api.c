@@ -12,6 +12,9 @@ int LOG_OS_HttpPost(const char *url,
 
 unsigned int LOG_GET_TIME();
 
+void log_http_inject_headers(log_producer_config *config, char **src_headers, int src_count, char **dest_headers, int *dest_count);
+void log_http_release_inject_headers(log_producer_config *config, char **dest_headers, int dest_count);
+
 log_status_t sls_log_init(int32_t log_global_flag)
 {
 #if 0
@@ -437,6 +440,11 @@ static int is_str_empty(const char *str)
 
 post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
 {
+    return post_logs_from_lz4buf_with_config(NULL, endpoint, project, logstore, accesskeyId, accessKey, stsToken, buffer, option);
+}
+
+post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config, const char *endpoint, const char *project, const char *logstore, const char *accessKeyId, const char *accessKeySecret, const char *stsToken, lz4_log_buf *buffer, log_post_option *option)
+{
     aos_info_log("start post_logs_from_lz4buf.");
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
@@ -450,7 +458,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         return result;
     }
 
-    if (is_str_empty(accesskeyId) || is_str_empty(accessKey))
+    if (is_str_empty(accessKeyId) || is_str_empty(accessKeySecret))
     {
         result->statusCode = 405;
         result->requestID  =  sdsnewEmpty(64);
@@ -593,11 +601,11 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         //puts("#######################");
         //puts(sigContent);
 
-        int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
+        int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKeySecret, strlen(accessKeySecret), sha1Buf);
         sha1Buf[destLen] = '\0';
         //puts(sha1Buf);
         sds headerSig = sdsnewEmpty(256);
-        headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
+        headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accessKeyId, sha1Buf);
         //puts(headerSig);
         headers=cur_slist_append(headers, headerSig);
 
@@ -623,10 +631,15 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             h = h->next;
         }
 
-        aos_info_log("start LOG_OS_HttpPost.");
-        int res = LOG_OS_HttpPost(url, header_array, header_count,
-                                  (const void *) buffer->data, buffer->length);
-        aos_info_log("LOG_OS_HttpPost res: %d.", res);
+        char *dest_header_array[max_header_count];
+        int *dest_count = (int *)malloc(sizeof(int));
+        memset(dest_count, 0, sizeof(int));
+
+        log_http_inject_headers(config, header_array, header_count, dest_header_array, dest_count);
+        char **final_header_array = (*dest_count) == 0 ? header_array : dest_header_array;
+        int final_header_count = (*dest_count) == 0 ? header_count : (*dest_count);
+        int res = LOG_OS_HttpPost(url, final_header_array, final_header_count, (const void *) buffer->data, buffer->length);
+        log_http_release_inject_headers(config, dest_header_array, *dest_count);
 
         result->statusCode = res;
         result->requestID  = req;
@@ -641,6 +654,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         sdsfree(headerHost);
         sdsfree(sigContent);
         sdsfree(headerSig);
+        free(dest_count);
     }
 
 

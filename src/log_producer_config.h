@@ -79,6 +79,8 @@ typedef struct _log_producer_config
     int32_t mode; // 0, LoadBalance; 1, KeyShard
     char *shardKey;
 
+    void *user_params; // user params pass to c
+
 }log_producer_config;
 
 
