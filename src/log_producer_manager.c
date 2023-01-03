@@ -411,7 +411,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
 
 }
 
-log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
+log_producer_result log_producer_manager_add_log(log_producer_manager * producer_manager, uint32_t log_time, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
 {
     if (producer_manager->totalBufferSize > producer_manager->producer_config->maxBufferBytes)
     {
@@ -433,7 +433,7 @@ log_producer_result log_producer_manager_add_log(log_producer_manager * producer
         producer_manager->builder->private_value = producer_manager;
     }
 
-    add_log_full(producer_manager->builder, (uint32_t)time(NULL), pair_count, keys, key_lens, values, val_lens);
+    add_log_full(producer_manager->builder, log_time, pair_count, keys, key_lens, values, val_lens);
 
     log_group_builder * builder = producer_manager->builder;
 
