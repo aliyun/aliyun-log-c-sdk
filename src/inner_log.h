@@ -6,6 +6,13 @@ extern "C"
 {
 #endif
 
+typedef void (*aos_log_format_pt)(int level,
+                                  const char *file,
+                                  int line,
+                                  const char *function,
+                                  const char *fmt, ...);
+typedef void (*aos_log_print_pt)(const char *message, int len);
+
 typedef enum {
     AOS_LOG_OFF = 1,
     AOS_LOG_FATAL,
@@ -18,12 +25,21 @@ typedef enum {
 } aos_log_level_e;
 
 extern aos_log_level_e aos_log_level;
+extern aos_log_format_pt aos_log_format;
 
-void aos_log_format(int level,
-                     const char *file,
-                     int line,
-                     const char *function,
-                     const char *fmt, ...);
+/**
+ * set inner log callback for format
+ * @note if format callback is set, print callback has no effect
+ * @param func callback function
+ */
+void aos_log_set_format_callback(aos_log_format_pt func);
+
+/**
+ * set inner log callback for string log print
+ * @param func  callback function
+ */
+void aos_log_set_print_callback(aos_log_print_pt func);
+
 
 #define aos_fatal_log(format, args...) if(aos_log_level>=AOS_LOG_FATAL) \
         aos_log_format(AOS_LOG_FATAL, __FILE__, __LINE__, __FUNCTION__, format, ## args)

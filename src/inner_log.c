@@ -3,7 +3,23 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+
+void aos_log_print_default(const char *message, int lens)
+{
+    puts(message);
+}
+
+
+void aos_log_format_default(int level,
+                            const char *file,
+                            int line,
+                            const char *function,
+                            const char *fmt, ...);
+
 aos_log_level_e aos_log_level = AOS_LOG_WARN;
+aos_log_format_pt aos_log_format = aos_log_format_default;
+aos_log_print_pt aos_log_output = aos_log_print_default;
+
 
 static const char * _aos_log_level_str[] = {
         "NONE",
@@ -24,7 +40,7 @@ void aos_log_set_level(aos_log_level_e level)
 }
 
 
-void aos_log_format(int level,
+void aos_log_format_default(int level,
                     const char *file,
                     int line,
                     const char *function,
@@ -66,5 +82,21 @@ void aos_log_format(int level,
     buffer[len++] = '\n';
     buffer[len] = '\0';
 
-    puts(buffer);
+    aos_log_output(buffer, len);
+}
+
+void aos_log_set_format_callback(aos_log_format_pt func)
+{
+    if (func == NULL) {
+        return;
+    }
+    aos_log_format = func;
+}
+
+void aos_log_set_print_callback(aos_log_print_pt func)
+{
+    if (func == NULL) {
+        return;
+    }
+    aos_log_output = func;
 }
