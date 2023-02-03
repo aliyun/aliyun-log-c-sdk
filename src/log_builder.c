@@ -466,7 +466,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
     // log package
     while (buf - startBuf < len && *buf == 0x0A)
     {
-        aos_info_log("serialize_pb_buffer_to_webtracking, start process single log.");
+        aos_debug_log("serialize_pb_buffer_to_webtracking, start process single log.");
 
         ++buf;
         unsigned logSizeLen = read_length_from_pb(buf);
@@ -485,7 +485,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
             time = parse_uint32(timeLen, buf);
             buf += timeLen;
 
-            aos_info_log("serialize_pb_buffer_to_webtracking, time: %d", time);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, time: %d", time);
         }
 
         sds _log_ = sdsnew("{");
@@ -521,7 +521,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
                 _log_ = put_kv(_log_, key, val);
             }
 
-            aos_info_log("serialize_pb_buffer_to_webtracking, content {%s: %s}", key, val);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, content {%s: %s}", key, val);
 
             free(key);
             free(val);
@@ -543,7 +543,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
         {
             char *topic;
             read_chars_from_pb(&buf, &topic);
-            aos_info_log("serialize_pb_buffer_to_webtracking, topic: %s", topic);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, topic: %s", topic);
             root = put_kv(root, "__topic__", topic);
             free(topic);
         }
@@ -553,7 +553,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
         {
             char *source;
             read_chars_from_pb(&buf, &source);
-            aos_info_log("serialize_pb_buffer_to_webtracking, source: %s", source);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, source: %s", source);
 
             root = put_kv(root, "__source__", source);
             free(source);
@@ -586,14 +586,14 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
                 _root_tags_ = put_kv(_root_tags_, key, val);
             }
 
-            aos_info_log("serialize_pb_buffer_to_webtracking, tag {%s: %s}", key, val);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, tag {%s: %s}", key, val);
 
             free(key);
             free(val);
         }
     }
 
-    aos_info_log("serialize_pb_buffer_to_webtracking, log package has been processed.");
+    aos_debug_log("serialize_pb_buffer_to_webtracking, log package has been processed.");
 
     if (sdslen(_root_logs_) > 1)
     {
@@ -619,7 +619,7 @@ extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, ch
     sdsfree(_root_tags_);
     sdsfree(root);
 
-    aos_info_log("serialize_pb_buffer_to_webtracking, json: %s", *new_buffer);
+    aos_debug_log("serialize_pb_buffer_to_webtracking, json: %s", *new_buffer);
     return root_len;
 }
 

@@ -146,7 +146,7 @@ void * log_producer_send_thread(void * param)
 
 void * log_producer_send_fun(void * param)
 {
-    aos_info_log("[sender] start send log data.");
+    aos_debug_log("[sender] start send log data.");
     log_producer_send_param * send_param = (log_producer_send_param *)param;
     if (send_param->magic_num != LOG_PRODUCER_SEND_MAGIC_NUM)
     {

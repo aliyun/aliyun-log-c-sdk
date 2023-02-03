@@ -445,7 +445,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
 post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config, const char *endpoint, const char *project, const char *logstore, const char *accessKeyId, const char *accessKeySecret, const char *stsToken, lz4_log_buf *buffer, log_post_option *option)
 {
-    aos_info_log("start post_logs_from_lz4buf.");
+    aos_debug_log("start post_logs_from_lz4buf.");
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
 
@@ -482,7 +482,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
         url = sdscat(url, logstore);
         int shardkeyMode = option->mode == 1 && !is_str_empty(option->shardKey);
         if (shardkeyMode) {
-            aos_info_log("key hash: %s", option->shardKey);
+            aos_debug_log("key hash: %s", option->shardKey);
             url = sdscat(url, "/shards/route?key=");
             url = sdscat(url, option->shardKey);
         } else {
@@ -663,7 +663,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
 post_log_result * post_logs_from_lz4buf_webtracking(const char *endpoint, const char *project, const char *logstore, lz4_log_buf *buffer, log_post_option *option)
 {
-    aos_info_log("post_logs_from_lz4buf_webtracking start.");
+    aos_debug_log("post_logs_from_lz4buf_webtracking start.");
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
 
@@ -722,10 +722,10 @@ post_log_result * post_logs_from_lz4buf_webtracking(const char *endpoint, const 
             h = h->next;
         }
 
-        aos_info_log("post_logs_from_lz4buf_webtracking, start LOG_OS_HttpPost.");
+        aos_debug_log("post_logs_from_lz4buf_webtracking, start LOG_OS_HttpPost.");
         int res = LOG_OS_HttpPost(url, header_array, header_count,
                                   (const void *) buffer->data, buffer->length);
-        aos_info_log("post_logs_from_lz4buf_webtracking, LOG_OS_HttpPost res: %d.", res);
+        aos_debug_log("post_logs_from_lz4buf_webtracking, LOG_OS_HttpPost res: %d.", res);
 
         result->statusCode = res;
         result->requestID  = req;
