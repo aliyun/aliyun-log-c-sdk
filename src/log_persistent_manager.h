@@ -33,7 +33,7 @@ typedef struct _log_persistent_item_header
 typedef struct _log_persistent_manager{
     CRITICALSECTION lock;
     log_persistent_checkpoint checkpoint;
-    uint32_t * in_buffer_log_sizes;
+    uint64_t * in_buffer_log_offsets;
     log_producer_config * config;
     log_group_builder * builder;
     int8_t is_invalid;

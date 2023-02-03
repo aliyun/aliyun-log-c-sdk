@@ -143,14 +143,9 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
         return;
     }
     CS_ENTER(manager->lock);
-    // cal log size
-    uint64_t totalOffset = 0;
-    for (int64_t id = startId; id <= endId; ++id)
-    {
-        totalOffset += manager->in_buffer_log_sizes[id % manager->config->maxPersistentLogCount];
-    }
 
-    manager->checkpoint.start_file_offset += totalOffset;
+    uint64_t last_offset = manager->checkpoint.start_file_offset;
+    manager->checkpoint.start_file_offset = manager->in_buffer_log_offsets[endId % manager->config->maxPersistentLogCount];
     manager->checkpoint.start_log_uuid = endId + 1;
     int rst = save_log_checkpoint(manager);
     if (rst != 0)
@@ -160,7 +155,7 @@ void on_log_persistent_manager_send_done_uuid(const char * config_name,
                       manager->config->logstore,
                       rst);
     }
-    log_ring_file_clean(manager->ring_file, manager->checkpoint.start_file_offset - totalOffset, manager->checkpoint.start_file_offset);
+    log_ring_file_clean(manager->ring_file, last_offset, manager->checkpoint.start_file_offset);
 
     CS_LEAVE(manager->lock);
 }
@@ -174,9 +169,9 @@ static void log_persistent_manager_init(log_persistent_manager * manager, log_pr
     manager->checkpoint.now_log_uuid = manager->checkpoint.start_log_uuid;
     manager->config = config;
     manager->lock = CreateCriticalSection();
-    manager->in_buffer_log_sizes = (uint32_t *)malloc(sizeof(uint32_t) * config->maxPersistentLogCount);
     manager->checkpoint_file_path = sdscat(sdsdup(config->persistentFilePath), ".idx");
-    memset(manager->in_buffer_log_sizes, 0, sizeof(uint32_t) * config->maxPersistentLogCount);
+    manager->in_buffer_log_offsets = (uint64_t *)malloc(sizeof(uint64_t) * config->maxPersistentLogCount);
+    memset(manager->in_buffer_log_offsets, 0, sizeof(uint64_t) * config->maxPersistentLogCount);
     manager->ring_file = log_ring_file_open(config->persistentFilePath, config->maxPersistentFileCount, config->maxPersistentFileSize, config->forceFlushDisk);
 }
 
@@ -189,7 +184,7 @@ static void log_persistent_manager_clear(log_persistent_manager * manager)
         fclose(manager->checkpoint_file_ptr);
         manager->checkpoint_file_ptr = NULL;
     }
-    free(manager->in_buffer_log_sizes);
+    free(manager->in_buffer_log_offsets);
     sdsfree(manager->checkpoint_file_path);
     log_ring_file_close(manager->ring_file);
 }
@@ -242,9 +237,9 @@ int log_persistent_manager_save_log(log_persistent_manager *manager,
                       rst);
         return LOG_PRODUCER_PERSISTENT_ERROR;
     }
-    // update in memory checkpoint
-    manager->in_buffer_log_sizes[manager->checkpoint.now_log_uuid % manager->config->maxPersistentLogCount] = rst;
     manager->checkpoint.now_file_offset += rst;
+    // update in memory checkpoint
+    manager->in_buffer_log_offsets[manager->checkpoint.now_log_uuid % manager->config->maxPersistentLogCount] = manager->checkpoint.now_file_offset;
     ++manager->checkpoint.now_log_uuid;
     aos_debug_log("project %s, logstore %s, write bin log success, offset %lld, uuid %lld, log size %d",
                   manager->config->project,
@@ -263,6 +258,15 @@ int log_persistent_manager_save_log(log_persistent_manager *manager,
 int log_persistent_manager_is_buffer_enough(log_persistent_manager *manager,
                                             size_t logSize)
 {
+    if (manager->checkpoint.now_file_offset < manager->checkpoint.start_file_offset) {
+        aos_fatal_log("project %s, logstore %s, persistent manager is invalid, file offset error, %lld %lld",
+                     manager->config->project,
+                     manager->config->logstore,
+                     manager->checkpoint.now_file_offset,
+                     manager->checkpoint.start_file_offset);
+        manager->is_invalid = 1;
+        return 0;
+    }
     if (manager->checkpoint.now_file_offset - manager->checkpoint.start_file_offset + logSize + 1024 >
         (uint64_t)manager->config->maxPersistentFileCount * manager->config->maxPersistentFileSize &&
         manager->checkpoint.now_log_uuid - manager->checkpoint.start_log_uuid < manager->config->maxPersistentLogCount - 1)
@@ -382,12 +386,12 @@ static int log_persistent_manager_recover_inner(log_persistent_manager *manager,
         // set empty log uuid len 0
         for (int64_t emptyUUID = logUUID + 1; emptyUUID < header.log_uuid; ++emptyUUID)
         {
-            manager->in_buffer_log_sizes[emptyUUID % manager->config->maxPersistentLogCount] = 0;
+            manager->in_buffer_log_offsets[emptyUUID % manager->config->maxPersistentLogCount] = 0;
         }
-        manager->in_buffer_log_sizes[header.log_uuid % manager->config->maxPersistentLogCount] = header.log_size + sizeof(log_persistent_item_header);
 
         logUUID = header.log_uuid;
         fileOffset += header.log_size + sizeof(log_persistent_item_header);
+        manager->in_buffer_log_offsets[header.log_uuid % manager->config->maxPersistentLogCount] = fileOffset;
 
         rst = log_producer_manager_add_log_raw(producer_manager, buffer, header.log_size, 0, header.log_uuid);
         if (rst != 0)
