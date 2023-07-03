@@ -316,25 +316,14 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                 }
 #endif
             }
-            if (result->errorMessage != NULL)
-            {
-                aos_warn_log("send network error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d, error msg : %s",
-                             send_param->producer_config->project,
-                             send_param->producer_config->logstore,
-                             (int)send_param->log_buf->length,
-                             (int)send_param->log_buf->raw_length,
-                             result->statusCode,
-                             result->errorMessage);
-            }
-            else
-            {
-                aos_warn_log("send network error, project : %s, logstore : %s, buffer len : %d, raw len : %d, code : %d",
-                             send_param->producer_config->project,
-                             send_param->producer_config->logstore,
-                             (int)send_param->log_buf->length,
-                             (int)send_param->log_buf->raw_length,
-                             result->statusCode);
-            }
+            aos_warn_log(
+                "send network error, project : %s, logstore : %s, buffer len : "
+                "%d, raw len : %d, code : %d, error msg : %s",
+                send_param->producer_config->project,
+                send_param->producer_config->logstore,
+                (int)send_param->log_buf->length,
+                (int)send_param->log_buf->raw_length, result->statusCode,
+                result->errorMessage == NULL ? "" : result->errorMessage);
             return error_info->last_sleep_ms;
         default:
             // discard data
