@@ -2,7 +2,7 @@
 #define LIBLOG_DEFINE_H
 
 
-#ifdef WIN32
+#if defined(WIN32) && defined(BUILD_SHARED_LIB)
 #define LOG_EXPORT _declspec(dllexport)
 #else
 #define LOG_EXPORT
