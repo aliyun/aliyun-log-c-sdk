@@ -284,7 +284,7 @@ int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log
                          (int)send_param->log_buf->length,
                          (int)send_param->log_buf->raw_length,
                          result->statusCode,
-                         result->errorMessage);
+                         result->errorMessage == NULL ? "" : result->errorMessage);
             return error_info->last_sleep_ms;
         default:
             // discard data
