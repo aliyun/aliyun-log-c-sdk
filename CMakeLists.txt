@@ -29,6 +29,9 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
 option(ADD_LOG_KEY_VALUE_FUN "ON for generating add log key&value functions" OFF)
+option(BUILD_STATIC_LIBRARY "Whether to compile the static library" ON)
+option(BUILD_SHARED_LIBRARY "Whether to compile the shared library" ON)
+option(BUILD_SAMPLE "Whether to compile the sample" ON)
 
 IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
@@ -52,21 +55,20 @@ include_directories(${CURL_INCLUDE_DIR})
 
 aux_source_directory(src SRC_LIST)
 
+IF(BUILD_STATIC_LIBRARY)
+    add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
+    INSTALL(TARGETS ${CMAKE_PROJECT_NAME}_static ARCHIVE DESTINATION lib)
+ENDIF()
 
-add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
-INSTALL(TARGETS ${CMAKE_PROJECT_NAME}_static ARCHIVE DESTINATION lib)
-
-IF (APPLE)
-	MESSAGE(STATUS "For mac os, skip build dynamic library")
-ELSE ()
-	add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
-	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
-	INSTALL(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib)
-ENDIF ()
-
-
-
-
+IF(BUILD_SHARED_LIBRARY)
+    IF (APPLE)
+        MESSAGE(STATUS "For mac os, skip build dynamic library")
+    ELSE ()
+        add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
+        set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
+        INSTALL(TARGETS ${CMAKE_PROJECT_NAME} LIBRARY DESTINATION lib)
+    ENDIF ()
+ENDIF()
 
 file(GLOB HEADER_FILES src/*.h)
 
@@ -74,4 +76,6 @@ INSTALL(FILES
   ${HEADER_FILES}
   DESTINATION include/log_c_sdk)
 
-add_subdirectory(sample)
+IF(BUILD_SAMPLE)
+    add_subdirectory(sample)
+ENDIF()
