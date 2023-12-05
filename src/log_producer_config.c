@@ -329,6 +329,7 @@ void log_producer_config_set_access_id(log_producer_config * config, const char 
     _copy_config_string(access_id, &config->accessKeyId);
 }
 
+
 void log_producer_config_set_access_key(log_producer_config * config, const char * access_key)
 {
     _copy_config_string(access_key, &config->accessKey);
