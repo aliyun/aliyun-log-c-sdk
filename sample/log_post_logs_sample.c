@@ -105,7 +105,7 @@ void post_logs_with_http_cont_lz4_log_option()
         post_log_result * rst = post_logs_from_lz4buf(LOG_ENDPOINT, ACCESS_KEY_ID,
                                                  ACCESS_KEY_SECRET, NULL,
                                                  PROJECT_NAME, LOGSTORE_NAME,
-                                                 pLZ4Buf, &option);
+                                                 pLZ4Buf, &option, AUTH_VERSION_1, NULL);
         printf("result %d %d \n", i, rst->statusCode);
         if (rst->errorMessage != NULL)
         {

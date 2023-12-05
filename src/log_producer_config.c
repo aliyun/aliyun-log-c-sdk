@@ -44,6 +44,8 @@ log_producer_config * create_log_producer_config()
     log_producer_config* pConfig = (log_producer_config*)malloc(sizeof(log_producer_config));
     memset(pConfig, 0, sizeof(log_producer_config));
     _set_default_producer_config(pConfig);
+    pConfig->authVersion = AUTH_VERSION_1;
+    pConfig->region = NULL;
     return pConfig;
 }
 
@@ -103,6 +105,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
             sdsfree(pConfig->tags[i].value);
         }
         free(pConfig->tags);
+    }
+    if (pConfig->region != NULL)
+    {
+        sdsfree(pConfig->region);
     }
     free(pConfig);
 }
@@ -328,7 +334,6 @@ void log_producer_config_set_access_key(log_producer_config * config, const char
     _copy_config_string(access_key, &config->accessKey);
 }
 
-
 void log_producer_config_reset_security_token(log_producer_config * config, const char * access_id, const char * access_secret, const char * security_token)
 {
     if (config->securityTokenLock == NULL)
@@ -340,6 +345,16 @@ void log_producer_config_reset_security_token(log_producer_config * config, cons
     _copy_config_string(access_secret, &config->accessKey);
     _copy_config_string(security_token, &config->securityToken);
     CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_set_auth_version(log_producer_config * config, auth_version auth_version)
+{
+    config->authVersion = auth_version;
+}
+
+void log_producer_config_set_region(log_producer_config * config, const char * region)
+{
+    _copy_config_string(region, &config->region);
 }
 
 void log_producer_config_get_security(log_producer_config * config, char ** access_id, char ** access_secret, char ** security_token)
