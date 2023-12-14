@@ -190,7 +190,8 @@ void * log_producer_send_fun(void * param)
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
                                                       accessKey, stsToken,
                                                       config->project, config->logstore,
-                                                      send_buf, &option);
+                                                      send_buf, &option,
+                                                      config->authVersion, config->region);
         sdsfree(accessKeyId);
         sdsfree(accessKey);
         sdsfree(stsToken);

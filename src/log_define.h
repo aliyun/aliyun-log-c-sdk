@@ -32,5 +32,12 @@ struct _post_log_result
 
 typedef struct _post_log_result post_log_result;
 
+enum _auth_version
+{
+    AUTH_VERSION_1 = 1,
+    AUTH_VERSION_4
+};
+
+typedef enum _auth_version auth_version;
 
 #endif

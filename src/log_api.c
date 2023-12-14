@@ -4,6 +4,10 @@
 #include <string.h>
 #include "sds.h"
 #include "inner_log.h"
+#include <stdio.h>
+#include <time.h>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
 
 log_status_t sls_log_init(int32_t log_global_flag)
 {
@@ -126,7 +130,30 @@ void post_log_result_destroy(post_log_result * result)
     }
 }
 
-post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option)
+void buildSignKey(const char *key, const char *region, const char *date, const char *stringToSign, char *result) {
+    unsigned char sign_key[HMAC_MAX_MD_CBLOCK];
+    unsigned char sign_date[HMAC_MAX_MD_CBLOCK];
+    unsigned char sign_region[HMAC_MAX_MD_CBLOCK];
+    unsigned char sign_service[HMAC_MAX_MD_CBLOCK];
+    unsigned char sign_request[HMAC_MAX_MD_CBLOCK];
+    unsigned int len;
+
+    snprintf((char *)sign_key, sizeof(sign_key), "aliyun_v4%s", key);
+    HMAC(EVP_sha256(), sign_key, strlen((char *)sign_key), (const unsigned char *)date, strlen(date), sign_date, &len);
+    HMAC(EVP_sha256(), sign_date, len, (const unsigned char *)region, strlen(region), sign_region, &len);
+    HMAC(EVP_sha256(), sign_region, len, (const unsigned char *)"sls", strlen("sls"), sign_service, &len);
+    HMAC(EVP_sha256(), sign_service, len, (const unsigned char *)"aliyun_v4_request", strlen("aliyun_v4_request"), sign_request, &len);
+    HMAC(EVP_sha256(), sign_request, len, (const unsigned char *)stringToSign, strlen(stringToSign), sign_key, &len);
+
+    // transfer to hex
+    unsigned int i;
+    for (i = 0; i < len; i++)
+    {
+        sprintf(result + (i * 2), "%02x", sign_key[i]);
+    }
+}
+
+post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * accesskeyId, const char *accessKey, const char *stsToken, const char *project, const char *logstore, lz4_log_buf * buffer, log_post_option * option, auth_version version, const char *region)
 {
     post_log_result * result = (post_log_result *)malloc(sizeof(post_log_result));
     memset(result, 0, sizeof(post_log_result));
@@ -179,85 +206,191 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         struct curl_slist* headers = NULL;
 
-        headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
-        headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
-        if (lz4Flag)
+        if (version == AUTH_VERSION_4)
         {
-            headers=curl_slist_append(headers, "x-log-compresstype:lz4");
-        }
-        if (stsToken != NULL)
-        {
-            sds tokenHeader = sdsnew("x-acs-security-token:");
-            tokenHeader = sdscat(tokenHeader, stsToken);
-            headers=curl_slist_append(headers, tokenHeader);
-            sdsfree(tokenHeader);
-        }
-        headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
-        sds headerTime = sdsnew("Date:");
-        headerTime = sdscat(headerTime, nowTime);
-        headers=curl_slist_append(headers, headerTime);
-        sds headerMD5 = sdsnew("Content-MD5:");
-        headerMD5 = sdscat(headerMD5, md5Buf);
-        headers=curl_slist_append(headers, headerMD5);
-
-        sds headerLen= sdsnewEmpty(64);
-        headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
-        headers=curl_slist_append(headers, headerLen);
-
-        sds headerRawLen = sdsnewEmpty(64);
-        headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
-        headers=curl_slist_append(headers, headerRawLen);
-
-        sds headerHost = sdsnewEmpty(128);
-        headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
-        headers=curl_slist_append(headers, headerHost);
-
-        char sha1Buf[65];
-        sha1Buf[64] = '\0';
-
-        sds sigContent = sdsnewEmpty(512);
-        if (lz4Flag)
-        {
-            if (stsToken == NULL)
+            sds headerRawLen = sdsnewEmpty(64);
+            headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+            headers=curl_slist_append(headers, headerRawLen);
+            headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
+            if (!lz4Flag)
             {
-                sigContent = sdscatprintf(sigContent,
-                                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                          md5Buf, nowTime, (int)buffer->raw_length, logstore);
+                aos_error_log("V4 signature must use lz4 compresstype");
+                return NULL;
+            }
+            headers=curl_slist_append(headers, "x-log-compresstype:lz4");
+            sds headerLen= sdsnewEmpty(64);
+            headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+            headers=curl_slist_append(headers, headerLen);
+            headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
+
+            sds headerHost = sdsnewEmpty(128);
+            headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+            headers=curl_slist_append(headers, headerHost);
+            
+            if (stsToken != NULL)
+            {
+                sds tokenHeader = sdsnew("x-acs-security-token:");
+                tokenHeader = sdscat(tokenHeader, stsToken);
+                headers=curl_slist_append(headers, tokenHeader);
+                sdsfree(tokenHeader);
+            }
+
+            char* contentSha256 = NULL;
+            if (buffer->data != NULL)
+            {
+                contentSha256 = sha256_hash_to_hex((const char *)buffer->data, buffer->length);
             }
             else
             {
-                sigContent = sdscatprintf(sigContent,
-                                          "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                          md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+                contentSha256 = strdup("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
             }
+            sds contentSha256Sds = sdsnewEmpty(128);
+            contentSha256Sds = sdscatprintf(contentSha256Sds, "x-log-content-sha256:%s", contentSha256);
+
+            headers=curl_slist_append(headers, contentSha256Sds);
+
+            time_t currentEpochTime = time(NULL);
+            struct tm *utcTime = gmtime(&currentEpochTime);
+            char currentTime[20];
+            char currentDate[9];
+            strftime(currentTime, sizeof(currentTime), "%Y%m%dT%H%M%SZ", utcTime);
+            strftime(currentDate, sizeof(currentDate), "%Y%m%d", utcTime);
+
+            sds signTime = sdsnewEmpty(64);
+            signTime = sdscatprintf(signTime, "x-log-date:%s", currentTime);
+            headers=curl_slist_append(headers, signTime);
+
+            sds sigHeaders = sdsnewEmpty(128);
+            sigHeaders = sdscatprintf(sigHeaders, "content-type;host;x-log-apiversion;x-log-bodyrawsize;x-log-compresstype;x-log-content-sha256;x-log-date");
+            sds headersToString = sdsnewEmpty(512);
+            headersToString = sdscatprintf(headersToString,
+                                          "content-type:application/x-protobuf\nhost:%s.%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-content-sha256:%s\nx-log-date:%s\n",
+                                           project, endpoint, (int)buffer->raw_length, contentSha256, currentTime);
+            sds canonicalRequestStr = sdsnewEmpty(512);
+            canonicalRequestStr = sdscatprintf(canonicalRequestStr,
+                                              "POST\n/logstores/%s/shards/lb\n\n%s\n%s\n%s", // params is empty
+                                              logstore, headersToString, sigHeaders, contentSha256);
+            // todo build_canonical_request
+            char* canonicalRequestStrSha256 = sha256_hash_to_hex(canonicalRequestStr, strlen(canonicalRequestStr));
+            sds scope = sdsnewEmpty(128);
+            scope = sdscatprintf(scope, "%s/%s/sls/aliyun_v4_request", currentDate, region);
+            sds stringToSign = sdsnewEmpty(512);
+            stringToSign = sdscatprintf(stringToSign,
+                                        "SLS4-HMAC-SHA256\n%s\n%s\n%s",
+                                        currentTime, scope, canonicalRequestStrSha256);
+            sds signature = sdsnewEmpty(128);
+            buildSignKey(accessKey, region, currentDate, stringToSign, signature);
+            // todo build sign key
+            sds headerSig = sdsnewEmpty(512);
+            headerSig = sdscatprintf(headerSig, "Authorization:SLS4-HMAC-SHA256 Credential=%s/%s,Signature=%s", accesskeyId, scope, signature);
+            headers=curl_slist_append(headers, headerSig);
+
+            sdsfree(headerRawLen);
+            sdsfree(headerLen);
+            sdsfree(headerHost);
+            sdsfree(contentSha256Sds);
+            sdsfree(signTime);
+            sdsfree(sigHeaders);
+            sdsfree(headersToString);
+            sdsfree(canonicalRequestStr);
+            sdsfree(scope);
+            sdsfree(stringToSign);
+            sdsfree(signature);
+            sdsfree(headerSig);
+            free(contentSha256);
+            free(canonicalRequestStrSha256);
         }
         else
         {
-            if (stsToken == NULL)
+            headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
+            headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
+            if (lz4Flag)
             {
-                sigContent = sdscatprintf(sigContent,
-                                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                          md5Buf, nowTime, (int)buffer->raw_length, logstore);
+                headers=curl_slist_append(headers, "x-log-compresstype:lz4");
+            }
+            if (stsToken != NULL)
+            {
+                sds tokenHeader = sdsnew("x-acs-security-token:");
+                tokenHeader = sdscat(tokenHeader, stsToken);
+                headers=curl_slist_append(headers, tokenHeader);
+                sdsfree(tokenHeader);
+            }
+            headers=curl_slist_append(headers, "x-log-signaturemethod:hmac-sha1");
+            sds headerTime = sdsnew("Date:");
+            headerTime = sdscat(headerTime, nowTime);
+            headers=curl_slist_append(headers, headerTime);
+            sds headerMD5 = sdsnew("Content-MD5:");
+            headerMD5 = sdscat(headerMD5, md5Buf);
+            headers=curl_slist_append(headers, headerMD5);
+
+            sds headerLen= sdsnewEmpty(64);
+            headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+            headers=curl_slist_append(headers, headerLen);
+
+            sds headerRawLen = sdsnewEmpty(64);
+            headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+            headers=curl_slist_append(headers, headerRawLen);
+
+            sds headerHost = sdsnewEmpty(128);
+            headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+            headers=curl_slist_append(headers, headerHost);
+
+            char sha1Buf[65];
+            sha1Buf[64] = '\0';
+
+            sds sigContent = sdsnewEmpty(512);
+            if (lz4Flag)
+            {
+                if (stsToken == NULL)
+                {
+                    sigContent = sdscatprintf(sigContent,
+                                            "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                            md5Buf, nowTime, (int)buffer->raw_length, logstore);
+                }
+                else
+                {
+                    sigContent = sdscatprintf(sigContent,
+                                            "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                            md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+                }
             }
             else
             {
-                sigContent = sdscatprintf(sigContent,
-                                          "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                          md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+                if (stsToken == NULL)
+                {
+                    sigContent = sdscatprintf(sigContent,
+                                            "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                            md5Buf, nowTime, (int)buffer->raw_length, logstore);
+                }
+                else
+                {
+                    sigContent = sdscatprintf(sigContent,
+                                            "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                            md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
+                }
+
             }
 
+            //puts("#######################");
+            //puts(sigContent);
+
+            int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
+            sha1Buf[destLen] = '\0';
+            //puts(sha1Buf);
+            sds headerSig = sdsnewEmpty(256);
+            headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
+            //puts(headerSig);
+            headers=curl_slist_append(headers, headerSig);
+            
+            sdsfree(headerTime);
+            sdsfree(headerMD5);
+            sdsfree(headerLen);
+            sdsfree(headerRawLen);
+            sdsfree(headerHost);
+            sdsfree(sigContent);
+            sdsfree(headerSig);
         }
 
-        //puts("#######################");
-        //puts(sigContent);
-
-        int destLen = signature_to_base64(sigContent, sdslen(sigContent), accessKey, strlen(accessKey), sha1Buf);
-        sha1Buf[destLen] = '\0';
-        //puts(sha1Buf);
-        sds headerSig = sdsnewEmpty(256);
-        headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
-        //puts(headerSig);
-        headers=curl_slist_append(headers, headerSig);
 
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -350,13 +483,6 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         curl_slist_free_all(headers); /* free the list again */
         sdsfree(url);
-        sdsfree(headerTime);
-        sdsfree(headerMD5);
-        sdsfree(headerLen);
-        sdsfree(headerRawLen);
-        sdsfree(headerHost);
-        sdsfree(sigContent);
-        sdsfree(headerSig);
         /* always cleanup */
         curl_easy_cleanup(curl);
         if (connect_to != NULL)

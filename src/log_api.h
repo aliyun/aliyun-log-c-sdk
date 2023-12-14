@@ -27,7 +27,9 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint,
                                         const char *project,
                                         const char *logstore,
                                         lz4_log_buf * buffer,
-                                        log_post_option * option);
+                                        log_post_option * option,
+                                        auth_version version,
+                                        const char *region);
 
 void post_log_result_destroy(post_log_result * result);
 

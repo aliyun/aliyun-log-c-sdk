@@ -61,3 +61,34 @@ int signature_to_base64(const char * sig, int sigLen, const char * key, int keyL
     hmac_sha1(sha1Buf, key, keyLen << 3, sig, sigLen << 3);
     return aos_base64_encode((const unsigned char *)sha1Buf, 20, base64);
 }
+
+void sha256_to_hex_string(uint8_t hash[32], char hex_str[65]) {
+    const char hex_digits[] = "0123456789abcdef";
+    int i;
+    for (i = 0; i < 32; ++i) {
+        hex_str[i * 2] = hex_digits[(hash[i] >> 4) & 0x0F];
+        hex_str[i * 2 + 1] = hex_digits[hash[i] & 0x0F];
+    }
+    hex_str[64] = '\0'; // Null-terminate the string
+}
+
+char *sha256_hash_to_hex(const char *input, uint32 length) {
+    if (!input) {
+        return NULL;
+    }
+
+    sha256_context ctx;
+    uint8_t hash[32];
+    char *output = malloc(65); // 64 chars for hex + 1 for '\0'
+    if (output == NULL) {
+        return NULL; // Allocation failed
+    }
+
+    sha256_starts(&ctx);
+    sha256_update(&ctx, (uint8_t *)input, length);
+    sha256_finish(&ctx, hash);
+
+    sha256_to_hex_string(hash, output);
+
+    return output;
+}

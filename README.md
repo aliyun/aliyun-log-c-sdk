@@ -66,6 +66,7 @@ git clone https://github.com/aliyun/aliyun-log-c-sdk.git
 ```
 
 ### 环境依赖
+需要安装openssl
 C Producer使用curl进行网络操作，您需要确认这些库已经安装，并且将它们的头文件目录和库文件目录都加入到了项目中。
 
 #### libcurl下载以及安装

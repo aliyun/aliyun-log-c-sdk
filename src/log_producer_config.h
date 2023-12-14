@@ -30,6 +30,8 @@ typedef struct _log_producer_config
     char * securityToken;
     char * topic;
     char * source;
+    auth_version authVersion;
+    char * region;
     CRITICALSECTION securityTokenLock;
     log_producer_config_tag * tags;
     int32_t tagAllocSize;
@@ -100,6 +102,21 @@ LOG_EXPORT void log_producer_config_set_access_id(log_producer_config * config, 
  * @param access_id
  */
 LOG_EXPORT void log_producer_config_set_access_key(log_producer_config * config, const char * access_id);
+
+/**
+ * set producer config auth_version
+ * @param config
+ * @param auth_version
+ */
+LOG_EXPORT void log_producer_config_set_auth_version(log_producer_config * config, auth_version auth_version);
+
+
+/**
+ * set producer config region
+ * @param config
+ * @param region
+ */
+LOG_EXPORT void log_producer_config_set_region(log_producer_config * config, const char * region);
 
 
 /**
