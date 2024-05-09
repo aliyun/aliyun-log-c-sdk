@@ -10,7 +10,7 @@
 #include "sds.h"
 #include <stdlib.h>
 #include <string.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -115,7 +115,7 @@ void _rebuild_time(lz4_log_buf * lz4_buf, lz4_log_buf ** new_lz4_buf)
 
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI log_producer_send_thread(LPVOID param)
 #else
 void * log_producer_send_thread(void * param)
@@ -249,7 +249,7 @@ void * log_producer_send_fun(void * param)
         int i =0;
         for (i = 0; i < sleepMs; i += SEND_SLEEP_INTERVAL_MS)
         {
-#ifdef WIN32
+#ifdef _WIN32
             Sleep(SEND_SLEEP_INTERVAL_MS);
 #else
             usleep(SEND_SLEEP_INTERVAL_MS * 1000);

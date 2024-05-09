@@ -20,7 +20,7 @@
 #define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
 #define MAX_SENDER_FLUSH_COUNT 100 // 10ms * 100
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI log_producer_send_thread(LPVOID param);
 #else
 void * log_producer_send_thread(void * param);
@@ -104,7 +104,7 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
     }
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI log_producer_flush_thread(LPVOID param)
 #else
 void * log_producer_flush_thread(void * param)
@@ -343,7 +343,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     int32_t total_wait_count = manager->producer_config->destroyFlusherWaitTimeoutSec > 0 ? manager->producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_MANAGER_FLUSH_COUNT;
     total_wait_count += manager->producer_config->destroySenderWaitTimeoutSec > 0 ? manager->producer_config->destroySenderWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
 
-#ifdef WIN32
+#ifdef _WIN32
     Sleep(10);
 #else
     usleep(10 * 1000);
@@ -354,7 +354,7 @@ void destroy_log_producer_manager(log_producer_manager * manager)
             manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
             (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
-#ifdef WIN32
+#ifdef _WIN32
         Sleep(10);
 #else
         usleep(10 * 1000);

@@ -3,7 +3,7 @@
 //
 
 #include "log_producer_common.h"
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/socket.h>
