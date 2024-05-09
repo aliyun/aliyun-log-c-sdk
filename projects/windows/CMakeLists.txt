@@ -3,7 +3,9 @@ PROJECT(aliyun_log_c_sdk)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)  
 
 set(CMAKE_VERSION 2.0.0)
-
+if(WIN32)
+    add_definitions(-DWIN32)
+endif()
 # default C / CXX flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_FLAGS "/W3 /D_LARGEFILE64_SOURCE")
@@ -29,25 +31,30 @@ IF(ADD_LOG_KEY_VALUE_FUN)
 ENDIF(ADD_LOG_KEY_VALUE_FUN)
 
 #curl-config
-FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
+# FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
   
-IF (CURL_CONFIG_BIN)
-    EXECUTE_PROCESS(
-        COMMAND ${CURL_CONFIG_BIN} --libs
-        OUTPUT_VARIABLE CURL_LIBRARIES
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-ELSE()
-    MESSAGE(FATAL_ERROR "Could not find curl-config")
-ENDIF()
+# IF (CURL_CONFIG_BIN)
+#     EXECUTE_PROCESS(
+#         COMMAND ${CURL_CONFIG_BIN} --libs
+#         OUTPUT_VARIABLE CURL_LIBRARIES
+#         OUTPUT_STRIP_TRAILING_WHITESPACE
+#         )
+# ELSE()
+#     MESSAGE(FATAL_ERROR "Could not find curl-config")
+# ENDIF()
   
 # Compile and link lib_log_c_sdk
+set(CURL_INCLUDE_DIR include)
+set(CURL_LIBRARIES Release/libcurl.lib)
 include_directories(${CURL_INCLUDE_DIR})
-LINK_LIBRARIES(curl)
+
+# LINK_LIBRARIES(curl)
 
 aux_source_directory(src SRC_LIST)
 aux_source_directory(src/curl_adapter CURL_ADAPTER_SRCS)
 add_library(${CMAKE_PROJECT_NAME} STATIC ${SRC_LIST} ${CURL_ADAPTER_SRCS})
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src src/curl_adapter)
+
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${CURL_LIBRARIES}")
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
