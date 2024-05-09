@@ -183,7 +183,7 @@ int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
         {
             readSize = file->maxFileSize - fileOffset;
         }
-        if ((rst = read(file->nowFD, buffer + nowOffset, readSize)) != readSize)
+        if ((rst = read(file->nowFD, (char*)buffer + nowOffset, readSize)) != readSize)
         {
             if (errno == ENOENT)
             {
