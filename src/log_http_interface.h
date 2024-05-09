@@ -4,13 +4,19 @@
 #include "log_define.h"
 #include "log_producer_config.h"
 
+#ifdef _WIN32
+    #define LOG_EXPORT_API __declspec(dllexport)
+#else
+  #define LOG_EXPORT_API __attribute__((visibility("default")))
+#endif
+
 LOG_CPP_START
 
 /**
  * register http post function for sending logs
  * @param f function ptr to send http post request
  */
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_http_post_func(int (*f)(const char *url,
                                      char **header_array,
                                      int header_count,
@@ -21,10 +27,10 @@ void log_set_http_post_func(int (*f)(const char *url,
  * register get time function for get log time
  * @param f function ptr to get time unix seconds, like time(NULL)
  */
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_get_time_unix_func(unsigned int (*f)());
 
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_http_header_inject_func(void (*f) (log_producer_config *config,
                                                 char **src_headers,
                                                 int src_count,
@@ -32,7 +38,7 @@ void log_set_http_header_inject_func(void (*f) (log_producer_config *config,
                                                 int *dest_count)
 );
 
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_http_header_release_inject_func(void (*f) (log_producer_config *config,
                                                         char **dest_headers,
                                                         int dest_count)
@@ -42,7 +48,7 @@ void log_set_http_header_release_inject_func(void (*f) (log_producer_config *con
  * register http global init function
  * @param f function ptr to do http global init
  */
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_http_global_init_func(log_status_t (*f)());
 
 
@@ -50,7 +56,7 @@ void log_set_http_global_init_func(log_status_t (*f)());
  * register http global destroy function
  * @param f function ptr to do http global destroy
  */
-__attribute__ ((visibility("default")))
+LOG_EXPORT_API
 void log_set_http_global_destroy_func(void (*f)());
 
 LOG_CPP_END
