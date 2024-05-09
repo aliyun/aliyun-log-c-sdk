@@ -16,6 +16,27 @@ static void get_ring_file_offset(log_ring_file * file,
     *fileOffset = offset % file->maxFileSize;
 }
 
+#ifdef _WIN32
+static int log_open_file_rw_win_sync(const char *pathname)
+{
+    HANDLE h = CreateFileA(pathname, GENERIC_WRITE | GENERIC_READ, 0, NULL, CREATE_NEW,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+    {
+        aos_error_log("open sync file on win failed %s, error %d", pathname, GetLastError());
+        return -1;
+    }
+    int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
+    if (fd < 0)
+    {
+        aos_error_log("convert handle to fd failed %s, error %d", pathname);
+        CloseHandle(h);
+        return -1;
+    }
+    return fd;
+}
+#endif
+
 static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t fileIndex, int32_t fileOffset)
 {
     if (file->nowFD > 0 && file->nowFileIndex == fileIndex && file->nowOffset % file->maxFileSize == fileOffset)
@@ -33,9 +54,16 @@ static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t f
     int openFlag = O_RDWR|O_CREAT;
     if (file->syncWrite)
     {
-        openFlag |= O_SYNC;
+    #ifdef _WIN32
+        file->nowFD = log_open_file_rw_win_sync(filePath);
+    #else
+        file->nowFD = open(filePath, openFlag | O_SYNC, 0644);
+    #endif
     }
-    file->nowFD = open(filePath, openFlag, 0644);
+    else
+    {
+        file->nowFD = open(filePath, openFlag, 0644);
+    }
     if (file->nowFD < 0)
     {
         aos_error_log("open file failed %s, error %s", filePath, strerror(errno));
