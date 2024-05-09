@@ -38,6 +38,21 @@ void log_set_http_header_release_inject_func(void (*f) (log_producer_config *con
                                                         int dest_count)
 );
 
+/**
+ * register http global init function
+ * @param f function ptr to do http global init
+ */
+__attribute__ ((visibility("default")))
+void log_set_http_global_init_func(log_status_t (*f)());
+
+
+/**
+ * register http global destroy function
+ * @param f function ptr to do http global destroy
+ */
+__attribute__ ((visibility("default")))
+void log_set_http_global_destroy_func(void (*f)());
+
 LOG_CPP_END
 
 

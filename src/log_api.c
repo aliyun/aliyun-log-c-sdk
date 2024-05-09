@@ -14,8 +14,10 @@ unsigned int LOG_GET_TIME();
 
 void log_http_inject_headers(log_producer_config *config, char **src_headers, int src_count, char **dest_headers, int *dest_count);
 void log_http_release_inject_headers(log_producer_config *config, char **dest_headers, int dest_count);
+log_status_t log_http_global_init();
+void log_http_global_destroy();
 
-log_status_t sls_log_init(int32_t log_global_flag)
+log_status_t sls_log_init()
 {
 #if 0
     CURLcode ecode;
@@ -25,13 +27,14 @@ log_status_t sls_log_init(int32_t log_global_flag)
         return -1;
     }
 #endif
-    return 0;
+    return log_http_global_init();
 }
 void sls_log_destroy()
 {
 #if 0
     curl_global_cleanup();
 #endif
+    log_http_global_destroy();
 }
 #if 0
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
