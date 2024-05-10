@@ -8,8 +8,10 @@ LOG_CPP_START
 extern const char LOG_ENDPOINT[];
 extern const char ACCESS_KEY_ID[];
 extern const char ACCESS_KEY_SECRET[];
+extern const char STS_TOKEN[];
 extern const char PROJECT_NAME[];
 extern const char LOGSTORE_NAME[];
+extern const char REGION_ID[];
 
 LOG_CPP_END
 

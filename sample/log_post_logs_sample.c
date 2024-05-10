@@ -77,36 +77,29 @@ void post_logs_with_http_cont_lz4_log_option()
         }
 
 #endif
-
+        auth_version version = (i % 2 == 0) ? AUTH_VERSION_1 : AUTH_VERSION_4;
         log_post_option option;
         memset(&option, 0, sizeof(log_post_option));
         option.interface = NULL;
         option.connect_timeout = 15;
         option.operation_timeout = 15;
-        option.compress_type = i % 2 == 0;
-        lz4_log_buf *pLZ4Buf = NULL;
-        if (option.compress_type == 1)
-        {
-            printf("post log with lz4 \n");
-            pLZ4Buf = serialize_to_proto_buf_with_malloc_lz4(bder);
-        }
-        else
-        {
-            printf("post log with no compress \n");
-            pLZ4Buf = serialize_to_proto_buf_with_malloc_no_lz4(bder);
-        }
+        option.compress_type = i % 3;
+        printf("post log with compress_type %d and auth version %d \n", option.compress_type, version);
+        lz4_log_buf *pLZ4Buf = serialize_to_log_buf_with_malloc(bder, option.compress_type);
 
         log_group_destroy(bder);
         if (pLZ4Buf == NULL)
         {
-            printf("serialize_to_proto_buf_with_malloc_lz4 failed\n");
+            printf("serialize_to_log_buf_with_malloc failed, compress_type:%d \n", option.compress_type);
             exit(1);
         }
         post_log_result * rst = post_logs_from_lz4buf(LOG_ENDPOINT, ACCESS_KEY_ID,
-                                                 ACCESS_KEY_SECRET, NULL,
+                                                 ACCESS_KEY_SECRET,
+                                                 strlen(STS_TOKEN) == 0 ? NULL : STS_TOKEN,
                                                  PROJECT_NAME, LOGSTORE_NAME,
                                                  pLZ4Buf, &option,
-                                                 AUTH_VERSION_1, NULL);
+                                                 version,
+                                                 REGION_ID);
         printf("result %d %d \n", i, rst->statusCode);
         if (rst->errorMessage != NULL)
         {
