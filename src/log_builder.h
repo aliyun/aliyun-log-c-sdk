@@ -34,9 +34,11 @@ typedef struct _log_group{
 #endif
 }log_group;
 
+// todo: rename to compressed_log_buf
 typedef struct _lz4_log_buf{
     size_t length;
     size_t raw_length;
+    log_compress_type compress_type;
     unsigned char data[0];
 }lz4_log_buf;
 
@@ -53,7 +55,9 @@ typedef struct _log_buffer {
 }log_buf;
 
 extern log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder);
+extern lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compress_type compress_type);
 extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
+extern lz4_log_buf* serialize_to_proto_buf_with_malloc_zstd(log_group_builder* bder);
 extern lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder);
 extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();

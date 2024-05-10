@@ -4,6 +4,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "zstd.h"
+#include "inner_log.h"
+
+#define LOG_ZSTD_COMPRESS_LEVEL 3
 
 // 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
 #define INIT_LOG_SIZE_BYTES 3
@@ -334,7 +338,6 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
 
 }
 
-
 log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
     log_buf buf;
@@ -354,21 +357,23 @@ log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
     return buf;
 }
 
-lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
+lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compress_type compress_type)
 {
-    log_buf buf = serialize_to_proto_buf_with_malloc(bder);
-    lz4_log_buf* pLogbuf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + buf.n_buffer);
-    pLogbuf->length = buf.n_buffer;
-    pLogbuf->raw_length = buf.n_buffer;
-    memcpy(pLogbuf->data, buf.buffer, buf.n_buffer);
-    return pLogbuf;
-}
+    if (compress_type == LOG_COMPRESS_NONE)
+    {
+        log_buf buf = serialize_to_proto_buf_with_malloc(bder);
+        lz4_log_buf* pLogbuf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + buf.n_buffer);
+        pLogbuf->length = buf.n_buffer;
+        pLogbuf->raw_length = buf.n_buffer;
+        pLogbuf->compress_type = compress_type;
+        memcpy(pLogbuf->data, buf.buffer, buf.n_buffer);
+        return pLogbuf;
+    }
 
-lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
-{
     log_tag * log = &(bder->grp->logs);
     if (log->buffer == NULL)
     {
+        aos_error_log("fail to serialize to log buf: logs is empty, %d", compress_type);
         return NULL;
     }
     if (log->max_buffer_len < bder->loggroup_size)
@@ -376,25 +381,65 @@ lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
         _adjust_buffer(log, bder->loggroup_size - log->now_buffer_len);
     }
     size_t length = _log_pack(bder->grp, (uint8_t *)log->buffer);
-    // @debug
-    //FILE * pFile = fopen("dump.dat", "wb+");
-    //fwrite(log->buffer, 1, length, pFile);
-    //fclose(pFile);
-    // @debug end
-    int compress_bound = LZ4_compressBound(length);
-    char *compress_data = (char *)malloc(compress_bound);
-    int compressed_size = LZ4_compress_default((char *)log->buffer, compress_data, length, compress_bound);
-    if(compressed_size <= 0)
+
+    size_t compress_bound, compressed_size;
+    char* compressed_data;
+    if (compress_type == LOG_COMPRESS_LZ4)
     {
-        free(compress_data);
+        compress_bound = LZ4_compressBound(length);
+        compressed_data = (char *)malloc(compress_bound);
+        compressed_size = LZ4_compress_default((char *)log->buffer, compressed_data, length, compress_bound);
+        if(compressed_size <= 0)
+        {
+            free(compressed_data);
+            aos_error_log("fail to serialize to log buf: fail to compress using lz4");
+            return NULL;
+        }
+    }
+    else if (compress_type == LOG_COMPRESS_ZSTD)
+    {
+        compress_bound = ZSTD_compressBound(length);
+        compressed_data = (char *)malloc(compress_bound);
+        compressed_size = ZSTD_compress(compressed_data,
+                                        compress_bound,
+                                        (char *)log->buffer,
+                                        length,
+                                        LOG_ZSTD_COMPRESS_LEVEL);
+        if (ZSTD_isError(compressed_size))
+        {
+            free(compressed_data);
+            aos_error_log("fail to serialize to log buf: fail to compress using zstd");
+            return NULL;
+        }
+    }
+    else
+    {
+        aos_error_log("fail to serialize to log buf, unspported compress type:%d", compress_type);
         return NULL;
     }
+
     lz4_log_buf* pLogbuf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_size);
     pLogbuf->length = compressed_size;
     pLogbuf->raw_length = length;
-    memcpy(pLogbuf->data, compress_data, compressed_size);
-    free(compress_data);
+    pLogbuf->compress_type = compress_type;
+    memcpy(pLogbuf->data, compressed_data, compressed_size);
+    free(compressed_data);
     return pLogbuf;
+}
+
+lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
+{
+    return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_NONE);
+}
+
+lz4_log_buf* serialize_to_proto_buf_with_malloc_zstd(log_group_builder* bder)
+{
+    return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_ZSTD);
+}
+
+lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
+{
+    return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_LZ4);
 }
 
 void free_lz4_log_buf(lz4_log_buf* pBuf)

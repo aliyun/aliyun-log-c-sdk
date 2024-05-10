@@ -143,17 +143,7 @@ void * log_producer_flush_thread(void * param)
                     add_pack_id(builder, producer_manager->pack_prefix, strlen(producer_manager->pack_prefix), producer_manager->pack_index++);
                 }
 
-                lz4_log_buf * lz4_buf = NULL;
-                // check compress type
-                if (config->compressType == 1)
-                {
-                    lz4_buf = serialize_to_proto_buf_with_malloc_lz4(builder);
-
-                }
-                else
-                {
-                    lz4_buf = serialize_to_proto_buf_with_malloc_no_lz4(builder);
-                }
+                lz4_log_buf * lz4_buf = serialize_to_log_buf_with_malloc(builder, config->compressType);
 
                 if (lz4_buf == NULL)
                 {
