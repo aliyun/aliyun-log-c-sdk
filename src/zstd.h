@@ -7,6 +7,7 @@
  * in the COPYING file in the root directory of this source tree).
  * You may select, at your option, one of the above-listed licenses.
  */
+#if defined (LOG_FEATURE_ZSTD_COMPRESS) 
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -3100,4 +3101,5 @@ ZSTDLIB_STATIC_API size_t ZSTD_insertBlock    (ZSTD_DCtx* dctx, const void* bloc
 
 #if defined (__cplusplus)
 }
+#endif
 #endif

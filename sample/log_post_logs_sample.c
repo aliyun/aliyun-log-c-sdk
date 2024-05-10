@@ -83,7 +83,11 @@ void post_logs_with_http_cont_lz4_log_option()
         option.interface = NULL;
         option.connect_timeout = 15;
         option.operation_timeout = 15;
-        option.compress_type = i % 3;
+#if defined(LOG_FEATURE_ZSTD_COMPRESS)
+            option.compress_type = i % 3;
+#else
+            option.compress_type = i % 2;
+#endif
         printf("post log with compress_type %d and auth version %d \n", option.compress_type, version);
         lz4_log_buf *pLZ4Buf = serialize_to_log_buf_with_malloc(bder, option.compress_type);
 

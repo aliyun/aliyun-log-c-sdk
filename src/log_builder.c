@@ -398,6 +398,7 @@ lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compr
     }
     else if (compress_type == LOG_COMPRESS_ZSTD)
     {
+#if defined (LOG_FEATURE_ZSTD_COMPRESS) 
         compress_bound = ZSTD_compressBound(length);
         compressed_data = (char *)malloc(compress_bound);
         compressed_size = ZSTD_compress(compressed_data,
@@ -411,6 +412,10 @@ lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compr
             aos_error_log("fail to serialize to log buf: fail to compress using zstd");
             return NULL;
         }
+#else
+        aos_error_log("fail to serialize to log buf: zstd compress is not supported");
+        return NULL;
+#endif
     }
     else
     {

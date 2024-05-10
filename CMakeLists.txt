@@ -29,10 +29,15 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
 option(ADD_LOG_KEY_VALUE_FUN "ON for generating add log key&value functions" OFF)
+option(FEATURE_ZSTD_COMPRESS "support zstd compress type, disable to get smaller lib size" ON)
 
 IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
 ENDIF(ADD_LOG_KEY_VALUE_FUN)
+
+if(FEATURE_ZSTD_COMPRESS)
+    add_definitions(-DLOG_FEATURE_ZSTD_COMPRESS)
+endif(FEATURE_ZSTD_COMPRESS)
 
 #curl-config
 FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)

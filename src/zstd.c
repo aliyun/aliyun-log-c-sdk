@@ -34,6 +34,7 @@
  *
  * Note: multithreading is enabled for all platforms apart from Emscripten.
  */
+#if defined (LOG_FEATURE_ZSTD_COMPRESS) 
 #define DEBUGLEVEL 0
 #define MEM_MODULE
 #undef  XXH_NAMESPACE
@@ -51018,3 +51019,4 @@ size_t ZDICT_addEntropyTablesFromBuffer(void* dictBuffer, size_t dictContentSize
                                                      params);
 }
 /**** ended inlining dictBuilder/zdict.c ****/
+#endif
