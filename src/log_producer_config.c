@@ -19,7 +19,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->sendTimeoutSec = 15;
     pConfig->destroySenderWaitTimeoutSec = 1;
     pConfig->destroyFlusherWaitTimeoutSec = 1;
-    pConfig->compressType = LOG_COMPRESS_ZSTD;
+    pConfig->compressType = LOG_COMPRESS_LZ4;
     pConfig->using_https = 0;
 }
 
