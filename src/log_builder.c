@@ -7,7 +7,7 @@
 #include "zstd.h"
 #include "inner_log.h"
 
-#define LOG_ZSTD_COMPRESS_LEVEL 3
+#define LOG_ZSTD_COMPRESS_LEVEL 1
 
 // 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
 #define INIT_LOG_SIZE_BYTES 3
