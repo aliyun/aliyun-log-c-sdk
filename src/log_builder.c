@@ -338,6 +338,7 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
 
 }
 
+
 log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
     log_buf buf;
