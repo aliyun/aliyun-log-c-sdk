@@ -3,6 +3,7 @@
 #include "log_util.h"
 #include "md5.h"
 #include "hmac-sha.h"
+#include <stdlib.h>
 
 static const char *g_hex_hash = "0123456789ABCDEF";
 
@@ -79,7 +80,7 @@ char *sha256_hash_to_hex(const char *input, uint32 length) {
 
     sha256_context ctx;
     uint8_t hash[32];
-    char *output = malloc(65); // 64 chars for hex + 1 for '\0'
+    char *output = (char*)malloc(65); // 64 chars for hex + 1 for '\0'
     if (output == NULL) {
         return NULL; // Allocation failed
     }
