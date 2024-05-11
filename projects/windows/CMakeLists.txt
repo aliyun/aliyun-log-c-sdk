@@ -25,11 +25,16 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
 option(ADD_LOG_KEY_VALUE_FUN "ON for generating add log key&value functions" OFF)
+option(HTTP_USE_CURL "http use libcurl" ON)
 
 IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
 ENDIF(ADD_LOG_KEY_VALUE_FUN)
+if(HTTP_USE_CURL)
+    add_definitions(-DLOG_HTTP_USE_CURL)
+ENDIF(HTTP_USE_CURL)
 
+# todo: refine curl config
 #curl-config
 # FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
   
