@@ -6,7 +6,8 @@
 #include "inner_log.h"
 #include "md5.h"
 #include "sds.h"
-#include <sys/time.h>
+// #include <sys/time.h>
+#include <time.h>
 
 #ifdef __MACH__
 #include <stdio.h>
@@ -22,6 +23,16 @@
 
 #ifdef _WIN32
 DWORD WINAPI log_producer_send_thread(LPVOID param);
+// resolution 100ns
+ULONGLONG _log_get_win_ns_part()
+{
+    FILETIME wintime;
+    GetSystemTimeAsFileTime(&wintime);
+    ULARGE_INTEGER ui;
+    ui.LowPart = wintime.dwLowDateTime;
+    ui.HighPart = wintime.dwHighDateTime;
+    return ui.QuadPart * 100;
+}
 #else
 void * log_producer_send_thread(void * param);
 #endif
@@ -37,6 +48,9 @@ void _generate_pack_id_timestamp(long *timestamp)
     mach_port_deallocate(mach_task_self(), cclock);
     ts.tv_sec = mts.tv_sec;
     ts.tv_nsec = mts.tv_nsec;
+#elif defined (_WIN32)
+    *timestamp = (long)_log_get_win_ns_part();
+    return;
 #else
     clock_gettime(CLOCK_REALTIME, &ts);
 #endif
