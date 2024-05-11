@@ -4,6 +4,11 @@
 #include "sds.h"
 #include "inner_log.h"
 
+#ifdef LOG_HTTP_USE_CURL
+#include "curl_adapter/adapter.h"
+#endif
+
+
 #define LOG_MAX_HEADER_COUNT (50)
 
 int LOG_OS_HttpPost(const char *url,
@@ -21,21 +26,13 @@ void log_http_global_destroy();
 
 log_status_t sls_log_init()
 {
-#if 0
-    CURLcode ecode;
-    if ((ecode = curl_global_init(log_global_flag)) != CURLE_OK)
-    {
-        aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
-        return -1;
-    }
+#ifdef LOG_HTTP_USE_CURL
+    log_set_http_use_curl();
 #endif
     return log_http_global_init();
 }
 void sls_log_destroy()
 {
-#if 0
-    curl_global_cleanup();
-#endif
     log_http_global_destroy();
 }
 #if 0
