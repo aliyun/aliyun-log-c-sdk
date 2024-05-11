@@ -19,7 +19,7 @@ static void get_ring_file_offset(log_ring_file * file,
 #ifdef _WIN32
 static int log_open_file_rw_win_sync(const char *pathname)
 {
-    HANDLE h = CreateFileA(pathname, GENERIC_WRITE | GENERIC_READ, 0, NULL, CREATE_NEW,
+    HANDLE h = CreateFileA(pathname, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_ALWAYS,
                            FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE)
     {

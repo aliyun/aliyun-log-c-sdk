@@ -44,7 +44,6 @@ static int log_curl_http_post(const char *url,
                     const void *data,
                     int data_len)
 {
-    printf("curl post logs: length %d \n", data_len);
     CURL *curl = curl_easy_init();
     if (curl == NULL)
     {
@@ -56,7 +55,6 @@ static int log_curl_http_post(const char *url,
     for (int i = 0; i < header_count; i++)
     {
         headers = curl_slist_append(headers, header_array[i]);
-        printf("curl header: %s\n", header_array[i]);
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
