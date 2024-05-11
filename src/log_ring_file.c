@@ -244,7 +244,22 @@ int log_ring_file_flush(log_ring_file *file)
 {
     if (file->nowFD > 0)
     {
+#ifdef _WIN32
+        HANDLE h = (HANDLE)_get_osfhandle(file->nowFD);
+        if (h == INVALID_HANDLE_VALUE)
+        {
+            aos_error_log("get file handle failure, %d", file->nowFD);
+            return -1;
+        }
+        if (!FlushFileBuffers(h))
+        {
+            aos_error_log("flush file failure, fd:%d, err:%d", file->nowFD, GetLastError());
+            return -1;
+        }
+        return 0;
+#else
         return fsync(file->nowFD);
+#endif
     }
     return -1;
 }
