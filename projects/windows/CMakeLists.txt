@@ -3,9 +3,7 @@ PROJECT(aliyun_log_c_sdk)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)  
 
 set(CMAKE_VERSION 2.0.0)
-if(WIN32)
-    add_definitions(-DWIN32)
-endif()
+add_definitions(-DWIN32)
 # default C / CXX flags
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_FLAGS "/W3 /D_LARGEFILE64_SOURCE")
@@ -30,35 +28,51 @@ IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
 ENDIF(ADD_LOG_KEY_VALUE_FUN)
 
-#curl-config
-# FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
-  
-# IF (CURL_CONFIG_BIN)
-#     EXECUTE_PROCESS(
-#         COMMAND ${CURL_CONFIG_BIN} --libs
-#         OUTPUT_VARIABLE CURL_LIBRARIES
-#         OUTPUT_STRIP_TRAILING_WHITESPACE
-#         )
-# ELSE()
-#     MESSAGE(FATAL_ERROR "Could not find curl-config")
-# ENDIF()
-  
 # Compile and link lib_log_c_sdk
-set(CURL_INCLUDE_DIR include)
-set(CURL_LIBRARIES ${PROJECT_SOURCE_DIR}/Release/libcurl.lib)
-set(CURL_PATH ${CMAKE_SOURCE_DIR}/Release)
-set(CURL_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include)
-include_directories(${CURL_INCLUDE_DIR})
-
-# LINK_LIBRARIES(curl)
-
 aux_source_directory(src SRC_LIST)
 aux_source_directory(src/curl_adapter CURL_ADAPTER_SRCS)
 add_library(${CMAKE_PROJECT_NAME} STATIC ${SRC_LIST} ${CURL_ADAPTER_SRCS})
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src src/curl_adapter)
 
-target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${CURL_LIBRARIES}")
-
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
+set(CURL_LIB_DIR ${CMAKE_SOURCE_DIR}/Release)
+set(CURL_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/Include)
+# find curl by customized CURL_LIB_DIR & CURL_INCLUDE_DIRS
+if(CURL_LIB_DIR)
+    message(STATUS "Use custom libcurl, CURL_LIB_DIR: ${CURL_LIB_DIR}")
+    message(STATUS "CURL_INCLUDE_DIRS: ${CURL_INCLUDE_DIRS}")
+    find_library(CURL_LIBRARY
+                NAMES curl libcurl
+                PATHS ${CURL_LIB_DIR}
+                NO_DEFAULT_PATH)
+    target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CURL_LIBRARY})
+else()
+    find_library(CURL CONFIG)
+    if (CURL_FOUND)
+        target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE CURL::libcurl)
+    else()
+        find_library(CURL MODULE REQUIRED)
+        target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${CURL_LIBRARIES})
+    endif()
+endif()
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CURL_INCLUDE_DIRS})
 
-add_subdirectory(sample)
+
+# For samples
+set(POST_LOGS_SOURCE_FILES
+    sample/log_config.c
+	sample/log_post_logs_sample.c)
+
+set(PRODUCER_SAMPLE_SOURCE_FILES sample/log_producer_sample.c)
+set(PRODUCER_BENCHMARK_SOURCE_FILES sample/log_producer_benchmark.c)
+set(PRODUCER_PERSISTENT_SAMPLE_SOURCE_FILES sample/log_producer_persistent_sample.c)
+
+function(_TARGET_SAMPLE_LIBRARIES SAMPLE_BIN_NAME SOURCE_FILES)
+        add_executable(${SAMPLE_BIN_NAME} ${SOURCE_FILES})
+        target_link_libraries(${SAMPLE_BIN_NAME} ${CMAKE_PROJECT_NAME})
+endfunction()
+
+_TARGET_SAMPLE_LIBRARIES(log_producer_sample "${PRODUCER_SAMPLE_SOURCE_FILES}")
+_TARGET_SAMPLE_LIBRARIES(log_post_logs_sample "${POST_LOGS_SOURCE_FILES}")
+_TARGET_SAMPLE_LIBRARIES(log_producer_persistent_sample "${PRODUCER_PERSISTENT_SAMPLE_SOURCE_FILES}")
+
