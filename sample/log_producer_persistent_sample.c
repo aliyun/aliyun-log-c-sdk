@@ -168,7 +168,11 @@ void log_producer_post_logs()
             if (rst != LOG_PRODUCER_OK)
             {
                 printf("add log error %d \n", rst);
-                usleep(100000);
+                #ifdef _WIN32
+                    Sleep(100);
+                #else
+                    usleep(100000);
+                #endif
                 continue;
             }
             else
@@ -178,9 +182,17 @@ void log_producer_post_logs()
         }
 
 
-        usleep(1);
+        #ifdef _WIN32
+            Sleep(1);
+        #else
+            usleep(1);
+        #endif
     }
-    sleep(1000);
+    #ifdef _WIN32
+        Sleep(1000 * 1000);
+    #else
+        sleep(1000);
+    #endif
     //_exit(0);
 
 
