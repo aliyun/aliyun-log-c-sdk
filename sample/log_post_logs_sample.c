@@ -12,7 +12,6 @@
 
 void post_logs_with_http_cont_lz4_log_option()
 {
-    log_set_http_use_curl();
     sls_log_init();
 
     int i = 0;
