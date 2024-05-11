@@ -45,7 +45,9 @@ ENDIF(ADD_LOG_KEY_VALUE_FUN)
   
 # Compile and link lib_log_c_sdk
 set(CURL_INCLUDE_DIR include)
-set(CURL_LIBRARIES Release/libcurl.lib)
+set(CURL_LIBRARIES ${PROJECT_SOURCE_DIR}/Release/libcurl.lib)
+set(CURL_PATH ${CMAKE_SOURCE_DIR}/Release)
+set(CURL_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/include)
 include_directories(${CURL_INCLUDE_DIR})
 
 # LINK_LIBRARIES(curl)
@@ -58,3 +60,5 @@ target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src src/curl_adapter)
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "SHELL:${CURL_LIBRARIES}")
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES VERSION ${CMAKE_VERSION}  SOVERSION ${CMAKE_VERSION})
+
+add_subdirectory(sample)
