@@ -3,6 +3,7 @@
 #include "log_config.h"
 #include <string.h>
 #include <stdio.h>
+#include "curl_adapter/adapter.h"
 
 // just for developer
 
@@ -11,7 +12,7 @@
 
 void post_logs_with_http_cont_lz4_log_option()
 {
-
+    log_set_http_use_curl();
     sls_log_init();
 
     int i = 0;
