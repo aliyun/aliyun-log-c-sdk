@@ -128,25 +128,14 @@ C Producer使用curl进行网络操作，您需要确认这些库已经安装，
 | send_timeout_sec | 日志发送超时时间 | 整数，单位秒，默认为15 |
 | destroy_flusher_wait_sec | flusher线程销毁最大等待时间 | 整数，单位秒，默认为1 |
 | destroy_sender_wait_sec | sender线程池销毁最大等待时间 | 整数，单位秒，默认为1 |
-| compress_type | 压缩类型 | 枚举值，默认为lz4。可选 lz4、zstd 与不压缩。 |
+| compress_type | 压缩类型 | 枚举值，默认为lz4。 |
 ### 相关限制
 * C Producer销毁时，会尽可能将缓存中的数据发送出去，若您不对未发送的数据进行处理，则有一定概率丢失数据。处理方法参见[程序可靠退出方案](save_send_buffer.md)
 * C Producer销毁的最长时间可能为 `send_timeout_sec` + `destroy_flusher_wait_sec` + `destroy_sender_wait_sec`
 
-### 压缩方式
-C Producer支持在上传日志时，先对日志进行压缩，以减少网络传输量。  
-目前支持 lz4 和 zstd 两种压缩方式，默认lz4。您可以在配置中配置 compress_type 参数指定压缩类型。  
-
-FEATURE_ZSTD_COMPRESS 编译选项在编译时默认开启，如果手动关闭，将不再支持 zstd 压缩方式，但可以减小库体积。您可以通过以下方式在编译时关闭 zstd 压缩方式：  
-```bash
-cmake -DFEATURE_ZSTD_COMPRESS=OFF .
-```
-
 ### 样例代码
 
 请参考`sample`目录中的`log_producer_sample.c`。
-
-
 
 ## C-Producer系列介绍
 

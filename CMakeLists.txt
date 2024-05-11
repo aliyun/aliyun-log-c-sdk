@@ -29,7 +29,7 @@ set(CMAKE_C_OUTPUT_EXTENSION_REPLACE 1)
 set(CMAKE_CXX_OUTPUT_EXTENSION_REPLACE 1)
 
 option(ADD_LOG_KEY_VALUE_FUN "ON for generating add log key&value functions" OFF)
-option(FEATURE_ZSTD_COMPRESS "support zstd compress type, disable to get smaller lib size" ON)
+option(FEATURE_ZSTD_COMPRESS "support zstd compress type, disable to get smaller lib size" OFF)
 
 IF(ADD_LOG_KEY_VALUE_FUN)
     add_definitions(-DLOG_KEY_VALUE_FLAG)
