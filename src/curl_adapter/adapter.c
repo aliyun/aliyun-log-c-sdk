@@ -1,13 +1,15 @@
+#include "adapter.h"
 #include "log_define.h"
 #include <curl/curl.h>
 #include "inner_log.h"
 #include "sds.h"
+#include "log_http_interface.h"
 
 typedef int log_curl_error_code;
 
-log_curl_error_code log_curl_init_err = -1;
-log_curl_error_code log_curl_getinfo_err = -2;
-log_curl_error_code log_curl_perform_err = -3;
+static log_curl_error_code log_curl_init_err = -1;
+static log_curl_error_code log_curl_getinfo_err = -2;
+static log_curl_error_code log_curl_perform_err = -3;
 
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
@@ -36,12 +38,13 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb, void *stream
     return totalLen;
 }
 
-int log_curl_http_post(const char *url,
+static int log_curl_http_post(const char *url,
                     char **header_array,
                     int header_count,
                     const void *data,
                     int data_len)
 {
+    printf("curl post logs: length %d \n", data_len);
     CURL *curl = curl_easy_init();
     if (curl == NULL)
     {
@@ -53,6 +56,7 @@ int log_curl_http_post(const char *url,
     for (int i = 0; i < header_count; i++)
     {
         headers = curl_slist_append(headers, header_array[i]);
+        printf("curl header: %s\n", header_array[i]);
     }
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -122,7 +126,7 @@ int log_curl_http_post(const char *url,
     return http_code;
 }
 
-log_status_t log_curl_global_init()
+static log_status_t log_curl_global_init()
 {
     CURLcode ecode;
     if ((ecode = curl_global_init(CURL_GLOBAL_ALL)) != CURLE_OK)
@@ -132,7 +136,14 @@ log_status_t log_curl_global_init()
     }
 }
 
-void log_curl_global_destroy()
+static void log_curl_global_destroy()
 {
     curl_global_cleanup();
+}
+
+void log_set_http_use_curl()
+{
+    log_set_http_post_func(log_curl_http_post);
+    log_set_http_global_init_func(log_curl_global_init);
+    log_set_http_global_destroy_func(log_curl_global_destroy);
 }

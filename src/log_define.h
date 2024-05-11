@@ -8,6 +8,12 @@
 #define LOG_EXPORT
 #endif
 
+#ifdef _WIN32
+#define LOG_EXPORT_API __declspec(dllexport)
+#else
+#define LOG_EXPORT_API __attribute__((visibility("default")))
+#endif
+
 #ifdef __cplusplus
 # define LOG_CPP_START extern "C" {
 # define LOG_CPP_END }

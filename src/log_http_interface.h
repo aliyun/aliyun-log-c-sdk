@@ -4,12 +4,6 @@
 #include "log_define.h"
 #include "log_producer_config.h"
 
-#ifdef _WIN32
-    #define LOG_EXPORT_API __declspec(dllexport)
-#else
-  #define LOG_EXPORT_API __attribute__((visibility("default")))
-#endif
-
 LOG_CPP_START
 
 /**
