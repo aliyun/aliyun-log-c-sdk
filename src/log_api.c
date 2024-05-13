@@ -197,7 +197,6 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         char md5Buf[33];
         md5Buf[32] = '\0';
-        int lz4Flag = option == NULL || option->compress_type == 1;
         md5_to_string((const char *)buffer->data, buffer->length, (char *)md5Buf);
 
 
@@ -205,6 +204,20 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         //puts(nowTime);
 
         struct curl_slist* headers = NULL;
+        
+        const char* compress_type_str = "";
+        int is_compressed = (option->compress_type != LOG_COMPRESS_NONE);
+        switch (option->compress_type)
+        {
+        case LOG_COMPRESS_LZ4:
+            headers = curl_slist_append(headers, "x-log-compresstype:lz4");
+            compress_type_str = "x-log-compresstype:lz4\n";
+            break;
+        case LOG_COMPRESS_NONE:
+            break;
+        default:
+            aos_error_log("unsuported compresstype %d", option->compress_type);
+        }
 
         if (version == AUTH_VERSION_4)
         {
@@ -212,12 +225,6 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
             headers=curl_slist_append(headers, headerRawLen);
             headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
-            if (!lz4Flag)
-            {
-                aos_error_log("V4 signature must use lz4 compresstype");
-                return NULL;
-            }
-            headers=curl_slist_append(headers, "x-log-compresstype:lz4");
             sds headerLen= sdsnewEmpty(64);
             headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
             headers=curl_slist_append(headers, headerLen);
@@ -261,11 +268,24 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             headers=curl_slist_append(headers, signTime);
 
             sds sigHeaders = sdsnewEmpty(128);
-            sigHeaders = sdscatprintf(sigHeaders, "content-type;host;x-log-apiversion;x-log-bodyrawsize;x-log-compresstype;x-log-content-sha256;x-log-date");
             sds headersToString = sdsnewEmpty(512);
-            headersToString = sdscatprintf(headersToString,
-                                          "content-type:application/x-protobuf\nhost:%s.%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-content-sha256:%s\nx-log-date:%s\n",
-                                           project, endpoint, (int)buffer->raw_length, contentSha256, currentTime);
+            const char* compress_type_header_str = is_compressed ? "x-log-compresstype;" : "";
+            if (stsToken == NULL)
+            {
+                sigHeaders = sdscatprintf(sigHeaders, "content-type;host;x-log-apiversion;x-log-bodyrawsize;%sx-log-content-sha256;x-log-date", compress_type_header_str);
+            
+                headersToString = sdscatprintf(headersToString,
+                                          "content-type:application/x-protobuf\nhost:%s.%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\n%sx-log-content-sha256:%s\nx-log-date:%s\n",
+                                           project, endpoint, (int)buffer->raw_length, compress_type_str, contentSha256, currentTime);
+            }
+            else
+            {
+                sigHeaders = sdscatprintf(sigHeaders, "content-type;host;x-acs-security-token;x-log-apiversion;x-log-bodyrawsize;%sx-log-content-sha256;x-log-date", compress_type_header_str);
+            
+                headersToString = sdscatprintf(headersToString,
+                                          "content-type:application/x-protobuf\nhost:%s.%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\n%sx-log-content-sha256:%s\nx-log-date:%s\n",
+                                           project, endpoint, stsToken, (int)buffer->raw_length, compress_type_str, contentSha256, currentTime);
+            }
             sds canonicalRequestStr = sdsnewEmpty(512);
             canonicalRequestStr = sdscatprintf(canonicalRequestStr,
                                               "POST\n/logstores/%s/shards/lb\n\n%s\n%s\n%s", // params is empty
@@ -304,10 +324,6 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         {
             headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
             headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
-            if (lz4Flag)
-            {
-                headers=curl_slist_append(headers, "x-log-compresstype:lz4");
-            }
             if (stsToken != NULL)
             {
                 sds tokenHeader = sdsnew("x-acs-security-token:");
@@ -339,36 +355,17 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             sha1Buf[64] = '\0';
 
             sds sigContent = sdsnewEmpty(512);
-            if (lz4Flag)
+            if (stsToken == NULL)
             {
-                if (stsToken == NULL)
-                {
-                    sigContent = sdscatprintf(sigContent,
-                                            "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                            md5Buf, nowTime, (int)buffer->raw_length, logstore);
-                }
-                else
-                {
-                    sigContent = sdscatprintf(sigContent,
-                                            "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-compresstype:lz4\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                            md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
-                }
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\n%sx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, (int)buffer->raw_length, compress_type_str, logstore);
             }
             else
             {
-                if (stsToken == NULL)
-                {
-                    sigContent = sdscatprintf(sigContent,
-                                            "POST\n%s\napplication/x-protobuf\n%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                            md5Buf, nowTime, (int)buffer->raw_length, logstore);
-                }
-                else
-                {
-                    sigContent = sdscatprintf(sigContent,
-                                            "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\nx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
-                                            md5Buf, nowTime, stsToken, (int)buffer->raw_length, logstore);
-                }
-
+                sigContent = sdscatprintf(sigContent,
+                                          "POST\n%s\napplication/x-protobuf\n%s\nx-acs-security-token:%s\nx-log-apiversion:0.6.0\nx-log-bodyrawsize:%d\n%sx-log-signaturemethod:hmac-sha1\n/logstores/%s/shards/lb",
+                                          md5Buf, nowTime, stsToken, (int)buffer->raw_length, compress_type_str, logstore);
             }
 
             //puts("#######################");

@@ -40,4 +40,9 @@ enum _auth_version
 
 typedef enum _auth_version auth_version;
 
+typedef enum {
+    LOG_COMPRESS_NONE = 0,
+    LOG_COMPRESS_LZ4 = 1,
+} log_compress_type;
+
 #endif

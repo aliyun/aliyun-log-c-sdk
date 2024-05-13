@@ -52,7 +52,7 @@ typedef struct _log_producer_config
     int32_t destroyFlusherWaitTimeoutSec;
     int32_t destroySenderWaitTimeoutSec;
 
-    int32_t compressType; // default lz4, 0 no compress, 1 lz4
+    log_compress_type compressType;
     int32_t using_https; // default http, 0 http, 1 https
 
 }log_producer_config;

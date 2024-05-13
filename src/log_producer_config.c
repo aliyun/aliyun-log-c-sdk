@@ -19,7 +19,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->sendTimeoutSec = 15;
     pConfig->destroySenderWaitTimeoutSec = 1;
     pConfig->destroyFlusherWaitTimeoutSec = 1;
-    pConfig->compressType = 1;
+    pConfig->compressType = LOG_COMPRESS_LZ4;
     pConfig->using_https = 0;
 }
 
@@ -241,11 +241,13 @@ void log_producer_config_set_destroy_sender_wait_sec(log_producer_config * confi
 
 void log_producer_config_set_compress_type(log_producer_config * config, int32_t compress_type)
 {
-    if (config == NULL || compress_type < 0 || compress_type > 1)
+    if (config == NULL ||
+        compress_type < (int32_t)LOG_COMPRESS_NONE ||
+        compress_type > (int32_t)LOG_COMPRESS_LZ4)
     {
         return;
     }
-    config->compressType = compress_type;
+    config->compressType = (log_compress_type)compress_type;
 }
 
 void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https)

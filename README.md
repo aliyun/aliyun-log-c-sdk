@@ -128,7 +128,7 @@ C Producer使用curl进行网络操作，您需要确认这些库已经安装，
 | send_timeout_sec | 日志发送超时时间 | 整数，单位秒，默认为15 |
 | destroy_flusher_wait_sec | flusher线程销毁最大等待时间 | 整数，单位秒，默认为1 |
 | destroy_sender_wait_sec | sender线程池销毁最大等待时间 | 整数，单位秒，默认为1 |
-
+| compress_type | 压缩类型 | 枚举值，默认为lz4。 |
 ### 相关限制
 * C Producer销毁时，会尽可能将缓存中的数据发送出去，若您不对未发送的数据进行处理，则有一定概率丢失数据。处理方法参见[程序可靠退出方案](save_send_buffer.md)
 * C Producer销毁的最长时间可能为 `send_timeout_sec` + `destroy_flusher_wait_sec` + `destroy_sender_wait_sec`
