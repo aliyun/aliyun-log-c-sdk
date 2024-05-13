@@ -143,7 +143,7 @@ void * log_producer_flush_thread(void * param)
                     add_pack_id(builder, producer_manager->pack_prefix, strlen(producer_manager->pack_prefix), producer_manager->pack_index++);
                 }
 
-                lz4_log_buf * lz4_buf = serialize_to_log_buf_with_malloc(builder, config->compressType);
+                lz4_log_buf * lz4_buf = serialize_with_malloc_compressed(builder, config->compressType);
 
                 if (lz4_buf == NULL)
                 {
