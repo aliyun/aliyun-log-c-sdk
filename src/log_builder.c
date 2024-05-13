@@ -355,7 +355,7 @@ log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
     return buf;
 }
 
-lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compress_type compress_type)
+lz4_log_buf* serialize_with_malloc_compressed(log_group_builder* bder, log_compress_type compress_type)
 {
     if (compress_type == LOG_COMPRESS_NONE)
     {
@@ -408,14 +408,14 @@ lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compr
     return pLogbuf;
 }
 
-lz4_log_buf* serialize_to_proto_buf_with_malloc(log_group_builder* bder)
+lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
 {
-    return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_NONE);
+    return serialize_with_malloc_compressed(bder, LOG_COMPRESS_NONE);
 }
 
 lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
 {
-    return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_LZ4);
+    return serialize_with_malloc_compressed(bder, LOG_COMPRESS_LZ4);
 }
 
 void free_lz4_log_buf(lz4_log_buf* pBuf)
