@@ -243,7 +243,7 @@ void log_producer_config_set_compress_type(log_producer_config * config, int32_t
 {
     if (config == NULL ||
         compress_type < (int32_t)LOG_COMPRESS_NONE ||
-        compress_type > (int32_t)LOG_COMPRESS_LZ4)
+        compress_type > (int32_t)LOG_COMPRESS_ZSTD)
     {
         return;
     }

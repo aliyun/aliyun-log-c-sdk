@@ -6,6 +6,12 @@
 #include <assert.h>
 #include "inner_log.h"
 
+#ifdef LOG_FEATURE_ZSTD_COMPRESS
+#include "zstd.h"
+#define LOG_ZSTD_COMPRESS_LEVEL 1
+#define LOG_ZSTD_COMPRESS_SUPP 1
+#endif
+
 // 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
 #define INIT_LOG_SIZE_BYTES 3
 
@@ -394,6 +400,22 @@ lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compr
             return NULL;
         }
     }
+    else if (compress_type == LOG_COMPRESS_ZSTD)
+    {
+        compress_bound = ZSTD_compressBound(length);
+        compressed_data = (char *)malloc(compress_bound);
+        compressed_size = ZSTD_compress(compressed_data,
+                                        compress_bound,
+                                        (char *)log->buffer,
+                                        length,
+                                        LOG_ZSTD_COMPRESS_LEVEL);
+        if (ZSTD_isError(compressed_size))
+        {
+            free(compressed_data);
+            aos_error_log("fail to serialize to log buf: fail to compress using zstd");
+            return NULL;
+        }
+    }
     else
     {
         aos_error_log("fail to serialize to log buf, unspported compress type:%d", compress_type);
@@ -411,6 +433,14 @@ lz4_log_buf* serialize_to_log_buf_with_malloc(log_group_builder* bder, log_compr
 lz4_log_buf* serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
     return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_NONE);
+}
+
+lz4_log_buf* serialize_to_proto_buf_with_malloc_zstd(log_group_builder* bder)
+{
+    if (LOG_ZSTD_COMPRESS_SUPP)
+        return serialize_to_log_buf_with_malloc(bder, LOG_COMPRESS_ZSTD);
+    aos_error_log("fail to serialize to log buf, unspported compress type: zstd");
+    return NULL;
 }
 
 lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder)
