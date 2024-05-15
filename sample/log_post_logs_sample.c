@@ -93,7 +93,7 @@ void post_logs_with_http_cont_lz4_log_option()
         else
         {
             printf("post log with no compress \n");
-            pLZ4Buf = serialize_to_proto_buf_with_malloc_no_lz4(bder);
+            pLZ4Buf = serialize_to_proto_buf_with_malloc_no_compress(bder);
         }
 
         log_group_destroy(bder);
