@@ -206,12 +206,13 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         struct curl_slist* headers = NULL;
         
         const char* compress_type_str = "";
-        int is_compressed = (option->compress_type != LOG_COMPRESS_NONE);
+        int is_compressed = 0;
         switch (option->compress_type)
         {
         case LOG_COMPRESS_LZ4:
             headers = curl_slist_append(headers, "x-log-compresstype:lz4");
             compress_type_str = "x-log-compresstype:lz4\n";
+            is_compressed = 1;
             break;
         case LOG_COMPRESS_ZSTD:
             headers = curl_slist_append(headers, "x-log-compresstype:zstd");

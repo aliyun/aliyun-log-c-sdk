@@ -434,7 +434,7 @@ lz4_log_buf* serialize_with_malloc_compressed(log_group_builder* bder, log_compr
     return pLogbuf;
 }
 
-lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
+lz4_log_buf* serialize_to_proto_buf_with_malloc_no_compress(log_group_builder* bder)
 {
     return serialize_with_malloc_compressed(bder, LOG_COMPRESS_NONE);
 }
