@@ -58,7 +58,7 @@ extern log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder);
 extern lz4_log_buf* serialize_with_malloc_compressed(log_group_builder* bder, log_compress_type compress_type);
 extern lz4_log_buf* serialize_to_proto_buf_with_malloc_lz4(log_group_builder* bder);
 // no compress
-extern lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder);
+extern lz4_log_buf* serialize_to_proto_buf_with_malloc_no_compress(log_group_builder* bder);
 extern void free_lz4_log_buf(lz4_log_buf* pBuf);
 extern log_group_builder* log_group_create();
 extern void log_group_destroy(log_group_builder* bder);

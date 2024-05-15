@@ -396,7 +396,7 @@ lz4_log_buf* serialize_with_malloc_compressed(log_group_builder* bder, log_compr
     }
     else
     {
-        aos_error_log("fail to serialize to log buf, unspported compress type:%d", compress_type);
+        aos_error_log("fail to serialize to log buf, unsupported compress type:%d", compress_type);
         return NULL;
     }
     lz4_log_buf* pLogbuf = (lz4_log_buf*)malloc(sizeof(lz4_log_buf) + compressed_size);
@@ -408,7 +408,7 @@ lz4_log_buf* serialize_with_malloc_compressed(log_group_builder* bder, log_compr
     return pLogbuf;
 }
 
-lz4_log_buf* serialize_to_proto_buf_with_malloc_no_lz4(log_group_builder* bder)
+lz4_log_buf* serialize_to_proto_buf_with_malloc_no_compress(log_group_builder* bder)
 {
     return serialize_with_malloc_compressed(bder, LOG_COMPRESS_NONE);
 }
