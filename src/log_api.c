@@ -217,6 +217,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         case LOG_COMPRESS_ZSTD:
             headers = curl_slist_append(headers, "x-log-compresstype:zstd");
             compress_type_str = "x-log-compresstype:zstd\n";
+            is_compressed = 1;
             break;
         case LOG_COMPRESS_NONE:
             break;
