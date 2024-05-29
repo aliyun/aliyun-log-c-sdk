@@ -6,6 +6,7 @@
 #include "sds.h"
 #include "inner_log.h"
 #include <fcntl.h>
+#include "log_util.h"
 
 static void get_ring_file_offset(log_ring_file * file,
                                  uint64_t offset,
@@ -15,27 +16,6 @@ static void get_ring_file_offset(log_ring_file * file,
     *fileIndex = (offset / file->maxFileSize) % file->maxFileCount;
     *fileOffset = offset % file->maxFileSize;
 }
-
-#ifdef _WIN32
-static int log_open_file_rw_win_sync(const char *pathname)
-{
-    HANDLE h = CreateFileA(pathname, GENERIC_WRITE | GENERIC_READ, 0, NULL, OPEN_ALWAYS,
-                           FILE_ATTRIBUTE_NORMAL, NULL);
-    if (h == INVALID_HANDLE_VALUE)
-    {
-        aos_error_log("open sync file on win failed %s, error %d", pathname, GetLastError());
-        return -1;
-    }
-    int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
-    if (fd < 0)
-    {
-        aos_error_log("convert handle to fd failed %s, error %d", pathname);
-        CloseHandle(h);
-        return -1;
-    }
-    return fd;
-}
-#endif
 
 static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t fileIndex, int32_t fileOffset)
 {
@@ -54,15 +34,11 @@ static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t f
     int openFlag = O_RDWR|O_CREAT;
     if (file->syncWrite)
     {
-    #ifdef _WIN32
-        file->nowFD = log_open_file_rw_win_sync(filePath);
-    #else
-        file->nowFD = open(filePath, openFlag | O_SYNC, 0644);
-    #endif
+        file->nowFD = log_sys_open_sync(filePath, openFlag, 0644);
     }
     else
     {
-        file->nowFD = open(filePath, openFlag, 0644);
+        file->nowFD = log_sys_open(filePath, openFlag, 0644);
     }
     if (file->nowFD < 0)
     {
@@ -244,22 +220,7 @@ int log_ring_file_flush(log_ring_file *file)
 {
     if (file->nowFD > 0)
     {
-#ifdef _WIN32
-        HANDLE h = (HANDLE)_get_osfhandle(file->nowFD);
-        if (h == INVALID_HANDLE_VALUE)
-        {
-            aos_error_log("get file handle failure, %d", file->nowFD);
-            return -1;
-        }
-        if (!FlushFileBuffers(h))
-        {
-            aos_error_log("flush file failure, fd:%d, err:%d", file->nowFD, GetLastError());
-            return -1;
-        }
-        return 0;
-#else
-        return fsync(file->nowFD);
-#endif
+        return log_sys_fsync(file->nowFD);
     }
     return -1;
 }

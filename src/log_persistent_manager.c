@@ -7,6 +7,7 @@
 #include "inner_log.h"
 #include "log_builder.h"
 #include "sds.h"
+#include "log_util.h"
 
 #define MAX_CHECKPOINT_FILE_SIZE (sizeof(log_persistent_checkpoint) * 1024)
 #define LOG_PERSISTENT_HEADER_MAGIC (0xf7216a5b76df67f5)
@@ -19,7 +20,7 @@ static int32_t is_valid_log_checkpoint(log_persistent_checkpoint * checkpoint)
 
 static int32_t recover_log_checkpoint(log_persistent_manager * manager)
 {
-    FILE * tmpFile = fopen(manager->checkpoint_file_path, "rb");
+    FILE * tmpFile = log_sys_fopen(manager->checkpoint_file_path, "rb");
     if (tmpFile == NULL)
     {
         if (errno == ENOENT)
@@ -69,7 +70,7 @@ int save_log_checkpoint(log_persistent_manager * manager)
         strcpy(tmpFilePath, manager->checkpoint_file_path);
         strcat(tmpFilePath, ".bak");
         aos_info_log("start switch checkpoint index file %s \n", manager->checkpoint_file_path);
-        FILE * tmpFile = fopen(tmpFilePath, "wb+");
+        FILE * tmpFile = log_sys_fopen(tmpFilePath, "wb+");
         if (tmpFile == NULL)
             return -1;
         if (1 !=
@@ -87,7 +88,7 @@ int save_log_checkpoint(log_persistent_manager * manager)
     }
     if (manager->checkpoint_file_ptr == NULL)
     {
-        manager->checkpoint_file_ptr = fopen(manager->checkpoint_file_path, "ab+");
+        manager->checkpoint_file_ptr = log_sys_fopen(manager->checkpoint_file_path, "ab+");
         if (manager->checkpoint_file_ptr == NULL)
             return -5;
     }

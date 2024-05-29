@@ -24,7 +24,7 @@
 #ifdef _WIN32
 DWORD WINAPI log_producer_send_thread(LPVOID param);
 // resolution 100ns
-ULONGLONG _log_get_win_ns_part()
+static ULONGLONG _log_get_win_ns_part()
 {
     FILETIME wintime;
     GetSystemTimeAsFileTime(&wintime);
@@ -356,23 +356,14 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     aos_info_log("flush out producer loggroup begin");
     int32_t total_wait_count = manager->producer_config->destroyFlusherWaitTimeoutSec > 0 ? manager->producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_MANAGER_FLUSH_COUNT;
     total_wait_count += manager->producer_config->destroySenderWaitTimeoutSec > 0 ? manager->producer_config->destroySenderWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
-
-#ifdef _WIN32
-    Sleep(10);
-#else
-    usleep(10 * 1000);
-#endif
+    log_sleep_ms(10);
 
     int waitCount = 0;
     while (log_queue_size(manager->loggroup_queue) > 0 ||
             manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
             (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
-#ifdef _WIN32
-        Sleep(10);
-#else
-        usleep(10 * 1000);
-#endif
+        log_sleep_ms(10);
         if (++waitCount == total_wait_count)
         {
             break;

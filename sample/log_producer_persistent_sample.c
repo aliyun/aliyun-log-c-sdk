@@ -7,6 +7,7 @@
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 #include "inner_log.h"
+#include "log_util.h"
 
 
 int returnCode = 200;
@@ -168,11 +169,7 @@ void log_producer_post_logs()
             if (rst != LOG_PRODUCER_OK)
             {
                 printf("add log error %d \n", rst);
-                #ifdef _WIN32
-                    Sleep(100);
-                #else
-                    usleep(100000);
-                #endif
+                log_sleep_ms(100);
                 continue;
             }
             else
@@ -181,18 +178,9 @@ void log_producer_post_logs()
             }
         }
 
-
-        #ifdef _WIN32
-            Sleep(1);
-        #else
-            usleep(1);
-        #endif
+        log_sleep_ms(1);
     }
-    #ifdef _WIN32
-        Sleep(1000 * 1000);
-    #else
-        sleep(1000);
-    #endif
+    log_sleep_ms(1000);
     //_exit(0);
 
 

@@ -47,7 +47,7 @@ static int log_curl_http_post(const char *url,
     CURL *curl = curl_easy_init();
     if (curl == NULL)
     {
-        aos_error_log("curl_easy_init failure, url:%s.\n", url);
+        aos_error_log("curl_easy_init failure, url:%s", url);
         return log_curl_init_err;
     }
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -94,28 +94,25 @@ static int log_curl_http_post(const char *url,
     {
         if ((res = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code)) != CURLE_OK)
         {
-            aos_error_log("get info result : %s \n", curl_easy_strerror(res));
+            aos_error_log("get info result: %s", curl_easy_strerror(res));
             http_code = log_curl_getinfo_err;
         }
     }
     else
     {
-        aos_error_log("curl_easy_perform failure : %s \n", curl_easy_strerror(res));
+        aos_error_log("curl_easy_perform failure: %s", curl_easy_strerror(res));
         resp_body = sdscpy(resp_body, curl_easy_strerror(res));
         http_code = log_curl_perform_err;
     }
-    // todo: delete this
-    aos_info_log("log_curl_http_post success: http_code=%ld, header=%s, body=%s.\n",
-                    http_code, 
-                    resp_header,
-                    resp_body);
+
+    aos_debug_log("log_curl_http_post: http_code=%ld, header=%s, body=%s",
+                  http_code, resp_header, resp_body);
 
     if (http_code != 200)
     {
-        aos_error_log("log_curl_http_post failure: http_code=%ld, header=%s, body=%s.\n",
-                        http_code, 
-                        resp_header,
-                        resp_body);
+      aos_error_log(
+          "log_curl_http_post failed: http_code=%ld, header=%s, body=%s",
+          http_code, resp_header, resp_body);
     }
 
     sdsfree(resp_header);
@@ -129,7 +126,7 @@ static log_status_t log_curl_global_init()
     CURLcode ecode;
     if ((ecode = curl_global_init(CURL_GLOBAL_ALL)) != CURLE_OK)
     {
-        aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
+        aos_error_log("curl_global_init failed, code:%d, err: %s", ecode, curl_easy_strerror(ecode));
         return -1;
     }
 }
