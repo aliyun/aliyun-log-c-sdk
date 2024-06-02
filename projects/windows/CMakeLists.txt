@@ -79,4 +79,5 @@ endfunction()
 _TARGET_SAMPLE_LIBRARIES(log_producer_sample "${PRODUCER_SAMPLE_SOURCE_FILES}")
 _TARGET_SAMPLE_LIBRARIES(log_post_logs_sample "${POST_LOGS_SOURCE_FILES}")
 _TARGET_SAMPLE_LIBRARIES(log_producer_persistent_sample "${PRODUCER_PERSISTENT_SAMPLE_SOURCE_FILES}")
+_TARGET_SAMPLE_LIBRARIES(unittest "sample/unittest.c")
 

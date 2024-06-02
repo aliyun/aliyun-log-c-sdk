@@ -103,6 +103,9 @@ FILE *log_sys_fopen(const char *path, const char *mode) {
         return NULL;
     }
     FILE *result = _wfopen(wpath, wmode);
+    if (result == NULL) {
+        aos_error_log("Open file failed: %d", GetLastError());
+    }
     free(wpath);
     free(wmode);
     return result;
@@ -115,9 +118,12 @@ int log_sys_open(const char *file, int flag, int mode) {
                       file);
         return -1;
     }
-    int result = _wopen(wfile, flag, mode);
+    int fd = _wopen(wfile, flag, mode);
+    if (fd < 0) {
+        aos_error_log("Open file failed: %d", GetLastError());
+    }
     free(wfile);
-    return result;
+    return fd;
 }
 
 int log_sys_open_sync(const char *file, int flag, int mode) {
