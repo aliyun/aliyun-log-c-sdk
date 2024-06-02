@@ -9,81 +9,127 @@
 #include <io.h>
 #include <fcntl.h>
 
-void test_fopen(const char* filename) {
+void delete_file(const char* filename) {
+    // delete file on windows
+    int wchars_num = MultiByteToWideChar(CP_UTF8, 0, filename, -1, 0, 0);
+    wchar_t output_buffer[4096];
+    memset(output_buffer, 0, sizeof(output_buffer));
+    MultiByteToWideChar(CP_UTF8, 0, filename, -1, output_buffer, wchars_num);
+    DeleteFileW(output_buffer);
+    printf("file deleted\n", filename);
+}
 
-    FILE *file;
-    char *buffer;
+void fopen_write(const char* filename) {
+    FILE *file = log_sys_fopen(filename, "wb");  // 以二进制写模式打开
+    if (file == NULL) {
+        perror("Error opening file");
+        return 1;
+    }
+    const char *data = "Hello, world! fopen_write\n";
+    if (fwrite(data, strlen(data), 1, file) != 1) {
+        perror("Error writing to file");
+        fclose(file);
+        return 1;
+    }
+    printf("Data written\n", filename);
+    fclose(file);
+}
+
+void fopen_read(const char* filename) {
+    char buffer[4096];
     long fileLength;
 
-    // 打开文件
-    file = log_sys_fopen(filename, "b");  // 以二进制读模式打开
+    FILE *file = log_sys_fopen(filename, "rb");  // 以二进制读模式打开
     if (file == NULL) {
         perror("Error opening file");
         return 1;
     }
 
     // 获取文件长度
-    fseek(file, 0, SEEK_END);  // 将文件指针移动到文件的末尾
-    fileLength = ftell(file);  // 获取当前文件指针的位置，即文件的长度
-    rewind(file);  // 将文件指针重新指向文件开头
+    fseek(file, 0, SEEK_END);
+    fileLength = ftell(file);
+    rewind(file);
 
-    // 分配内存
-    buffer = (char *)malloc((fileLength + 1) * sizeof(char));  // 分配足够的内存存储整个文件，+1用于字符串终止符
-    if (buffer == NULL) {
-        perror("Error allocating memory");
-        fclose(file);
-        return 1;
-    }
-
-    // 读取文件内容到缓冲区
     fread(buffer, fileLength, 1, file);
-    buffer[fileLength] = '\0';  // 添加字符串终止符
+    buffer[fileLength] = '\0';
 
-    // 打印文件内容
-    printf("%s", buffer);
-
-    // 关闭文件并释放内存
+    printf("%s\n", buffer);
     fclose(file);
-    free(buffer);
 }
 
-void test_open_write(const char *filename) {
-    int fd; // 文件描述符
-
-    // 打开文件，如果不存在则创建。使用 _O_WRONLY | _O_CREAT | _O_TRUNC 模式
-    // _O_WRONLY：只写
-    // _O_CREAT：不存在则创建
-    // _O_TRUNC：如果文件已存在且为写模式打开，则其长度被截断为 0
-    // _S_IREAD | _S_IWRITE：设置文件权限为可读写
+void open_write(const char *filename) {
+    int fd;
     fd = log_sys_open(filename, O_RDWR|O_CREAT, 0644);
     if (fd == -1) {
         perror("Failed to open file");
         return 1;
     }
-    const char *data = "Hello, world!\n";
+    const char *data = "Hello, world! open_write\n";
       
-    // 写入数据
     if (_write(fd, data, strlen(data)) == -1) {
         perror("Failed to write data");
-        // 如果写入失败，尝试关闭文件并退出
         _close(fd);
         return 1;
     }
 
-    printf("Data written to %s\n", filename);
-
-    // 关闭文件
+    printf("Data written\n", filename);
     _close(fd);
+}
 
+void open_write_sync(const char *filename) {
+    int fd;
+    fd = log_sys_open_sync(filename, O_RDWR|O_CREAT, 0644);
+    if (fd == -1) {
+        perror("Failed to open file");
+        return 1;
+    }
+    const char *data = "Hello, world! open_write_sync\n";
+      
+    if (_write(fd, data, strlen(data)) == -1) {
+        perror("Failed to write data");
+        _close(fd);
+        return 1;
+    }
+
+    printf("Data written\n", filename);
+    _close(fd);
+}
+
+void open_read(const char *filename) {
+    int fd;
+    fd = log_sys_open(filename, O_RDWR|O_CREAT, 0644);
+    if (fd == -1) {
+        perror("Failed to open file");
+        return 1;
+    }
+    char buffer[4096];
+    memset(buffer, 0, sizeof(buffer));
+    if (_read(fd, buffer, sizeof(buffer)) == -1) {
+        perror("Failed to read data");
+        _close(fd);
+        return 1;
+    }
+    printf("%s\n", buffer);
+    _close(fd);
 }
 
 int main(int argc, char *argv[]) {
     aos_log_set_level(AOS_LOG_ALL);
-    // a新建文件夹abC.abx.txt
+    // 新建文件夹abc.txt
     const char* name = "\xE6\xB5\x8B\xE8\xAF\x95\x61\x62\x63\x2E\x74\x78\x74";
-    test_open_write(name);
-    printf("ok write\n");
-    test_fopen(name);
-    printf("ok fopen\n");
+    fopen_write(name);
+    fopen_read(name);
+    open_read(name);
+    delete_file(name);
+
+    open_write_sync(name);
+    fopen_read(name);
+    open_read(name);
+    open_write_sync(name);
+    open_write(name);
+    fopen_write(name);
+    fopen_read(name);
+    open_read(name);
+    delete_file(name);
     return 0;
 }
