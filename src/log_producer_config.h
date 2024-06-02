@@ -61,7 +61,7 @@ typedef struct _log_producer_config
 
     // for persistent feature
     int32_t usePersistent; // 0 no, 1 yes
-    char * persistentFilePath;
+    char * persistentFilePath; // file path, must be utf8 or ascii encoded(windows included)
     int32_t maxPersistentLogCount;
     int32_t maxPersistentFileSize; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
     int32_t maxPersistentFileCount; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
