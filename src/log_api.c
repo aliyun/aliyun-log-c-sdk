@@ -4,6 +4,13 @@
 #include "sds.h"
 #include "inner_log.h"
 
+#ifdef LOG_HTTP_USE_CURL
+#include "curl_adapter/adapter.h"
+#endif
+
+
+#define LOG_MAX_HEADER_COUNT (50)
+
 int LOG_OS_HttpPost(const char *url,
                     char **header_array,
                     int header_count,
@@ -14,24 +21,19 @@ unsigned int LOG_GET_TIME();
 
 void log_http_inject_headers(log_producer_config *config, char **src_headers, int src_count, char **dest_headers, int *dest_count);
 void log_http_release_inject_headers(log_producer_config *config, char **dest_headers, int dest_count);
+log_status_t log_http_global_init();
+void log_http_global_destroy();
 
-log_status_t sls_log_init(int32_t log_global_flag)
+log_status_t sls_log_init()
 {
-#if 0
-    CURLcode ecode;
-    if ((ecode = curl_global_init(log_global_flag)) != CURLE_OK)
-    {
-        aos_error_log("curl_global_init failure, code:%d %s.\n", ecode, curl_easy_strerror(ecode));
-        return -1;
-    }
+#ifdef LOG_HTTP_USE_CURL
+    log_set_http_use_curl();
 #endif
-    return 0;
+    return log_http_global_init();
 }
 void sls_log_destroy()
 {
-#if 0
-    curl_global_cleanup();
-#endif
+    log_http_global_destroy();
 }
 #if 0
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
@@ -124,7 +126,11 @@ void get_now_time_str(char * buffer, int bufLen, int timeOffset)
     {
         rawtime += timeOffset;
     }
+#ifdef _WIN32
+    gmtime_s(&timeinfo, &rawtime);
+#else
     gmtime_r(&rawtime, &timeinfo);
+#endif
     sls_rfc822_date(buffer, &timeinfo);
 }
 
@@ -621,8 +627,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
         sds req = sdsnewEmpty(64);
         sds err = sdsnew("n/a");
 
-        const int max_header_count = 50;
-        char *header_array[max_header_count];
+        char *header_array[LOG_MAX_HEADER_COUNT];
         int header_count = 0;
         struct cur_slist *h = headers;
         while(h != NULL) {
@@ -631,7 +636,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
             h = h->next;
         }
 
-        char *dest_header_array[max_header_count];
+        char *dest_header_array[LOG_MAX_HEADER_COUNT];
         int *dest_count = (int *)malloc(sizeof(int));
         memset(dest_count, 0, sizeof(int));
 
@@ -712,8 +717,7 @@ post_log_result * post_logs_from_lz4buf_webtracking(const char *endpoint, const 
         sds req = sdsnewEmpty(64);
         sds err = sdsnew("n/a");
 
-        const int max_header_count = 50;
-        char *header_array[max_header_count];
+        char *header_array[LOG_MAX_HEADER_COUNT];
         int header_count = 0;
         struct cur_slist *h = headers;
         while(h != NULL) {

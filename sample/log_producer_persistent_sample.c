@@ -7,6 +7,7 @@
 #include "log_producer_config.h"
 #include "log_producer_client.h"
 #include "inner_log.h"
+#include "log_util.h"
 
 
 int returnCode = 200;
@@ -108,7 +109,9 @@ log_producer * create_log_producer_wrapper(on_log_producer_send_done_function on
 
     // set persistent
     log_producer_config_set_persistent(config, 1);
+    // set persistent file path, must be utf8 encoded (windows included)
     log_producer_config_set_persistent_file_path(config, "/Users/gordon/Downloads/data/log.dat");
+    // log_producer_config_set_persistent_file_path(config, "C:\\Users/gordon\\Downloads\\data\\log.dat");
     log_producer_config_set_persistent_force_flush(config, 1);
     log_producer_config_set_persistent_max_file_count(config, 10);
     log_producer_config_set_persistent_max_file_size(config, 1024*1024);
@@ -168,7 +171,7 @@ void log_producer_post_logs()
             if (rst != LOG_PRODUCER_OK)
             {
                 printf("add log error %d \n", rst);
-                usleep(100000);
+                log_sleep_ms(100);
                 continue;
             }
             else
@@ -177,10 +180,9 @@ void log_producer_post_logs()
             }
         }
 
-
-        usleep(1);
+        log_sleep_ms(1);
     }
-    sleep(1000);
+    log_sleep_ms(1000);
     //_exit(0);
 
 

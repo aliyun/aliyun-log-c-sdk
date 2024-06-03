@@ -35,7 +35,7 @@ void aos_log_set_level(aos_log_level_e level);
 #define print_log(level, log) puts(log)
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 #define __FL_NME__ (strchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 #define aos_fatal_log(format, ...) if(aos_log_level>=AOS_LOG_FATAL) \
         aos_log_format(AOS_LOG_FATAL, __FL_NME__, __LINE__, __FUNCTION__, format, __VA_ARGS__)

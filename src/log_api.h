@@ -7,7 +7,7 @@
 #include "log_builder.h"
 LOG_CPP_START
 
-#ifdef WIN32
+#ifdef _WIN32
 #undef interface
 #endif // WIN32
 

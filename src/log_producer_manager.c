@@ -6,8 +6,8 @@
 #include "inner_log.h"
 #include "md5.h"
 #include "sds.h"
-#include <sys/time.h>
-
+#include <time.h>
+#include "log_util.h"
 #ifdef __MACH__
 #include <stdio.h>
 #include <mach/clock.h>
@@ -20,8 +20,18 @@
 #define MAX_MANAGER_FLUSH_COUNT 100  // 10MS * 100
 #define MAX_SENDER_FLUSH_COUNT 100 // 10ms * 100
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI log_producer_send_thread(LPVOID param);
+// resolution 100ns
+static ULONGLONG _log_get_win_ns_part()
+{
+    FILETIME wintime;
+    GetSystemTimeAsFileTime(&wintime);
+    ULARGE_INTEGER ui;
+    ui.LowPart = wintime.dwLowDateTime;
+    ui.HighPart = wintime.dwHighDateTime;
+    return ui.QuadPart * 100;
+}
 #else
 void * log_producer_send_thread(void * param);
 #endif
@@ -37,6 +47,9 @@ void _generate_pack_id_timestamp(long *timestamp)
     mach_port_deallocate(mach_task_self(), cclock);
     ts.tv_sec = mts.tv_sec;
     ts.tv_nsec = mts.tv_nsec;
+#elif defined (_WIN32)
+    *timestamp = (long)_log_get_win_ns_part();
+    return;
 #else
     clock_gettime(CLOCK_REALTIME, &ts);
 #endif
@@ -49,8 +62,7 @@ char * _get_pack_id(const char * configName, const char * ip)
     _generate_pack_id_timestamp(&timestamp);
 
     char *prefix = (char *) malloc(100 * sizeof (char));
-    strcpy(prefix, configName);
-    sprintf(prefix, "%s%ld", prefix, timestamp);
+    sprintf(prefix, "%s%ld", configName, timestamp);
 
     unsigned char md5Buf[16];
     mbedtls_md5((const unsigned char *)prefix, strlen(prefix), md5Buf);
@@ -104,7 +116,7 @@ void _try_flush_loggroup(log_producer_manager * producer_manager)
     }
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI log_producer_flush_thread(LPVOID param)
 #else
 void * log_producer_flush_thread(void * param)
@@ -342,23 +354,14 @@ void destroy_log_producer_manager(log_producer_manager * manager)
     aos_info_log("flush out producer loggroup begin");
     int32_t total_wait_count = manager->producer_config->destroyFlusherWaitTimeoutSec > 0 ? manager->producer_config->destroyFlusherWaitTimeoutSec * 100 : MAX_MANAGER_FLUSH_COUNT;
     total_wait_count += manager->producer_config->destroySenderWaitTimeoutSec > 0 ? manager->producer_config->destroySenderWaitTimeoutSec * 100 : MAX_SENDER_FLUSH_COUNT;
-
-#ifdef WIN32
-    Sleep(10);
-#else
-    usleep(10 * 1000);
-#endif
+    log_sleep_ms(10);
 
     int waitCount = 0;
     while (log_queue_size(manager->loggroup_queue) > 0 ||
             manager->send_param_queue_write - manager->send_param_queue_read > 0 ||
             (manager->sender_data_queue != NULL && log_queue_size(manager->sender_data_queue) > 0) )
     {
-#ifdef WIN32
-        Sleep(10);
-#else
-        usleep(10 * 1000);
-#endif
+        log_sleep_ms(10);
         if (++waitCount == total_wait_count)
         {
             break;

@@ -3,6 +3,7 @@
 #include "log_config.h"
 #include <string.h>
 #include <stdio.h>
+#include "curl_adapter/adapter.h"
 
 // just for developer
 
@@ -11,7 +12,6 @@
 
 void post_logs_with_http_cont_lz4_log_option()
 {
-
     sls_log_init();
 
     int i = 0;
@@ -89,7 +89,7 @@ void post_logs_with_http_cont_lz4_log_option()
         memset(&option, 0, sizeof(log_post_option));
         option.connect_timeout = 10;
         option.operation_timeout = 15;
-        option.compress_type = 0;
+        option.compress_type = 1;
         post_log_result * rst = post_logs_from_lz4buf(LOG_ENDPOINT, ACCESS_KEY_ID,
                                                  ACCESS_KEY_SECRET, NULL,
                                                  PROJECT_NAME, LOGSTORE_NAME,

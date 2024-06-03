@@ -6,6 +6,7 @@
 #include "sds.h"
 #include "inner_log.h"
 #include <fcntl.h>
+#include "log_util.h"
 
 static void get_ring_file_offset(log_ring_file * file,
                                  uint64_t offset,
@@ -33,9 +34,12 @@ static int log_ring_file_open_fd(log_ring_file *file, uint64_t offset, int32_t f
     int openFlag = O_RDWR|O_CREAT;
     if (file->syncWrite)
     {
-        openFlag |= O_SYNC;
+        file->nowFD = log_sys_open_sync(filePath, openFlag, 0644);
     }
-    file->nowFD = open(filePath, openFlag, 0644);
+    else
+    {
+        file->nowFD = log_sys_open(filePath, openFlag, 0644);
+    }
     if (file->nowFD < 0)
     {
         aos_error_log("open file failed %s, error %s", filePath, strerror(errno));
@@ -183,7 +187,7 @@ int log_ring_file_read(log_ring_file *file, uint64_t offset, void *buffer,
         {
             readSize = file->maxFileSize - fileOffset;
         }
-        if ((rst = read(file->nowFD, buffer + nowOffset, readSize)) != readSize)
+        if ((rst = read(file->nowFD, (char*)buffer + nowOffset, readSize)) != readSize)
         {
             if (errno == ENOENT)
             {
@@ -216,7 +220,7 @@ int log_ring_file_flush(log_ring_file *file)
 {
     if (file->nowFD > 0)
     {
-        return fsync(file->nowFD);
+        return log_sys_fsync(file->nowFD);
     }
     return -1;
 }
