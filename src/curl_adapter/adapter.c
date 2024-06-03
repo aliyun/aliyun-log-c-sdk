@@ -123,6 +123,7 @@ static log_status_t log_curl_global_init()
         aos_error_log("curl_global_init failed, code:%d, err: %s", ecode, curl_easy_strerror(ecode));
         return -1;
     }
+    return 0;
 }
 
 static void log_curl_global_destroy()

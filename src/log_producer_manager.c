@@ -6,9 +6,8 @@
 #include "inner_log.h"
 #include "md5.h"
 #include "sds.h"
-// #include <sys/time.h>
 #include <time.h>
-
+#include "log_util.h"
 #ifdef __MACH__
 #include <stdio.h>
 #include <mach/clock.h>
