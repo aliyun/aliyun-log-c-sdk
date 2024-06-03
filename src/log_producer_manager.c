@@ -62,8 +62,7 @@ char * _get_pack_id(const char * configName, const char * ip)
     _generate_pack_id_timestamp(&timestamp);
 
     char *prefix = (char *) malloc(100 * sizeof (char));
-    strcpy(prefix, configName);
-    sprintf(prefix, "%s%ld", prefix, timestamp);
+    sprintf(prefix, "%s%ld", configName, timestamp);
 
     unsigned char md5Buf[16];
     mbedtls_md5((const unsigned char *)prefix, strlen(prefix), md5Buf);
