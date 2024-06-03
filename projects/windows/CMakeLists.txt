@@ -31,11 +31,11 @@ ENDIF(ADD_LOG_KEY_VALUE_FUN)
 
 if(HTTP_USE_CURL)
     add_definitions(-DLOG_HTTP_USE_CURL)
+    aux_source_directory(src/curl_adapter CURL_ADAPTER_SRCS)
 ENDIF(HTTP_USE_CURL)
 
 # Compile and link lib_log_c_sdk
 aux_source_directory(src SRC_LIST)
-aux_source_directory(src/curl_adapter CURL_ADAPTER_SRCS)
 add_library(${CMAKE_PROJECT_NAME} STATIC ${SRC_LIST} ${CURL_ADAPTER_SRCS})
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src src/curl_adapter)
 
