@@ -64,9 +64,9 @@ int aos_base64_encode(const unsigned char *in, int inLen, char *out)
 
 int signature_to_base64(const char * sig, int sigLen, const char * key, int keyLen, char * base64)
 {
-  unsigned char sha1Buf[20];
-  hmac_sha1(sha1Buf, key, keyLen << 3, sig, sigLen << 3);
-  return aos_base64_encode((const unsigned char *)sha1Buf, 20, base64);
+    unsigned char sha1Buf[20];
+    hmac_sha1(sha1Buf, key, keyLen << 3, sig, sigLen << 3);
+    return aos_base64_encode((const unsigned char *)sha1Buf, 20, base64);
 }
 
 #if defined(_WIN32)
