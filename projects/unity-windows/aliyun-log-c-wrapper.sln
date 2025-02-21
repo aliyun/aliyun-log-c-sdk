@@ -1,0 +1,58 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.33529.622
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "aliyun-log-c-wrapper", "aliyun-log-c-wrapper\aliyun-log-c-wrapper.vcxproj", "{8D82C9BB-692E-4D52-A473-9803AC0077E8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93} = {B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "aliyun-log-c-sdk", "aliyun-log-c-sdk\aliyun-log-c-sdk.vcxproj", "{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo", "demo\demo.vcxproj", "{601441AB-6783-4848-B20A-FDE7BB555805}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8} = {8D82C9BB-692E-4D52-A473-9803AC0077E8}
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93} = {B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Debug|x64.ActiveCfg = Debug|x64
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Debug|x64.Build.0 = Debug|x64
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Debug|x86.ActiveCfg = Debug|Win32
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Debug|x86.Build.0 = Debug|Win32
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Release|x64.ActiveCfg = Release|x64
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Release|x64.Build.0 = Release|x64
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Release|x86.ActiveCfg = Release|Win32
+		{8D82C9BB-692E-4D52-A473-9803AC0077E8}.Release|x86.Build.0 = Release|Win32
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Debug|x64.ActiveCfg = Debug|x64
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Debug|x64.Build.0 = Debug|x64
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Debug|x86.ActiveCfg = Debug|Win32
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Debug|x86.Build.0 = Debug|Win32
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Release|x64.ActiveCfg = Release|x64
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Release|x64.Build.0 = Release|x64
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Release|x86.ActiveCfg = Release|Win32
+		{B46BBBD3-4E37-4F97-8EB1-38BE8032BD93}.Release|x86.Build.0 = Release|Win32
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Debug|x64.ActiveCfg = Debug|x64
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Debug|x64.Build.0 = Debug|x64
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Debug|x86.ActiveCfg = Debug|Win32
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Debug|x86.Build.0 = Debug|Win32
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Release|x64.ActiveCfg = Release|x64
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Release|x64.Build.0 = Release|x64
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Release|x86.ActiveCfg = Release|Win32
+		{601441AB-6783-4848-B20A-FDE7BB555805}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {57BA60AB-85D3-4D84-9B51-AC5A9D10358A}
+	EndGlobalSection
+EndGlobal

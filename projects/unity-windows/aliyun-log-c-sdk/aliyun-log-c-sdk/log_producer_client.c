@@ -1,0 +1,238 @@
+//
+// Created by ZhangCheng on 20/11/2017.
+//
+
+#include "log_producer_client.h"
+#include "log_producer_manager.h"
+#include "inner_log.h"
+#include "log_api.h"
+#include <stdarg.h>
+#include <string.h>
+
+
+static uint32_t s_init_flag = 0;
+static log_producer_result s_last_result = 0;
+
+unsigned int (*__LOG_GET_TIME)() = NULL;
+
+typedef struct _producer_client_private {
+
+    log_producer_manager * producer_manager;
+    log_producer_config * producer_config;
+}producer_client_private ;
+
+struct _log_producer {
+    log_producer_client * root_client;
+};
+
+CRITICALSECTION g_last_timelock = NULL;
+uint32_t g_local_server_time = 0; // server time - local time
+uint32_t g_last_server_up_time = 0;
+
+log_producer_result log_producer_env_init()
+{
+    // if already init, just return s_last_result
+    if (s_init_flag == 1)
+    {
+        return s_last_result;
+    }
+    s_init_flag = 1;
+    g_last_timelock = CreateCriticalSection();
+    if (0 != sls_log_init())
+    {
+        s_last_result = LOG_PRODUCER_INVALID;
+    }
+    else
+    {
+        s_last_result = LOG_PRODUCER_OK;
+    }
+    return s_last_result;
+}
+
+void log_producer_env_destroy()
+{
+    if (s_init_flag == 0)
+    {
+        return;
+    }
+    s_init_flag = 0;
+    ReleaseCriticalSection(g_last_timelock);
+    sls_log_destroy();
+}
+
+void log_set_get_time_function(unsigned int (*f)())
+{
+    __LOG_GET_TIME = f;
+}
+
+void log_set_local_server_real_time(uint32_t serverTime)
+{
+    CS_ENTER(g_last_timelock);
+    g_local_server_time = serverTime;
+    LOG_GET_UPTIME_SECONDS(&g_last_server_up_time);
+    CS_LEAVE(g_last_timelock);
+}
+
+unsigned int LOG_GET_TIME()
+{
+    if (__LOG_GET_TIME == NULL)
+    {
+        CS_ENTER(g_last_timelock);
+        uint32_t serverTime = g_local_server_time;
+        uint32_t lastUptime = g_last_server_up_time;
+        CS_LEAVE(g_last_timelock);
+        if (serverTime == 0 || lastUptime == 0) {
+            return (unsigned int)time(NULL);
+        }
+        uint32_t nowUptime = 0;
+        LOG_GET_UPTIME_SECONDS(&nowUptime);
+        if (nowUptime < lastUptime) {
+            return nowUptime + serverTime;
+        }
+        return (unsigned int)(nowUptime - lastUptime + serverTime);
+    }
+    return __LOG_GET_TIME();
+}
+
+
+
+log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function, void *user_param)
+{
+    if (!log_producer_config_is_valid(config))
+    {
+        return NULL;
+    }
+    log_producer * producer = (log_producer *)malloc(sizeof(log_producer));
+    log_producer_client * producer_client = (log_producer_client *)malloc(sizeof(log_producer_client));
+    producer_client_private * client_private = (producer_client_private *)malloc(sizeof(producer_client_private));
+    producer_client->private_data = client_private;
+    client_private->producer_config = config;
+    client_private->producer_manager = create_log_producer_manager(config);
+    client_private->producer_manager->send_done_function = send_done_function;
+    client_private->producer_manager->user_param = user_param != NULL ? user_param : NULL;
+
+    if(client_private->producer_manager == NULL)
+    {
+        // free
+        free(producer_client);
+        free(client_private);
+        free(producer);
+        return NULL;
+    }
+    aos_debug_log("create producer client success, config : %s", config->logstore);
+    producer_client->valid_flag = 1;
+    producer->root_client = producer_client;
+    return producer;
+}
+
+
+void destroy_log_producer(log_producer * producer)
+{
+    if (producer == NULL)
+    {
+        return;
+    }
+    log_producer_client * client = producer->root_client;
+    client->valid_flag = 0;
+    producer_client_private * client_private = (producer_client_private *)client->private_data;
+    destroy_log_producer_manager(client_private->producer_manager);
+    destroy_log_producer_config(client_private->producer_config);
+    free(client_private);
+    free(client);
+    free(producer);
+}
+
+extern log_producer_client * get_log_producer_client(log_producer * producer, const char * config_name)
+{
+    if (producer == NULL)
+    {
+        return NULL;
+    }
+    return producer->root_client;
+}
+
+void log_producer_client_network_recover(log_producer_client * client)
+{
+    if (client == NULL)
+    {
+        return;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    manager->networkRecover = 1;
+}
+
+log_producer_result log_producer_client_add_log(log_producer_client * client, int32_t kv_count, ...)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+    va_list argp;
+    va_start(argp, kv_count);
+
+    int32_t pairs = kv_count / 2;
+
+    char ** keys = (char **)malloc(pairs * sizeof(char *));
+    char ** values = (char **)malloc(pairs * sizeof(char *));
+    size_t * key_lens = (size_t *)malloc(pairs * sizeof(size_t));
+    size_t * val_lens = (size_t *)malloc(pairs * sizeof(size_t));
+
+    int32_t i = 0;
+    for (; i < pairs; ++i)
+    {
+        const char * key = va_arg(argp, const char *);
+        const char * value = va_arg(argp, const char *);
+        keys[i] = (char *)key;
+        values[i] = (char *)value;
+        key_lens[i] = strlen(key);
+        val_lens[i] = strlen(value);
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens, 0);
+    free(keys);
+    free(values);
+    free(key_lens);
+    free(val_lens);
+    return rst;
+}
+
+log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens, flush);
+}
+
+log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
+{
+  if (client == NULL || !client->valid_flag || raw_buffer == NULL)
+  {
+    return LOG_PRODUCER_INVALID;
+  }
+
+  log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+  return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
+}
+
+log_producer_result log_producer_client_add_log_with_len_time(log_producer_client *client,
+                                                uint32_t time_sec,
+                                                int32_t pair_count, char **keys,
+                                                size_t *key_lens, char **values,
+                                                size_t *value_lens, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+
+    return log_producer_manager_add_log_with_time(manager, time_sec, pair_count, keys, key_lens, values, value_lens, flush);
+}
