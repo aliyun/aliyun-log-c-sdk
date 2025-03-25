@@ -8,26 +8,24 @@
 #include "log_api.h"
 #include <stdarg.h>
 #include <string.h>
-
+#include "log_persistent_manager.h"
 
 static uint32_t s_init_flag = 0;
 static log_producer_result s_last_result = 0;
 
-unsigned int (*__LOG_GET_TIME)() = NULL;
+unsigned int LOG_GET_TIME();
 
 typedef struct _producer_client_private {
 
     log_producer_manager * producer_manager;
     log_producer_config * producer_config;
+    log_persistent_manager * persistent_manager;
+
 }producer_client_private ;
 
 struct _log_producer {
     log_producer_client * root_client;
 };
-
-CRITICALSECTION g_last_timelock = NULL;
-uint32_t g_local_server_time = 0; // server time - local time
-uint32_t g_last_server_up_time = 0;
 
 log_producer_result log_producer_env_init()
 {
@@ -37,7 +35,6 @@ log_producer_result log_producer_env_init()
         return s_last_result;
     }
     s_init_flag = 1;
-    g_last_timelock = CreateCriticalSection();
     if (0 != sls_log_init())
     {
         s_last_result = LOG_PRODUCER_INVALID;
@@ -56,45 +53,8 @@ void log_producer_env_destroy()
         return;
     }
     s_init_flag = 0;
-    ReleaseCriticalSection(g_last_timelock);
     sls_log_destroy();
 }
-
-void log_set_get_time_function(unsigned int (*f)())
-{
-    __LOG_GET_TIME = f;
-}
-
-void log_set_local_server_real_time(uint32_t serverTime)
-{
-    CS_ENTER(g_last_timelock);
-    g_local_server_time = serverTime;
-    LOG_GET_UPTIME_SECONDS(&g_last_server_up_time);
-    CS_LEAVE(g_last_timelock);
-}
-
-unsigned int LOG_GET_TIME()
-{
-    if (__LOG_GET_TIME == NULL)
-    {
-        CS_ENTER(g_last_timelock);
-        uint32_t serverTime = g_local_server_time;
-        uint32_t lastUptime = g_last_server_up_time;
-        CS_LEAVE(g_last_timelock);
-        if (serverTime == 0 || lastUptime == 0) {
-            return (unsigned int)time(NULL);
-        }
-        uint32_t nowUptime = 0;
-        LOG_GET_UPTIME_SECONDS(&nowUptime);
-        if (nowUptime < lastUptime) {
-            return nowUptime + serverTime;
-        }
-        return (unsigned int)(nowUptime - lastUptime + serverTime);
-    }
-    return __LOG_GET_TIME();
-}
-
-
 
 log_producer * create_log_producer(log_producer_config * config, on_log_producer_send_done_function send_done_function, void *user_param)
 {
@@ -109,16 +69,28 @@ log_producer * create_log_producer(log_producer_config * config, on_log_producer
     client_private->producer_config = config;
     client_private->producer_manager = create_log_producer_manager(config);
     client_private->producer_manager->send_done_function = send_done_function;
-    client_private->producer_manager->user_param = user_param != NULL ? user_param : NULL;
-
-    if(client_private->producer_manager == NULL)
+    client_private->producer_manager->user_param = user_param;
+    client_private->persistent_manager = create_log_persistent_manager(config);
+    if (client_private->persistent_manager != NULL)
     {
-        // free
-        free(producer_client);
-        free(client_private);
-        free(producer);
-        return NULL;
+        client_private->producer_manager->uuid_user_param = client_private->persistent_manager;
+        client_private->producer_manager->uuid_send_done_function = on_log_persistent_manager_send_done_uuid;
+        int recoverRst = log_persistent_manager_recover(client_private->persistent_manager, client_private->producer_manager);
+        if (recoverRst != 0)
+        {
+            aos_error_log("project %s, logstore %s, recover log persistent manager failed, result %d",
+                          config->project,
+                          config->logstore,
+                          recoverRst);
+        }
+        else
+        {
+            aos_info_log("project %s, logstore %s, recover log persistent manager success",
+                          config->project,
+                          config->logstore);
+        }
     }
+
     aos_debug_log("create producer client success, config : %s", config->logstore);
     producer_client->valid_flag = 1;
     producer->root_client = producer_client;
@@ -137,6 +109,7 @@ void destroy_log_producer(log_producer * producer)
     producer_client_private * client_private = (producer_client_private *)client->private_data;
     destroy_log_producer_manager(client_private->producer_manager);
     destroy_log_producer_config(client_private->producer_config);
+    destroy_log_persistent_manager(client_private->persistent_manager);
     free(client_private);
     free(client);
     free(producer);
@@ -188,9 +161,7 @@ log_producer_result log_producer_client_add_log(log_producer_client * client, in
         val_lens[i] = strlen(value);
     }
 
-    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
-
-    log_producer_result rst = log_producer_manager_add_log(manager, pairs, keys, key_lens, values, val_lens, 0);
+    log_producer_result rst = log_producer_client_add_log_with_len(client, pairs, keys, key_lens, values, val_lens, 0);
     free(keys);
     free(values);
     free(key_lens);
@@ -206,26 +177,126 @@ log_producer_result log_producer_client_add_log_with_len(log_producer_client * c
     }
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+        add_log_full(persistent_manager->builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, val_lens);
+        char * logBuf = persistent_manager->builder->grp->logs.buffer;
+        size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
+        clear_log_tag(&(persistent_manager->builder->grp->logs));
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
 
-    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens, flush);
+    return log_producer_manager_add_log(manager, pair_count, keys, key_lens, values, val_lens, flush, -1);
 }
 
 log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer)
 {
   if (client == NULL || !client->valid_flag || raw_buffer == NULL)
   {
-    return LOG_PRODUCER_INVALID;
+      return LOG_PRODUCER_INVALID;
   }
 
   log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
   return log_producer_manager_send_raw_buffer(manager, log_bytes, compressed_bytes, raw_buffer);
 }
 
-log_producer_result log_producer_client_add_log_with_len_time(log_producer_client *client,
-                                                uint32_t time_sec,
-                                                int32_t pair_count, char **keys,
-                                                size_t *key_lens, char **values,
-                                                size_t *value_lens, int flush)
+log_producer_result
+log_producer_client_add_log_raw(log_producer_client *client, char *logBuf,
+                                size_t logSize, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+                manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
+
+    int rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, -1);
+    return rst;
+}
+
+log_producer_result
+log_producer_client_add_log_with_array(log_producer_client *client,
+                                       uint32_t logTime, size_t logItemCount,
+                                       const char *logItemsBuf,
+                                       const uint32_t *logItemsSize, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+
+        add_log_full_v2(persistent_manager->builder, logTime, logItemCount, logItemsBuf, logItemsSize);
+        char * logBuf = persistent_manager->builder->grp->logs.buffer;
+        size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
+        clear_log_tag(&(persistent_manager->builder->grp->logs));
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
+
+    int rst = log_producer_manager_add_log_with_array(manager, logTime, logItemCount, logItemsBuf, logItemsSize, flush, -1);
+
+    return rst;
+}
+
+log_producer_result
+log_producer_client_add_log_with_len_int32(log_producer_client *client,
+                                           int32_t pair_count, char **keys,
+                                           int32_t *key_lens, char **values,
+                                           int32_t *value_lens, int flush)
 {
     if (client == NULL || !client->valid_flag)
     {
@@ -233,6 +304,73 @@ log_producer_result log_producer_client_add_log_with_len_time(log_producer_clien
     }
 
     log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+        add_log_full_int32(persistent_manager->builder, LOG_GET_TIME(), pair_count, keys, key_lens, values, value_lens);
+        char * logBuf = persistent_manager->builder->grp->logs.buffer;
+        size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
+        clear_log_tag(&(persistent_manager->builder->grp->logs));
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
 
-    return log_producer_manager_add_log_with_time(manager, time_sec, pair_count, keys, key_lens, values, value_lens, flush);
+    return log_producer_manager_add_log_int32(manager, pair_count, keys, key_lens, values, value_lens, flush, -1);
 }
+
+
+log_producer_result
+log_producer_client_add_log_with_len_time_int32(log_producer_client *client,
+                                                uint32_t time_sec,
+                                                int32_t pair_count, char **keys,
+                                                int32_t *key_lens, char **values,
+                                                int32_t *value_lens, int flush)
+{
+    if (client == NULL || !client->valid_flag)
+    {
+        return LOG_PRODUCER_INVALID;
+    }
+
+    log_producer_manager * manager = ((producer_client_private *)client->private_data)->producer_manager;
+    log_persistent_manager * persistent_manager = ((producer_client_private *)client->private_data)->persistent_manager;
+    if (persistent_manager != NULL && persistent_manager->is_invalid == 0)
+    {
+        CS_ENTER(persistent_manager->lock);
+        add_log_full_int32(persistent_manager->builder, time_sec, pair_count, keys, key_lens, values, value_lens);
+        char * logBuf = persistent_manager->builder->grp->logs.buffer;
+        size_t logSize = persistent_manager->builder->grp->logs.now_buffer_len;
+        clear_log_tag(&(persistent_manager->builder->grp->logs));
+        if (!log_persistent_manager_is_buffer_enough(persistent_manager, logSize) ||
+            manager->totalBufferSize > manager->producer_config->maxBufferBytes)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        int rst = log_persistent_manager_save_log(persistent_manager, logBuf, logSize);
+        if (rst != LOG_PRODUCER_OK)
+        {
+            CS_LEAVE(persistent_manager->lock);
+            return LOG_PRODUCER_DROP_ERROR;
+        }
+        rst = log_producer_manager_add_log_raw(manager, logBuf, logSize, flush, persistent_manager->checkpoint.now_log_uuid - 1);
+        CS_LEAVE(persistent_manager->lock);
+        return rst;
+    }
+
+    return log_producer_manager_add_log_int32(manager, pair_count, keys, key_lens, values, value_lens, flush, -1);
+}
+

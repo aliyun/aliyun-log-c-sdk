@@ -1,12 +1,15 @@
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <arpa/inet.h>
+#include <unistd.h>
 #endif
-#include <string.h>
 #include "log_util.h"
 #include "md5.h"
 #include "hmac-sha.h"
+#include <fcntl.h>
+#include <string.h>
+#include "inner_log.h"
 
 static const char *g_hex_hash = "0123456789ABCDEF";
 
@@ -65,3 +68,140 @@ int signature_to_base64(const char * sig, int sigLen, const char * key, int keyL
     hmac_sha1(sha1Buf, key, keyLen << 3, sig, sigLen << 3);
     return aos_base64_encode((const unsigned char *)sha1Buf, 20, base64);
 }
+
+#if defined(_WIN32)
+static wchar_t *log_utf8_to_wchar(const char *src)
+{
+    if (!src)
+    {
+        return NULL;
+    }
+    int wchars_num = MultiByteToWideChar(CP_UTF8, 0, src, -1, 0, 0);
+    wchar_t *output_buffer = (wchar_t *)malloc(wchars_num * sizeof(wchar_t));
+    if (output_buffer == NULL)
+    {
+        aos_error_log("malloc memory failed, file path: %s", src);
+        return NULL;
+    }
+    if (MultiByteToWideChar(CP_UTF8, 0, src, -1, output_buffer, wchars_num))
+    {
+        return output_buffer;
+    }
+    free(output_buffer);
+    return NULL;
+}
+
+FILE *log_sys_fopen(const char *path, const char *mode)
+{
+    wchar_t *wpath = log_utf8_to_wchar(path);
+    if (!wpath)
+    {
+        aos_error_log("Open file failed, invalid file path, not utf8: %s",
+                      path);
+        return NULL;
+    }
+    wchar_t *wmode = log_utf8_to_wchar(mode);
+    if (!wmode)
+    {
+        aos_error_log("Open file failed, invalid file mode, not utf8: %s",
+                      mode);
+        free(wpath);
+        return NULL;
+    }
+    FILE *result = _wfopen(wpath, wmode);
+    if (result == NULL)
+    {
+        aos_error_log("Open file failed: %d", GetLastError());
+    }
+    free(wpath);
+    free(wmode);
+    return result;
+}
+
+int log_sys_open(const char *file, int flag, int mode)
+{
+    wchar_t *wfile = log_utf8_to_wchar(file);
+    if (!wfile)
+    {
+        aos_error_log("Open file failed, invalid file path, not utf8: %s",
+                      file);
+        return -1;
+    }
+    int fd = _wopen(wfile, flag, mode);
+    if (fd < 0)
+    {
+        aos_error_log("Open file failed: %d", GetLastError());
+    }
+    free(wfile);
+    return fd;
+}
+
+int log_sys_open_sync(const char *file, int flag, int mode)
+{
+    wchar_t *wfile = log_utf8_to_wchar(file);
+    if (!wfile)
+    {
+        aos_error_log("Open file failed, invalid file path, not utf8: %s",
+                      file);
+        return -1;
+    }
+    HANDLE h = CreateFileW(wfile, GENERIC_WRITE | GENERIC_READ, 0, NULL,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+    {
+        aos_error_log("open sync file on win failed %s, error %d", file,
+                      GetLastError());
+        free(wfile);
+        return -1;
+    }
+    int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
+    if (fd < 0)
+    {
+        aos_error_log("convert handle to fd failed %s, error %d", file,
+                      GetLastError());
+        CloseHandle(h);
+        free(wfile);
+        return -1;
+    }
+    free(wfile);
+    return fd;
+}
+
+int log_sys_fsync(int fd)
+{
+    HANDLE h = (HANDLE)_get_osfhandle(fd);
+    if (h == INVALID_HANDLE_VALUE)
+    {
+        aos_error_log("get file handle failure, %d", fd);
+        return -1;
+    }
+    if (!FlushFileBuffers(h))
+    {
+        aos_error_log("flush file failure, fd:%d, err:%d", fd, GetLastError());
+        return -1;
+    }
+    return 0;
+}
+
+void log_sleep_ms(int ms) { Sleep(ms); }
+#else
+
+FILE *log_sys_fopen(const char *path, const char *mode)
+{
+    return fopen(path, mode);
+}
+
+int log_sys_open(const char *file, int flag, int mode)
+{
+    return open(file, flag, mode);
+}
+
+int log_sys_open_sync(const char *file, int flag, int mode)
+{
+    return open(file, flag | O_SYNC, mode);
+}
+
+int log_sys_fsync(int fd) { return fsync(fd); }
+
+void log_sleep_ms(int ms) { usleep(ms * 1000); }
+#endif

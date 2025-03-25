@@ -14,6 +14,8 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->logCountPerPackage = 2048;
     pConfig->packageTimeoutInMS = 3000;
     pConfig->maxBufferBytes = 64 * 1024 * 1024;
+    pConfig->flushIntervalInMS = LOG_PRODUCER_FLUSH_INTERVAL_MS;
+    pConfig->logQueuePopIntervalInMS = LOG_PRODUCER_QUEUE_POP_INTERVAL_MS;
 
     pConfig->connectTimeoutSec = 10;
     pConfig->sendTimeoutSec = 15;
@@ -21,15 +23,29 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->destroyFlusherWaitTimeoutSec = 1;
     pConfig->compressType = 1;
     pConfig->ntpTimeOffset = 0;
+    pConfig->using_https = 0;
+    pConfig->maxLogDelayTime = 7*24*3600;
+    pConfig->dropDelayLog = 1;
+    pConfig->callbackFromSenderThread = 1;
+    pConfig->webTracking = 0;
+    pConfig->mode = 0;
+    pConfig->user_params = NULL;
 }
 
 
 static void _copy_config_string(const char * value, sds * src_value)
 {
-    if (value == NULL || src_value == NULL)
+    if (src_value == NULL)
     {
         return;
     }
+
+    if (value == NULL)
+    {
+        *src_value = NULL;
+        return;
+    }
+
     size_t strLen = strlen(value);
     if (*src_value == NULL)
     {
@@ -80,15 +96,15 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     }
     if (pConfig->netInterface != NULL)
     {
-      sdsfree(pConfig->netInterface);
+        sdsfree(pConfig->netInterface);
     }
     if (pConfig->securityToken != NULL)
     {
-      sdsfree(pConfig->securityToken);
+        sdsfree(pConfig->securityToken);
     }
     if (pConfig->securityTokenLock != NULL)
     {
-      ReleaseCriticalSection(pConfig->securityTokenLock);
+        ReleaseCriticalSection(pConfig->securityTokenLock);
     }
     if (pConfig->tagCount > 0 && pConfig->tags != NULL)
     {
@@ -99,6 +115,13 @@ void destroy_log_producer_config(log_producer_config * pConfig)
             sdsfree(pConfig->tags[i].value);
         }
         free(pConfig->tags);
+    }
+    if (pConfig->persistentFilePath != NULL)
+    {
+        sdsfree(pConfig->persistentFilePath);
+    }
+    if (pConfig->mode == 1 && NULL != pConfig->shardKey) {
+        sdsfree(pConfig->shardKey);
     }
     free(pConfig);
 }
@@ -162,6 +185,24 @@ void log_producer_config_set_max_buffer_limit(log_producer_config * config, int6
         return;
     }
     config->maxBufferBytes = max_buffer_bytes;
+}
+
+void log_producer_config_set_flush_interval(log_producer_config * config, int32_t flush_interval_in_ms)
+{
+    if (NULL == config || flush_interval_in_ms < 500)
+    {
+        return;
+    }
+    config->flushIntervalInMS = flush_interval_in_ms;
+}
+
+void log_producer_config_set_log_queue_interval(log_producer_config * config, int32_t log_queue_in_ms)
+{
+    if (NULL == config || log_queue_in_ms < 500)
+    {
+        return;
+    }
+    config->logQueuePopIntervalInMS = log_queue_in_ms;
 }
 
 void log_producer_config_set_send_thread_count(log_producer_config * config, int32_t thread_count)
@@ -237,15 +278,6 @@ void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32
   config->ntpTimeOffset = ntp_time_offset;
 }
 
-void log_producer_config_set_log_queue_size(log_producer_config * config, int32_t log_queue_size)
-{
-    if (config == NULL || log_queue_size < 0)
-    {
-        return;
-    }
-    config->logQueueSize = log_queue_size;
-}
-
 void log_producer_config_add_tag(log_producer_config * pConfig, const char * key, const char * value)
 {
     if(key == NULL || value == NULL)
@@ -277,15 +309,23 @@ void log_producer_config_add_tag(log_producer_config * pConfig, const char * key
 
 }
 
-
 void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint)
 {
+    if (!endpoint) {
+        _copy_config_string(NULL, &config->endpoint);
+        return;
+    }
+
+    if (strlen(endpoint) < 8) {
+        return;
+    }
     if (strncmp(endpoint, "http://", 7) == 0)
     {
         endpoint += 7;
     }
     else if (strncmp(endpoint, "https://", 8) == 0)
     {
+        config->using_https = 1;
         endpoint += 8;
     }
     _copy_config_string(endpoint, &config->endpoint);
@@ -314,7 +354,7 @@ void log_producer_config_reset_security_token(log_producer_config * config, cons
 {
   if (config->securityTokenLock == NULL)
   {
-    config->securityTokenLock = CreateCriticalSection();
+      config->securityTokenLock = CreateCriticalSection();
   }
   CS_ENTER(config->securityTokenLock);
   _copy_config_string(access_id, &config->accessKeyId);
@@ -360,17 +400,160 @@ int log_producer_config_is_valid(log_producer_config * config)
     if (config->endpoint == NULL || config->project == NULL || config->logstore == NULL)
     {
         aos_error_log("invalid producer config destination params");
-        return 0;
+//        return 0;
     }
     if (config->accessKey == NULL || config->accessKeyId == NULL)
     {
         aos_error_log("invalid producer config authority params");
-        return 0;
+//        return 0;
     }
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {
         aos_error_log("invalid producer config log merge and buffer params");
         return 0;
     }
+    if (config->usePersistent)
+    {
+        if (config->persistentFilePath == NULL || config->maxPersistentFileCount <= 0 || config->maxPersistentLogCount <= 0 || config->maxPersistentFileSize <=0 )
+        {
+            aos_error_log("invalid producer persistent config params");
+            return 0;
+        }
+    }
     return 1;
+}
+
+void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https)
+{
+    if (config == NULL || using_https < 0)
+    {
+        return;
+    }
+    config->using_https = using_https;
+}
+
+int log_producer_persistent_config_is_enabled(log_producer_config *config)
+{
+    if (config == NULL)
+    {
+        aos_error_log("invalid producer config");
+        return 0;
+    }
+    if (config->usePersistent == 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+void log_producer_config_set_persistent(log_producer_config *config,
+                                        int32_t persistent)
+{
+    if (config == NULL)
+        return;
+    config->usePersistent = persistent;
+}
+
+void log_producer_config_set_persistent_file_path(log_producer_config *config,
+                                                  const char *file_path)
+{
+    if (config == NULL)
+        return;
+    _copy_config_string(file_path, &config->persistentFilePath);
+}
+
+void
+log_producer_config_set_persistent_max_file_count(log_producer_config *config,
+                                                  int32_t file_count)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentFileCount = file_count;
+}
+
+void
+log_producer_config_set_persistent_max_file_size(log_producer_config *config,
+                                                 int32_t file_size)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentFileSize = file_size;
+}
+
+void log_producer_config_set_persistent_force_flush(log_producer_config *config,
+                                                    int32_t force)
+{
+    if (config == NULL)
+        return;
+    config->forceFlushDisk = force;
+}
+
+void log_producer_config_set_persistent_max_log_count(log_producer_config *config,
+                                           int32_t max_log_count)
+{
+    if (config == NULL)
+        return;
+    config->maxPersistentLogCount = max_log_count;
+}
+
+void log_producer_config_set_max_log_delay_time(log_producer_config *config,
+                                                int32_t max_log_delay_time)
+{
+    if (config == NULL)
+        return;
+    config->maxLogDelayTime = max_log_delay_time;
+}
+
+void log_producer_config_set_drop_delay_log(log_producer_config *config,
+                                            int32_t drop_or_rewrite)
+{
+    if (config == NULL)
+        return;
+    config->dropDelayLog = drop_or_rewrite;
+}
+
+void log_producer_config_set_drop_unauthorized_log(log_producer_config *config,
+                                                   int32_t drop_or_not)
+{
+    if (config == NULL)
+        return;
+    config->dropUnauthorizedLog = drop_or_not;
+}
+
+void log_producer_config_set_callback_from_sender_thread(log_producer_config * config,
+                                                         int32_t callback_from_sender_thread)
+{
+    if (NULL == config) {
+        return;
+    }
+
+    config->callbackFromSenderThread = callback_from_sender_thread;
+}
+
+LOG_EXPORT void log_producer_config_set_use_webtracking(log_producer_config * config, int32_t webtracking)
+{
+    if (NULL == config)
+    {
+        return;
+    }
+
+    config->webTracking =  webtracking;
+}
+
+void log_producer_config_set_mode(log_producer_config *config, int32_t mode) {
+    if (NULL == config)
+    {
+        return;
+    }
+
+    config->mode = mode;
+}
+
+void log_producer_config_set_shardkey(log_producer_config *config, const char *shardKey) {
+    if (NULL == config)
+    {
+        return;
+    }
+
+    _copy_config_string(shardKey, &config->shardKey);
 }

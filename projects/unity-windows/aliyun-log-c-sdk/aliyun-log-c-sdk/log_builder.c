@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "inner_log.h"
 
 // 1+3( 1 --->  header;  2 ---> 128 * 128 = 16KB)
 #define INIT_LOG_SIZE_BYTES 3
@@ -105,6 +106,8 @@ log_group_builder* log_group_create()
     bder->grp = (log_group*)((char *)(bder) + sizeof(log_group_builder));
     bder->loggroup_size = sizeof(log_group) + sizeof(log_group_builder);
     bder->builder_time = time(NULL);
+    bder->start_uuid = -1;
+    bder->end_uuid = -1;
     return bder;
 }
 
@@ -159,6 +162,20 @@ void _adjust_buffer(log_tag * tag, uint32_t new_len)
     tag->buffer = (char *)realloc(tag->buffer, new_buffer_len);
     tag->now_buffer = tag->buffer + tag->now_buffer_len;
     tag->max_buffer_len = new_buffer_len;
+}
+
+void add_log_raw(log_group_builder *bder, const char *buffer, size_t size)
+{
+    ++bder->grp->n_logs;
+    log_tag * log = &(bder->grp->logs);
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + size)
+    {
+        _adjust_buffer(log, size);
+    }
+    memcpy(log->now_buffer, buffer, size);
+    bder->loggroup_size += size;
+    log->now_buffer_len += size;
+    log->now_buffer += size;
 }
 
 void add_log_full(log_group_builder* bder, uint32_t logTime, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * val_lens)
@@ -334,6 +351,327 @@ void fix_log_group_time(char * pb_buffer, size_t len, uint32_t new_time)
 
 }
 
+sds put_val(sds s, char* val)
+{
+    s = sdscat(s, "\"");
+    s = sdscat(s, val);
+    s = sdscat(s, "\"");
+    return s;
+}
+
+sds put_kv_with_comma(sds s, char *key, char *val, int comma)
+{
+    s = put_val(s, key);
+    s = sdscat(s, ":");
+    s = put_val(s, val);
+    if (comma)
+    {
+        s = sdscat(s, ",");
+    }
+    return s;
+}
+
+
+sds escape_json(char **value) {
+    size_t len = strlen(*value);
+    sds result = sdsnewEmpty(len);
+    for (int i = 0; i < len; i ++) {
+        switch ((*value)[i]) {
+            case '"': result = sdscat(result, "\\\""); break;
+            case '\\': result = sdscat(result, "\\\\"); break;
+            case '\b': result = sdscat(result, "\\b"); break;
+            case '\f': result = sdscat(result, "\\f"); break;
+            case '\n': result = sdscat(result, "\\n"); break;
+            case '\r': result = sdscat(result, "\\r"); break;
+            case '\t': result = sdscat(result, "\\t"); break;
+            default:
+                if ('\x00' <= (*value)[i] && (*value)[i] <= '\x1f') {
+                    result = sdscatprintf(result, "%s%04X","\\u", (int)(*value)[i]);
+                } else {
+                    result = sdscatchar(result, (*value)[i]);
+                }
+        }
+    }
+    return result;
+}
+
+sds put_kv(sds s, char *key, char *val)
+{
+    sds v = escape_json(&val);
+    s =  put_kv_with_comma(s, key, v, 1);
+    sdsfree(v);
+
+    return s;
+}
+
+sds put_kv_no_comma(sds s, char *key, char *val)
+{
+    return put_kv_with_comma(s, key, val, 0);
+}
+
+sds put_array(sds s, char *key, sds array)
+{
+    s = put_val(s, key);
+    s = sdscat(s, ":");
+    s = sdscat(s, array);
+    return s;
+}
+
+sds remove_comma(sds s) {
+    sds ns = sdsnewlen(s, sdslen(s) - 1);
+    sdsfree(s);
+    return ns;
+}
+
+unsigned int read_length_from_pb(const uint8_t *data)
+{
+    return scan_varint(5, data);
+}
+
+uint32_t read_chars_from_pb(uint8_t **data, char **chars)
+{
+    (*data) ++;
+    unsigned int len = read_length_from_pb(*data);
+    uint32_t _len = parse_uint32(len, *data);
+    (*data) += len;
+
+    *chars = (char *) malloc(sizeof (char) * (_len + 1) );
+    memset(*chars, 0, _len + 1);
+    memcpy(*chars, *data, _len + 1);
+    (*chars)[_len] = '\0';
+
+    (*data) += _len;
+
+    return _len;
+}
+
+extern size_t serialize_pb_buffer_to_webtracking(char *pb_buffer, size_t len, char **new_buffer)
+{
+    if (0 == len || NULL == pb_buffer)
+    {
+        return 0;
+    }
+
+    if (0x0A != pb_buffer[0])
+    {
+        return 0;
+    }
+
+    sds root = sdsnew("{");
+    sds _root_logs_ = sdsnew("[");
+    sds _root_tags_ = sdsnew("{");
+
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    uint8_t * startBuf = (uint8_t *)pb_buffer;
+    // log package
+    while (buf - startBuf < len && *buf == 0x0A)
+    {
+        aos_debug_log("serialize_pb_buffer_to_webtracking, start process single log.");
+
+        ++buf;
+        unsigned logSizeLen = read_length_from_pb(buf);
+        buf += logSizeLen;
+
+        uint32_t time = 0;
+        // time
+        if (*buf == 0x08)
+        {
+            buf++;
+            unsigned timeLen = read_length_from_pb(buf);
+            if (timeLen != 5)
+            {
+                return 0;
+            }
+            time = parse_uint32(timeLen, buf);
+            buf += timeLen;
+
+            aos_debug_log("serialize_pb_buffer_to_webtracking, time: %d", time);
+        }
+
+        sds _log_ = sdsnew("{");
+        if (time)
+        {
+            _log_ = sdscatprintf(_log_, "\"__time__\":%u,", time);
+        }
+
+        // Content
+        // Header
+        while (*buf == 0x12)
+        {
+            buf++;
+            unsigned kvLen = read_length_from_pb(buf);
+            buf += kvLen;
+
+            char *key = NULL;
+            char *val = NULL;
+            // key
+            if (*buf == 0x0A)
+            {
+                read_chars_from_pb(&buf, &key);
+            }
+
+            // value
+            if (*buf == 0x12)
+            {
+                read_chars_from_pb(&buf, &val);
+            }
+
+            if (key && val)
+            {
+                _log_ = put_kv(_log_, key, val);
+            }
+
+            aos_debug_log("serialize_pb_buffer_to_webtracking, content {%s: %s}", key, val);
+
+            free(key);
+            free(val);
+        }
+
+        if (sdslen(_log_) > 1)
+        {
+            // remove last ','
+            _log_ = remove_comma(_log_);
+        }
+
+        _log_ = sdscat(_log_, "}");
+        _root_logs_ = sdscat(_root_logs_, _log_);
+        _root_logs_ = sdscat(_root_logs_, ",");
+        sdsfree(_log_);
+
+        // Topic
+        if (0x1A == *buf)
+        {
+            char *topic;
+            read_chars_from_pb(&buf, &topic);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, topic: %s", topic);
+            root = put_kv(root, "__topic__", topic);
+            free(topic);
+        }
+
+        // Source
+        if (0x22 == *buf)
+        {
+            char *source;
+            read_chars_from_pb(&buf, &source);
+            aos_debug_log("serialize_pb_buffer_to_webtracking, source: %s", source);
+
+            root = put_kv(root, "__source__", source);
+            free(source);
+        }
+
+        // Tag
+        while (0x32 == *buf)
+        {
+            buf ++;
+
+            unsigned int tagLen = read_length_from_pb(buf);
+            buf += tagLen;
+
+            char *key = NULL;
+            char *val = NULL;
+            // key
+            if (*buf == 0x0A)
+            {
+                read_chars_from_pb(&buf, &key);
+            }
+
+            // value
+            if (*buf == 0x12)
+            {
+                read_chars_from_pb(&buf, &val);
+            }
+
+            if (key && val)
+            {
+                _root_tags_ = put_kv(_root_tags_, key, val);
+            }
+
+            aos_debug_log("serialize_pb_buffer_to_webtracking, tag {%s: %s}", key, val);
+
+            free(key);
+            free(val);
+        }
+    }
+
+    aos_debug_log("serialize_pb_buffer_to_webtracking, log package has been processed.");
+
+    if (sdslen(_root_logs_) > 1)
+    {
+        _root_logs_ = remove_comma(_root_logs_);
+    }
+    _root_logs_ = sdscat(_root_logs_, "]");
+    _root_logs_ = sdscat(_root_logs_, ",");
+    root = put_array(root, "__logs__", _root_logs_);
+
+    if (sdslen(_root_tags_) > 1)
+    {
+        _root_tags_ = remove_comma(_root_tags_);
+    }
+    _root_tags_ = sdscat(_root_tags_, "}");
+    root = put_array(root, "__tags__", _root_tags_);
+    root = sdscat(root, "}");
+
+    size_t root_len = sdslen(root);
+    *new_buffer = (char *)malloc(sizeof(char) * root_len);
+    memcpy(*new_buffer, root, root_len);
+
+    sdsfree(_root_logs_);
+    sdsfree(_root_tags_);
+    sdsfree(root);
+
+    aos_debug_log("serialize_pb_buffer_to_webtracking, json: %s", *new_buffer);
+    return root_len;
+}
+
+void fix_log_time(char * pb_buffer, size_t len, uint32_t new_time)
+{
+    if (len == 0 || pb_buffer == NULL || new_time < 1263563523)
+    {
+        return;
+    }
+    if (pb_buffer[0] != 0x0A)
+    {
+        return;
+    }
+    ++pb_buffer;
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    unsigned logSizeLen = scan_varint(5, buf);
+    buf += logSizeLen;
+    // time
+    if (*buf == 0x08)
+    {
+        unsigned timeLen = scan_varint(5, buf + 1);
+        if (timeLen != 5)
+        {
+            return;
+        }
+        uint32_pack(new_time, buf + 1);
+    }
+}
+
+uint32_t get_log_time(const char * pb_buffer, size_t len)
+{
+    if (len == 0 || pb_buffer == NULL)
+    {
+        return time(NULL);
+    }
+    if (pb_buffer[0] != 0x0A)
+    {
+        return time(NULL);
+    }
+    ++pb_buffer;
+    uint8_t * buf = (uint8_t *)pb_buffer;
+    unsigned logSizeLen = scan_varint(5, buf);
+    buf += logSizeLen;
+    // time
+    if (*buf == 0x08)
+    {
+        unsigned timeLen = scan_varint(5, buf + 1);
+        return parse_uint32(timeLen, buf + 1);
+    }
+    return time(NULL);
+}
+
 
 log_buf serialize_to_proto_buf_with_malloc(log_group_builder* bder)
 {
@@ -433,7 +771,7 @@ void add_log_time(log_group_builder * bder, uint32_t logTime)
     bder->grp->log_now_buffer = (char *)buf;
 }
 
-void add_log_key_value(log_group_builder *bder, char * key, size_t key_len, char * value, size_t value_len)
+void add_log_key_value(log_group_builder *bder, const char * key, size_t key_len, const char * value, size_t value_len)
 {
     // sum total size
     uint32_t kv_size = sizeof(char) * (key_len + value_len) + uint32_size((uint32_t)key_len) + uint32_size((uint32_t)value_len) + 2;
@@ -497,6 +835,94 @@ void add_log_end(log_group_builder * bder)
     logs->now_buffer_len += header_size + log_size;
     // update loggroup size
     bder->loggroup_size += header_size + log_size;
+}
+
+void clear_log_tag(log_tag *tag)
+{
+    tag->now_buffer = tag->buffer;
+    tag->now_buffer_len = 0;
+}
+
+void
+add_log_full_v2(log_group_builder *bder, uint32_t logTime, size_t logItemCount,
+                const char *logItemsBuf, const uint32_t *logItemsSize)
+{
+    if (logTime < 1263563523)
+    {
+        logTime = time(NULL);
+    }
+    add_log_begin(bder);
+    add_log_time(bder, logTime);
+    size_t startOffset = 0;
+    logItemCount = (logItemCount >> 1) << 1;
+    for (size_t (i) = 0; (i) < logItemCount; i += 2)
+    {
+        uint32_t keySize = logItemsSize[i];
+        uint32_t valSize = logItemsSize[i+1];
+        add_log_key_value(bder, logItemsBuf + startOffset, keySize, logItemsBuf + startOffset + keySize, valSize);
+        startOffset += keySize + valSize;
+    }
+    add_log_end(bder);
+}
+
+void add_log_full_int32(log_group_builder *bder, uint32_t logTime,
+                        int32_t pair_count, char **keys, int32_t *key_lens,
+                        char **values, int32_t *val_lens)
+{
+    ++bder->grp->n_logs;
+
+    // limit logTime's min value, ensure varint size is 5
+    if (logTime < 1263563523)
+    {
+        logTime = 1263563523;
+    }
+
+    int32_t i = 0;
+    int32_t logSize = 6;
+    for (; i < pair_count; ++i)
+    {
+        uint32_t contSize = uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + key_lens[i] + val_lens[i] + 2;
+        logSize += 1 + uint32_size(contSize) + contSize;
+    }
+    int32_t totalBufferSize = logSize + 1 + uint32_size(logSize);
+
+    log_tag * log = &(bder->grp->logs);
+
+    if (log->now_buffer == NULL || log->max_buffer_len < log->now_buffer_len + totalBufferSize)
+    {
+        _adjust_buffer(log, totalBufferSize);
+    }
+
+
+    bder->loggroup_size += totalBufferSize;
+    uint8_t * buf = (uint8_t*)log->now_buffer;
+
+    *buf++ = 0x0A;
+    buf += uint32_pack(logSize, buf);
+
+    // time
+    *buf++=0x08;
+    buf += uint32_pack(logTime, buf);
+
+    // Content
+    // header
+    i = 0;
+    for (; i < pair_count; ++i)
+    {
+        *buf++ = 0x12;
+        buf += uint32_pack(uint32_size(key_lens[i]) + uint32_size(val_lens[i]) + 2 + key_lens[i] + val_lens[i], buf);
+        *buf++ = 0x0A;
+        buf += uint32_pack(key_lens[i], buf);
+        memcpy(buf, keys[i], key_lens[i]);
+        buf += key_lens[i];
+        *buf++ = 0x12;
+        buf += uint32_pack(val_lens[i], buf);
+        memcpy(buf, values[i], val_lens[i]);
+        buf += val_lens[i];
+    }
+    assert(buf - (uint8_t*)log->now_buffer == totalBufferSize);
+    log->now_buffer_len += totalBufferSize;
+    log->now_buffer = (char *)buf;
 }
 
 #endif

@@ -60,6 +60,18 @@
     <ClCompile Include="aliyun-log-c-sdk\sha1.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="aliyun-log-c-sdk\adapter.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="aliyun-log-c-sdk\log_ring_file.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="aliyun-log-c-sdk\log_http_interface.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="aliyun-log-c-sdk\log_persistent_manager.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aliyun-log-c-sdk\hmac-sha.h">
@@ -114,6 +126,18 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="aliyun-log-c-sdk\sha1.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="aliyun-log-c-sdk\adapter.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="aliyun-log-c-sdk\log_ring_file.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="aliyun-log-c-sdk\log_http_interface.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="aliyun-log-c-sdk\log_persistent_manager.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

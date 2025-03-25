@@ -22,6 +22,7 @@ typedef int32_t log_producer_send_result;
 #define LOG_SEND_SERVER_ERROR 4
 #define LOG_SEND_DISCARD_ERROR 5
 #define LOG_SEND_TIME_ERROR 6
+#define LOG_SEND_PARAMETERS_ERROR 8
 
 extern const char* LOGE_SERVER_BUSY;//= "ServerBusy";
 extern const char* LOGE_INTERNAL_SERVER_ERROR;//= "InternalServerError";
@@ -38,6 +39,8 @@ typedef struct _log_producer_send_param
     lz4_log_buf * log_buf;
     uint32_t magic_num;
     uint32_t builder_time;
+    int64_t start_uuid;
+    int64_t end_uuid;
 }log_producer_send_param;
 
 extern void * log_producer_send_fun(void * send_param);
@@ -49,7 +52,7 @@ extern log_producer_send_result AosStatusToResult(post_log_result * result);
 extern log_producer_send_param * create_log_producer_send_param(log_producer_config * producer_config,
                                                                 void * producer_manager,
                                                                 lz4_log_buf * log_buf,
-                                                                uint32_t builder_time);
+                                                                log_group_builder * builder);
 
 LOG_CPP_END
 

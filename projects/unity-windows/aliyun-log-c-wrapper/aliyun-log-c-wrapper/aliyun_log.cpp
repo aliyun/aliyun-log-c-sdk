@@ -56,7 +56,7 @@ AliyunLog* aliyun_log_create(
 	log_producer_config_set_packet_timeout(config, 3000);
 	log_producer_config_set_max_buffer_limit(config, 32 * 1024 * 1024);
 
-	async_fetch_server_time_from_sls(config);
+	// async_fetch_server_time_from_sls(config);
 
 	AliyunLog* aliyun_log = (AliyunLog*)malloc(sizeof(AliyunLog));
 

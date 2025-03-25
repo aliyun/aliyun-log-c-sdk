@@ -11,6 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "log_multi_thread.h"
+
+// change from 100ms to 1000s, reduce wake up when app switch to back
+#define LOG_PRODUCER_FLUSH_INTERVAL_MS 1000
+#define LOG_PRODUCER_QUEUE_POP_INTERVAL_MS 1000
+
 LOG_CPP_START
 
 
@@ -41,7 +46,8 @@ typedef struct _log_producer_config
     int32_t logCountPerPackage;
     int32_t logBytesPerPackage;
     int32_t maxBufferBytes;
-    int32_t logQueueSize;
+    int32_t flushIntervalInMS;
+    int32_t logQueuePopIntervalInMS;
 
     char * netInterface;
     int32_t connectTimeoutSec;
@@ -51,6 +57,30 @@ typedef struct _log_producer_config
 
     int32_t compressType; // 0 no compress, 1 lz4
     int32_t ntpTimeOffset;
+    int using_https; // 0 http, 1 https
+
+    // for persistent feature
+    int32_t usePersistent; // 0 no, 1 yes
+    char * persistentFilePath; // file path, must be utf8 or ascii encoded(windows included)
+    int32_t maxPersistentLogCount;
+    int32_t maxPersistentFileSize; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
+    int32_t maxPersistentFileCount; // max persistent size is maxPersistentFileSize * maxPersistentFileCount
+    int32_t forceFlushDisk; // force flush disk
+
+    // if log's time if before than nowTime, it's time will be rewrite to nowTime if delta > maxLogDelayTime
+    // the default value is 7*24*3600
+    int32_t maxLogDelayTime;
+    int32_t dropDelayLog; // 1 true, 0 false, default 1
+
+    int32_t dropUnauthorizedLog; // 1 true, 0 false, default 0
+    int32_t callbackFromSenderThread; // 1 true, 0 false, default 1int32_t callbackFromSenderThread;
+    int32_t webTracking; // 1 webtracking, default 0
+
+    int32_t mode; // 0, LoadBalance; 1, KeyShard
+    char *shardKey;
+
+    void *user_params; // user params pass to c
+
 }log_producer_config;
 
 
@@ -63,10 +93,19 @@ LOG_EXPORT log_producer_config * create_log_producer_config();
 
 /**
  * set producer config endpoint
+ * @note if endpoint start with "https", then set using_https 1
+ * @note strlen(endpoint) must >= 8
  * @param config
  * @param endpoint
  */
 LOG_EXPORT void log_producer_config_set_endpoint(log_producer_config * config, const char * endpoint);
+
+/**
+ * default http, 0 http, 1 https
+ * @param config
+ * @param using_https
+ */
+LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
 
 /**
  * set producer config project
@@ -161,6 +200,22 @@ LOG_EXPORT void log_producer_config_set_packet_log_bytes(log_producer_config * c
 LOG_EXPORT void log_producer_config_set_max_buffer_limit(log_producer_config * config, int64_t max_buffer_bytes);
 
 /**
+ * set flush interval time in ms.
+ * @note interval time should > 30ms.
+ * @param config
+ * @param flush_interval_in_ms
+ */
+LOG_EXPORT void log_producer_config_set_flush_interval(log_producer_config * config, int32_t flush_interval_in_ms);
+
+/**
+ * set log queue pop interval time in ms.
+ * @note interval time should > 30ms.
+ * @param config
+ * @param log_queue_in_ms
+ */
+LOG_EXPORT void log_producer_config_set_log_queue_interval(log_producer_config * config, int32_t log_queue_in_ms);
+
+/**
  * set send thread count, default is 0.
  * @note if thread count is 0, flusher thread is in the charge of send logs.
  * @note if thread count > 1, then producer will create $(thread_count) threads to send logs.
@@ -218,22 +273,91 @@ LOG_EXPORT void log_producer_config_set_compress_type(log_producer_config * conf
 */
 LOG_EXPORT void log_producer_config_set_ntp_time_offset(log_producer_config * config, int32_t ntp_time_offset);
 
+/**
+ * set persistent flag, 0 disable, 1 enable
+ * @param config
+ * @param persistent
+ */
+LOG_EXPORT void log_producer_config_set_persistent(log_producer_config * config, int32_t persistent);
+
+/**
+ * set persistent file path
+ * @param config
+ * @param file_path full file path, eg : "/app/test/data.dat"
+ * @note the file dir must exist
+ */
+LOG_EXPORT void log_producer_config_set_persistent_file_path(log_producer_config * config, const char * file_path);
+
+/**
+ * set max persistent file count, max size in disk is file_count * file_size
+ * @param config
+ * @param file_count 1-1000
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_file_count(log_producer_config * config, int32_t file_count);
+
+/**
+ * set max persistent file size, max size in disk is file_count * file_size
+ * @param config
+ * @param file_size
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_file_size(log_producer_config * config, int32_t file_size);
+
+/**
+ * force flush disk when add a log, 0 disable, 1 enable
+ * @param config
+ * @param force
+ */
+LOG_EXPORT void log_producer_config_set_persistent_force_flush(log_producer_config * config, int32_t force);
+
+/**
+ * set max log count saved in disk
+ * @param config
+ * @param max_log_count
+ */
+LOG_EXPORT void log_producer_config_set_persistent_max_log_count(log_producer_config * config, int32_t max_log_count);
+
+/**
+ * set max log delay time
+ * @param config
+ * @param max_log_delay_time
+ */
+LOG_EXPORT void log_producer_config_set_max_log_delay_time(log_producer_config * config, int32_t max_log_delay_time);
+
+/**
+ * set drop delay log or not
+ * @param config
+ * @param drop_or_rewrite
+ */
+LOG_EXPORT void log_producer_config_set_drop_delay_log(log_producer_config * config, int32_t drop_or_rewrite);
 
 
 /**
- * default http, 0 http, 1 https
+ * set drop unauthorized log or not
  * @param config
- * @param log_queue_size
+ * @param drop_or_not
  */
-LOG_EXPORT void log_producer_config_set_log_queue_size(log_producer_config * config, int32_t log_queue_size);
+LOG_EXPORT void log_producer_config_set_drop_unauthorized_log(log_producer_config * config, int32_t drop_or_not);
 
+/**
+ * set callback thread. default from sender thread.
+ * @param config
+ * @param callback_from_sender_thread
+ */
+LOG_EXPORT void log_producer_config_set_callback_from_sender_thread(log_producer_config * config, int32_t callback_from_sender_thread);
 
+LOG_EXPORT void log_producer_config_set_use_webtracking(log_producer_config * config, int32_t webtracking);
+
+LOG_EXPORT void log_producer_config_set_mode(log_producer_config *config, int32_t mode);
+
+LOG_EXPORT void log_producer_config_set_shardkey(log_producer_config *config, const char *shardKey);
 
 /**
  * destroy config, this will free all memory allocated by this config
  * @param config
  */
 LOG_EXPORT void destroy_log_producer_config(log_producer_config * config);
+
+
 
 #ifdef LOG_PRODUCER_DEBUG
 /**
@@ -251,6 +375,11 @@ void log_producer_config_print(log_producer_config * config, FILE * pFile);
  */
 LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
 
+/**
+ *
+ * @return
+ */
+LOG_EXPORT int log_producer_persistent_config_is_enabled(log_producer_config * config);
 
 
 LOG_CPP_END

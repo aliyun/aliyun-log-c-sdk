@@ -39,25 +39,6 @@ LOG_EXPORT log_producer_result log_producer_env_init();
 LOG_EXPORT void log_producer_env_destroy();
 
 /**
- * register get time function, the return value is unix time seconds, like time(NULL)
- */
-LOG_EXPORT void log_set_get_time_function(unsigned int (*f)());
-
-/**
- * fetch server time from sls
- * @note this operation will send a packet to sls and parse the response time, this will block 30s at most.
- * @param config
- */
-LOG_EXPORT void fetch_server_time_from_sls(log_producer_config * config);
-
-/**
- * async fetch server time from sls
- * @note this operation will create a async task to get server time and will return immediately when task has been created
- * @param config
- */
-LOG_EXPORT void async_fetch_server_time_from_sls(log_producer_config * config);
-
-/**
  * create log producer with a producer config
  * @param config log_producer_config
  * @param send_done_function this function will be called when send done(can be ok or fail), set to NULL if you don't care about it
@@ -114,26 +95,16 @@ LOG_EXPORT log_producer_result log_producer_client_add_log(log_producer_client *
  * @param values the value array
  * @param value_lens the value len array
  * @param flush if this log info need to send right, 1 mean flush and 0 means NO
- * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed, LOG_PRODUCER_PERSISTENT_ERROR is save binlog failed.
  */
 LOG_EXPORT log_producer_result log_producer_client_add_log_with_len(log_producer_client * client, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens, int flush);
 
 /**
-* add raw log buffer to client, this function is used to send buffers which can not send out when producer has destroyed
-* @param client
-* @param log_bytes
-* @param compressed_bytes
-* @param raw_buffer
-* @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed.
-*/
-LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
-
-/**
+ * @note same with log_producer_client_add_log_with_len but use int32_t as length
  * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.
  * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
  *
  * @param client
- * @param time_sec log time
  * @param pair_count key value pair count
  * @note pair_count not kv_count
  * @param keys the key array
@@ -143,7 +114,66 @@ LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_produc
  * @param flush if this log info need to send right, 1 mean flush and 0 means NO
  * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed, LOG_PRODUCER_PERSISTENT_ERROR is save binlog failed.
  */
-LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_time(log_producer_client * client, uint32_t time_sec, int32_t pair_count, char ** keys, size_t * key_lens, char ** values, size_t * value_lens, int flush);
+LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_int32(log_producer_client * client, int32_t pair_count, char ** keys, int32_t * key_lens, char ** values, int32_t * value_lens, int flush);
+
+/**
+ * @note same with log_producer_client_add_log_with_len_int32 but set time
+ * add log to producer, this may return LOG_PRODUCER_DROP_ERROR if buffer is full.
+ * if you care about this log very much, retry when return LOG_PRODUCER_DROP_ERROR.
+ *
+ * @param client
+ * @param pair_count key value pair count
+ * @note pair_count not kv_count
+ * @param keys the key array
+ * @param key_lens the key len array
+ * @param values the value array
+ * @param value_lens the value len array
+ * @param flush if this log info need to send right, 1 mean flush and 0 means NO
+ * @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed, LOG_PRODUCER_PERSISTENT_ERROR is save binlog failed.
+ */
+LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_time_int32(log_producer_client * client, uint32_t time_sec, int32_t pair_count, char ** keys, int32_t * key_lens, char ** values, int32_t * value_lens, int flush);
+
+
+/**
+ * add raw pb log buffer
+ * @param client
+ * @param logBuf
+ * @param logSize
+ * @param flush
+ * @return same as log_producer_client_add_log_with_len
+ */
+LOG_EXPORT log_producer_result log_producer_client_add_log_raw(log_producer_client * client,
+                                                                 char * logBuf,
+                                                                 size_t logSize,
+                                                                 int flush);
+
+/**
+ * add raw log with string buffer
+ * @param client
+ * @param logTime
+ * @param logItemCount
+ * @param logItemsBuf
+ * @param logItemsSize
+ * @param flush
+ * @return same as log_producer_client_add_log_with_len
+ */
+LOG_EXPORT log_producer_result log_producer_client_add_log_with_array(log_producer_client * client,
+                                                             uint32_t logTime,
+                                                             size_t  logItemCount,
+                                                             const char * logItemsBuf,
+                                                             const uint32_t * logItemsSize,
+                                                             int flush);
+
+
+/**
+* add raw log buffer to client, this function is used to send buffers which can not send out when producer has destroyed
+* @param client
+* @param log_bytes
+* @param compressed_bytes
+* @param raw_buffer
+* @return ok if success, LOG_PRODUCER_DROP_ERROR if buffer is full, LOG_PRODUCER_INVALID if client is destroyed, LOG_PRODUCER_PERSISTENT_ERROR is save binlog failed.
+*/
+LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
 LOG_CPP_END
 

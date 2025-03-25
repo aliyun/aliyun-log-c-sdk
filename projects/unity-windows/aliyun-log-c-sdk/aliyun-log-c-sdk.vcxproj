@@ -34,6 +34,10 @@
     <ClCompile Include="aliyun-log-c-sdk\md5.c" />
     <ClCompile Include="aliyun-log-c-sdk\sds.c" />
     <ClCompile Include="aliyun-log-c-sdk\sha1.c" />
+    <ClCompile Include="aliyun-log-c-sdk\adapter.c" />
+    <ClCompile Include="aliyun-log-c-sdk\log_ring_file.c" />
+    <ClCompile Include="aliyun-log-c-sdk\log_http_interface.c" />
+    <ClCompile Include="aliyun-log-c-sdk\log_persistent_manager.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aliyun-log-c-sdk\hmac-sha.h" />
@@ -54,6 +58,11 @@
     <ClInclude Include="aliyun-log-c-sdk\md5.h" />
     <ClInclude Include="aliyun-log-c-sdk\sds.h" />
     <ClInclude Include="aliyun-log-c-sdk\sha1.h" />
+    <ClInclude Include="aliyun-log-c-sdk\adapter.h" />
+    <ClInclude Include="aliyun-log-c-sdk\log_ring_file.h" />
+    <ClInclude Include="aliyun-log-c-sdk\log_http_interface.h" />
+    <ClInclude Include="aliyun-log-c-sdk\log_persistent_manager.h" />
+    
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

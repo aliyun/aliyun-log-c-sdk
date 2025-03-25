@@ -36,7 +36,7 @@
 #include <sys/types.h>
 #include <stdarg.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #define inline __inline
 #endif
 
@@ -83,6 +83,8 @@ sds sdscpylen(sds s, const char *t, size_t len);
 sds sdscpy(sds s, const char *t);
 
 sds sdscatvprintf(sds s, const char *fmt, va_list ap);
+
+sds sdscatrepr(sds s, const char *p, size_t len);
 
 #ifdef __GNUC__
 

@@ -8,8 +8,9 @@
 #include <time.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdint.h>
 
-#ifdef WIN32
+#ifdef _WIN32
 #define inline __inline
 #include <winsock2.h>
 #include <sys/timeb.h>
@@ -61,8 +62,6 @@ typedef int socklen_t;
 #include <semaphore.h>
 #include <assert.h>
 #include <sys/time.h>
-#include <stdint.h>
-
 #endif
 
 
@@ -108,9 +107,6 @@ typedef int BOOL;
 #define vsprintf_s(a, b, c, d) vsprintf(a, c, d)
 #define _strdup strdup
 #define _stricmp stricmp
-
-#include <sys/sysinfo.h>
-
 
 
 #endif

@@ -3,7 +3,7 @@
 //
 
 #include "log_producer_common.h"
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/socket.h>
@@ -23,6 +23,8 @@ log_producer_result LOG_PRODUCER_SEND_SERVER_ERROR = 7;
 log_producer_result LOG_PRODUCER_SEND_DISCARD_ERROR = 8;
 log_producer_result LOG_PRODUCER_SEND_TIME_ERROR = 9;
 log_producer_result LOG_PRODUCER_SEND_EXIT_BUFFERED = 10;
+log_producer_result LOG_PRODUCER_PARAMETERS_INVALID = 11;
+log_producer_result LOG_PRODUCER_PERSISTENT_ERROR = 99;
 
 int is_log_producer_result_ok(log_producer_result rst)
 {
