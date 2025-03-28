@@ -25,9 +25,7 @@ void log_http_global_destroy();
 
 log_status_t sls_log_init()
 {
-#ifdef LOG_HTTP_USE_CURL
     log_set_http_use_curl();
-#endif
     return log_http_global_init();
 }
 void sls_log_destroy()
