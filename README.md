@@ -87,11 +87,13 @@ extern get_now_time_str_fun g_log_get_now_time_str_fun;
 
 post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * accesskeyId, const char *accessKey,
                                       const char *project, const char *logstore,
-                                      const char * data, uint32_t data_size, uint32_t raw_data_size);
+                                      const char * data, uint32_t data_size, uint32_t raw_data_size,
+                                      int use_https);
 
 post_log_header pack_logs_from_raw_buffer(const char *endpoint, const char * accesskeyId, const char *accessKey,
                                       const char *project, const char *logstore,
-                                      const char * data, uint32_t raw_data_size);
+                                      const char * data, uint32_t raw_data_size,
+                                      int use_https);
                                       
 void free_post_log_header(post_log_header header);
 ```

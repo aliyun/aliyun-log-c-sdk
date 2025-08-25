@@ -116,7 +116,7 @@ post_log_result * post_logs_with_libcurl_lz4(log_group_builder * bder)
         result->statusCode = -2;
         post_log_header log_header = pack_logs_from_buffer_lz4(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,
                                                                PROJECT_NAME, LOGSTORE_NAME,
-                                                               (const char *)lz4LogBuf->data, lz4LogBuf->length, lz4LogBuf->raw_length);
+                                                               (const char *)lz4LogBuf->data, lz4LogBuf->length, lz4LogBuf->raw_length, 0);
 
         if (log_header.header_items != NULL)
         {
@@ -220,6 +220,19 @@ post_log_result * post_logs_with_libcurl_lz4(log_group_builder * bder)
 
 #endif
 
+sds get_url(post_log_header* log_header, int use_https)
+{
+    if (!use_https)
+        return sdsnew(log_header->url);
+    if (strncmp(log_header->url, "http://", 7) == 0)
+    {
+        sds url = sdsnew("https://");
+        url = sdscat(url, log_header->url[7]);
+        return url;
+    }
+    return sdsnew(log_header->url);
+}
+
 /**
  * 使用libcurl发送未压缩的数据
  * @param bder
@@ -237,7 +250,7 @@ post_log_result * post_logs_with_libcurl(log_group_builder * bder)
         result->statusCode = -2;
         post_log_header log_header = pack_logs_from_raw_buffer(LOG_ENDPOINT, ACCESS_KEY_ID, ACCESS_KEY_SECRET,
                                                                PROJECT_NAME, LOGSTORE_NAME,
-                                                               (const char *)logBuf.buffer, logBuf.n_buffer);
+                                                               (const char *)logBuf.buffer, logBuf.n_buffer, 0);
 
         if (log_header.header_items != NULL)
         {
