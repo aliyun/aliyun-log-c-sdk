@@ -25,7 +25,8 @@ void free_post_log_header(post_log_header header)
 
 post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * accesskeyId, const char *accessKey,
                                       const char *project, const char *logstore,
-                                      const char * data, uint32_t data_size, uint32_t raw_data_size)
+                                      const char * data, uint32_t data_size, uint32_t raw_data_size,
+                                      int use_https)
 {
     post_log_header header;
     memset(&header, 0, sizeof(post_log_header));
@@ -34,7 +35,7 @@ post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * acc
         return header;
     }
     // url
-    sds url = sdsnew("http://");
+    sds url = use_https ? sdsnew("https://") : sdsnew("http://");
     url = sdscat(url, project);
     url = sdscat(url, ".");
     url = sdscat(url, endpoint);
@@ -111,7 +112,8 @@ post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * acc
 
 post_log_header pack_logs_from_raw_buffer(const char *endpoint, const char * accesskeyId, const char *accessKey,
                                           const char *project, const char *logstore,
-                                          const char * data, uint32_t raw_data_size)
+                                          const char * data, uint32_t raw_data_size,
+                                          int use_https)
 {
     post_log_header header;
     memset(&header, 0, sizeof(post_log_header));
@@ -120,7 +122,7 @@ post_log_header pack_logs_from_raw_buffer(const char *endpoint, const char * acc
         return header;
     }
     // url
-    sds url = sdsnew("http://");
+    sds url = use_https ? sdsnew("https://") : sdsnew("http://");
     url = sdscat(url, project);
     url = sdscat(url, ".");
     url = sdscat(url, endpoint);

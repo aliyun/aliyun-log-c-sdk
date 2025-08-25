@@ -29,11 +29,13 @@ typedef struct _post_log_header {
  * @param data you lz4 compressed buffer
  * @param data_size buffer size
  * @param raw_data_size raw buffer size(before compressed)
+ * @param use_https whether use https, 0 for http, 1 for https
  * @return post_log_header. if pack fail, post_log_header.header_items will be NULL
  */
 post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * accesskeyId, const char *accessKey,
-                                      const char *project, const char *logstore,
-                                      const char * data, uint32_t data_size, uint32_t raw_data_size);
+                                          const char *project, const char *logstore,
+                                          const char * data, uint32_t data_size, uint32_t raw_data_size,
+                                          int use_https);
 #endif
 
 
@@ -46,11 +48,13 @@ post_log_header pack_logs_from_buffer_lz4(const char *endpoint, const char * acc
  * @param logstore your logstore name
  * @param data raw buffer
  * @param raw_data_size raw buffer size
+ * @param use_https whether use https, 0 for http, 1 for https
  * @return post_log_header. if pack fail, post_log_header.header_items will be NULL
  */
 post_log_header pack_logs_from_raw_buffer(const char *endpoint, const char * accesskeyId, const char *accessKey,
-                                      const char *project, const char *logstore,
-                                      const char * data, uint32_t raw_data_size);
+                                          const char *project, const char *logstore,
+                                          const char * data, uint32_t raw_data_size,
+                                          int use_https);
 
 
 /**
