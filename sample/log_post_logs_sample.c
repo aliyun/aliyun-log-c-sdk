@@ -220,19 +220,6 @@ post_log_result * post_logs_with_libcurl_lz4(log_group_builder * bder)
 
 #endif
 
-sds get_url(post_log_header* log_header, int use_https)
-{
-    if (!use_https)
-        return sdsnew(log_header->url);
-    if (strncmp(log_header->url, "http://", 7) == 0)
-    {
-        sds url = sdsnew("https://");
-        url = sdscat(url, log_header->url[7]);
-        return url;
-    }
-    return sdsnew(log_header->url);
-}
-
 /**
  * 使用libcurl发送未压缩的数据
  * @param bder
