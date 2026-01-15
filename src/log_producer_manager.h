@@ -37,6 +37,11 @@ typedef struct _log_producer_manager
     volatile uint64_t send_param_queue_read;
     volatile uint64_t send_param_queue_write;
     ATOMICINT ref_count; // only used when global send thread works
+    
+    // Dynamic credentials cache
+    log_producer_credentials * current_credentials;
+    CRITICALSECTION credentials_lock;
+    volatile int64_t last_credentials_fetch_time;
 }log_producer_manager;
 
 extern log_producer_manager * create_log_producer_manager(log_producer_config * producer_config);

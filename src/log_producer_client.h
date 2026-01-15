@@ -139,6 +139,23 @@ LOG_EXPORT log_producer_result log_producer_client_add_log_with_len_time(log_pro
  */
 LOG_EXPORT log_producer_result log_producer_client_add_raw_log_buffer(log_producer_client * client, size_t log_bytes, size_t compressed_bytes, const unsigned char * raw_buffer);
 
+/**
+ * set credentials callback function for dynamic AK support
+ * @note This should be called before create_log_producer, or set it in the config before creating producer
+ * @param producer
+ * @param callback callback function to get credentials
+ */
+LOG_EXPORT void log_producer_set_credentials_callback(log_producer * producer, on_get_credentials_function callback);
+
+/**
+ * set credentials callback userdata for dynamic AK support
+ * @note userdata must outlive the producer lifetime
+ * @note This should be called before create_log_producer, or set it in the config before creating producer
+ * @param producer
+ * @param userdata user-defined data passed to callback
+ */
+LOG_EXPORT void log_producer_set_credentials_userdata(log_producer * producer, void * userdata);
+
 LOG_CPP_END
 
 #endif //LOG_C_SDK_LOG_PRODUCER_CLIENT_H

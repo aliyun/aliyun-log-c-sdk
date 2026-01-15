@@ -238,3 +238,29 @@ log_producer_result log_producer_global_send_thread_init(int32_t log_global_send
     }
     return LOG_PRODUCER_OK;
 }
+
+void log_producer_set_credentials_callback(log_producer * producer, on_get_credentials_function callback)
+{
+    if (producer == NULL || producer->root_client == NULL)
+    {
+        return;
+    }
+    producer_client_private * client_private = (producer_client_private *)producer->root_client->private_data;
+    if (client_private != NULL && client_private->producer_config != NULL)
+    {
+        log_producer_config_set_credentials_callback(client_private->producer_config, callback);
+    }
+}
+
+void log_producer_set_credentials_userdata(log_producer * producer, void * userdata)
+{
+    if (producer == NULL || producer->root_client == NULL)
+    {
+        return;
+    }
+    producer_client_private * client_private = (producer_client_private *)producer->root_client->private_data;
+    if (client_private != NULL && client_private->producer_config != NULL)
+    {
+        log_producer_config_set_credentials_userdata(client_private->producer_config, userdata);
+    }
+}

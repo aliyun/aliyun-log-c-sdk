@@ -13,6 +13,21 @@
 #include "log_multi_thread.h"
 LOG_CPP_START
 
+/**
+ * Credentials structure for dynamic AK support
+ * @note This is an opaque structure, internal details are hidden from users
+ * @note Users should use provided API `log_producer_credentials_set` to manipulate credentials
+ */
+typedef struct _log_producer_credentials log_producer_credentials;
+
+/**
+ * Callback function type for getting credentials
+ * @param credentials The credentials structure to be filled by user
+ * @param userdata User-defined data passed to the callback
+ * @return 0 if success, non-zero if failed
+ */
+typedef int (*on_get_credentials_function)(log_producer_credentials* credentials, void* userdata);
+
 
 typedef struct _log_producer_config_tag
 {
@@ -54,6 +69,10 @@ typedef struct _log_producer_config
 
     log_compress_type compressType;
     int32_t using_https; // default http, 0 http, 1 https
+
+    // Dynamic credentials callback
+    on_get_credentials_function credentials_callback;
+    void * credentials_userdata;
 
 }log_producer_config;
 
@@ -281,6 +300,44 @@ void log_producer_config_print(log_producer_config * config, FILE * pFile);
  */
 LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
 
+/**
+ * set credentials information
+ * @note This function is called by user in the credentials callback
+ * @note SDK will copy the strings, caller keeps ownership of the input strings
+ * @param credentials
+ * @param access_key_id
+ * @param access_key_id_len
+ * @param access_key_secret
+ * @param access_key_secret_len
+ * @param security_token
+ * @param security_token_len
+ * @param expire_ts expire time for this credentials, unix timestamp in seconds
+ * @return 0 if success, non-zero if failed
+ */
+LOG_EXPORT int log_producer_credentials_set(
+    log_producer_credentials * credentials,
+    const char * access_key_id,
+    size_t access_key_id_len,
+    const char * access_key_secret,
+    size_t access_key_secret_len,
+    const char * security_token,
+    size_t security_token_len,
+    int64_t expire_ts);
+
+/**
+ * set credentials callback function
+ * @param config
+ * @param callback callback function to get credentials
+ */
+LOG_EXPORT void log_producer_config_set_credentials_callback(log_producer_config * config, on_get_credentials_function callback);
+
+/**
+ * set credentials callback userdata
+ * @note userdata must outlive the producer lifetime
+ * @param config
+ * @param userdata user-defined data passed to callback
+ */
+LOG_EXPORT void log_producer_config_set_credentials_userdata(log_producer_config * config, void * userdata);
 
 
 LOG_CPP_END
