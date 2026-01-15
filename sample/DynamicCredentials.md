@@ -49,6 +49,7 @@ log_producer_client_add_log(client, 4, "key1", "value1", "key2", "value2");
 // 4. 清理
 destroy_log_producer(producer);
 ```
+完整示例可参见 [log_dynamic_credentials_sample.c](log_dynamic_credentials_sample.c)
 
 ## 回调触发时机
 
