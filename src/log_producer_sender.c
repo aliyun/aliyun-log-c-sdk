@@ -5,6 +5,7 @@
 #include "log_producer_sender.h"
 #include "log_api.h"
 #include "log_producer_manager.h"
+#include "log_producer_config_internal.h"
 #include "inner_log.h"
 #include "lz4.h"
 #include "sds.h"
@@ -30,6 +31,9 @@ const char* LOGE_TIME_EXPIRED = "RequestTimeExpired";
 
 #define SEND_TIME_INVALID_FIX
 
+#define CREDENTIALS_EXPIRE_ADVANCE_TIME 120  // 120 seconds (2 minutes)
+#define CREDENTIALS_FETCH_MIN_INTERVAL 5     // 5 seconds
+
 extern volatile uint8_t g_send_thread_destroy;
 
 extern void destroy_log_producer_manager_tail(log_producer_manager * manager);
@@ -42,6 +46,138 @@ typedef struct _send_error_info
 }send_error_info;
 
 int32_t log_producer_on_send_done(log_producer_send_param * send_param, post_log_result * result, send_error_info * error_info);
+
+/**
+ * Try to fetch credentials from user callback
+ * @param producer_manager
+ * @return 0 if success or no need to fetch, -1 if failed
+ */
+int _try_fetch_credentials(log_producer_manager * producer_manager)
+{
+    log_producer_config * config = producer_manager->producer_config;
+    if (config->credentials_callback == NULL)
+    {
+        return 0; // No callback, use static credentials
+    }
+
+    int64_t now_time = time(NULL);
+    
+    CS_ENTER(producer_manager->credentials_lock);
+    
+    // Check if we need to fetch
+    int need_fetch = 0;
+    
+    if (producer_manager->current_credentials == NULL)
+    {
+        // No cached credentials
+        need_fetch = 1;
+        aos_debug_log("no credentals now, need fetch credentials");
+    }
+    else if (now_time + CREDENTIALS_EXPIRE_ADVANCE_TIME >= producer_manager->current_credentials->expire_ts
+            && now_time - producer_manager->last_credentials_fetch_time >= CREDENTIALS_FETCH_MIN_INTERVAL)
+    {
+        // Credentials will expire soon
+        need_fetch = 1;
+        aos_debug_log("credentials will expire on %lld soon, need fetch credentials", (long long)producer_manager->current_credentials->expire_ts);
+    }
+
+    if (!need_fetch)
+    {
+        CS_LEAVE(producer_manager->credentials_lock);
+        return 0;
+    }
+
+    // Create temporary credentials for callback
+    log_producer_credentials * temp_credentials = log_producer_credentials_create();
+    if (temp_credentials == NULL)
+    {
+        CS_LEAVE(producer_manager->credentials_lock);
+        aos_error_log("create temporary credentials failed");
+        return -1;
+    }
+
+    producer_manager->last_credentials_fetch_time = now_time;
+    CS_LEAVE(producer_manager->credentials_lock);
+
+    // Call user callback (without holding lock)
+    int ret = config->credentials_callback(temp_credentials, config->credentials_userdata);
+    now_time = time(NULL);
+
+    if (ret == 0 
+        && temp_credentials->access_key_id != NULL
+        && temp_credentials->access_key_secret != NULL
+        && now_time < temp_credentials->expire_ts)
+    {
+        // Success, update cached credentials
+        CS_ENTER(producer_manager->credentials_lock);
+        
+        if (producer_manager->current_credentials != NULL)
+        {
+            log_producer_credentials_destroy(producer_manager->current_credentials);
+        }
+        producer_manager->current_credentials = temp_credentials;
+        
+        CS_LEAVE(producer_manager->credentials_lock);
+        
+        aos_info_log("fetch credentials success, expire_ts : %lld", (long long)temp_credentials->expire_ts);
+        return 0;
+    }
+
+    // Failed to fetch
+    log_producer_credentials_destroy(temp_credentials);
+    aos_warn_log("fetch credentials failed, ret : %d", ret);
+    return -1;
+}
+
+/**
+ * Get credentials for signing
+ * @param producer_manager
+ * @param access_key_id output
+ * @param access_key_secret output
+ * @param security_token output
+ */
+void _get_credentials_for_sign(log_producer_manager * producer_manager, 
+                               sds * access_key_id, 
+                               sds * access_key_secret, 
+                               sds * security_token)
+{
+    log_producer_config * config = producer_manager->producer_config;
+    if (config->credentials_callback == NULL)
+    {
+        log_producer_config_get_security(config, access_key_id, access_key_secret, security_token);
+        return;
+    }
+
+    // Try to fetch credentials before signing,
+    // if producer is shutting down, don't fetch credentials to aviod visiting userdata
+    if (!producer_manager->shutdown)
+    {
+        _try_fetch_credentials(producer_manager);
+    }
+    
+    CS_ENTER(producer_manager->credentials_lock);
+    if (producer_manager->current_credentials == NULL)
+    {
+        CS_LEAVE(producer_manager->credentials_lock);
+        aos_error_log("no credentials found");
+        return;
+    }
+    
+    // Use cached credentials
+    if (producer_manager->current_credentials->access_key_id != NULL)
+    {
+        *access_key_id = sdsnew(producer_manager->current_credentials->access_key_id);
+    }
+    if (producer_manager->current_credentials->access_key_secret != NULL)
+    {
+        *access_key_secret = sdsnew(producer_manager->current_credentials->access_key_secret);
+    }
+    if (producer_manager->current_credentials->security_token != NULL)
+    {
+        *security_token = sdsnew(producer_manager->current_credentials->security_token);
+    }
+    CS_LEAVE(producer_manager->credentials_lock); 
+}
 
 #ifdef SEND_TIME_INVALID_FIX
 
@@ -185,7 +321,7 @@ void * log_producer_send_fun(void * param)
         sds accessKeyId = NULL;
         sds accessKey = NULL;
         sds stsToken = NULL;
-        log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+        _get_credentials_for_sign(producer_manager, &accessKeyId, &accessKey, &stsToken);
 
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
                                                       accessKey, stsToken,

@@ -3,6 +3,7 @@
 //
 
 #include "log_producer_manager.h"
+#include "log_producer_config_internal.h"
 #include "inner_log.h"
 #include "md5.h"
 #include "sds.h"
@@ -220,6 +221,11 @@ log_producer_manager * create_log_producer_manager(log_producer_config * produce
     assert(producer_manager->ref_count == 1);
 
     producer_manager->producer_config = producer_config;
+    
+    // Initialize credentials cache
+    producer_manager->current_credentials = NULL;
+    producer_manager->credentials_lock = CreateCriticalSection();
+    producer_manager->last_credentials_fetch_time = 0;
 
     int32_t base_queue_size = producer_config->maxBufferBytes / (producer_config->logBytesPerPackage + 1) + 10;
     if (producer_config->logQueueSize > 0)
@@ -316,6 +322,15 @@ void destroy_log_producer_manager_tail(log_producer_manager * manager)
     if (manager->send_param_queue != NULL)
     {
         free(manager->send_param_queue);
+    }
+    // Clean up credentials cache
+    if (manager->current_credentials != NULL)
+    {
+        log_producer_credentials_destroy(manager->current_credentials);
+    }
+    if (manager->credentials_lock != NULL)
+    {
+        DeleteCriticalSection(manager->credentials_lock);
     }
     sdsfree(manager->source);
     destroy_log_producer_config(manager->producer_config);

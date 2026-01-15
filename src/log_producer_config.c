@@ -3,6 +3,7 @@
 //
 
 #include "log_producer_config.h"
+#include "log_producer_config_internal.h"
 #include "sds.h"
 #include <string.h>
 #include <stdlib.h>
@@ -399,10 +400,14 @@ int log_producer_config_is_valid(log_producer_config * config)
         aos_error_log("invalid producer config destination params");
         return 0;
     }
-    if (config->accessKey == NULL || config->accessKeyId == NULL)
+    // If credentials callback is set, we don't need static accessKey
+    if (config->credentials_callback == NULL)
     {
-        aos_error_log("invalid producer config authority params");
-        return 0;
+        if (config->accessKey == NULL || config->accessKeyId == NULL)
+        {
+            aos_error_log("invalid producer config authority params");
+            return 0;
+        }
     }
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {
@@ -410,4 +415,106 @@ int log_producer_config_is_valid(log_producer_config * config)
         return 0;
     }
     return 1;
+}
+
+log_producer_credentials* log_producer_credentials_create()
+{
+    log_producer_credentials* credentials = (log_producer_credentials*)malloc(sizeof(log_producer_credentials));
+    if (credentials == NULL)
+    {
+        return NULL;
+    }
+    memset(credentials, 0, sizeof(log_producer_credentials));
+    return credentials;
+}
+
+void log_producer_credentials_destroy(log_producer_credentials* credentials)
+{
+    if (credentials == NULL)
+    {
+        return;
+    }
+    if (credentials->access_key_id != NULL)
+    {
+        sdsfree(credentials->access_key_id);
+    }
+    if (credentials->access_key_secret != NULL)
+    {
+        sdsfree(credentials->access_key_secret);
+    }
+    if (credentials->security_token != NULL)
+    {
+        sdsfree(credentials->security_token);
+    }
+    free(credentials);
+}
+
+int log_producer_credentials_set(
+    log_producer_credentials* credentials,
+    const char* access_key_id,
+    size_t access_key_id_len,
+    const char* access_key_secret,
+    size_t access_key_secret_len,
+    const char* security_token,
+    size_t security_token_len,
+    int64_t expire_ts)
+{
+    if (credentials == NULL)
+    {
+        return -1;
+    }
+
+    // Free old strings, this is not likely to happen, but just in case
+    if (credentials->access_key_id != NULL)
+    {
+        sdsfree(credentials->access_key_id);
+        credentials->access_key_id = NULL;
+    }
+    if (credentials->access_key_secret != NULL)
+    {
+        sdsfree(credentials->access_key_secret);
+        credentials->access_key_secret = NULL;
+    }
+    if (credentials->security_token != NULL)
+    {
+        sdsfree(credentials->security_token);
+        credentials->security_token = NULL;
+    }
+
+    // Copy new strings using sds
+    if (access_key_id != NULL && access_key_id_len > 0)
+    {
+        credentials->access_key_id = sdsnewlen(access_key_id, access_key_id_len);
+    }
+
+    if (access_key_secret != NULL && access_key_secret_len > 0)
+    {
+        credentials->access_key_secret = sdsnewlen(access_key_secret, access_key_secret_len);
+    }
+
+    if (security_token != NULL && security_token_len > 0)
+    {
+        credentials->security_token = sdsnewlen(security_token, security_token_len);
+    }
+
+    credentials->expire_ts = expire_ts;
+    return 0;
+}
+
+void log_producer_config_set_credentials_callback(log_producer_config* config, on_get_credentials_function callback)
+{
+    if (config == NULL)
+    {
+        return;
+    }
+    config->credentials_callback = callback;
+}
+
+void log_producer_config_set_credentials_userdata(log_producer_config* config, void* userdata)
+{
+    if (config == NULL)
+    {
+        return;
+    }
+    config->credentials_userdata = userdata;
 }
