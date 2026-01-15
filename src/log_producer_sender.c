@@ -71,27 +71,34 @@ int _try_fetch_credentials(log_producer_manager * producer_manager)
     {
         // No cached credentials
         need_fetch = 1;
+        aos_debug_log("no credentals now, need fetch credentials");
     }
-    else if (producer_manager->current_credentials->expire_ts > 0 &&
-             now_time + CREDENTIALS_EXPIRE_ADVANCE_TIME >= producer_manager->current_credentials->expire_ts
+    else if (now_time + CREDENTIALS_EXPIRE_ADVANCE_TIME >= producer_manager->current_credentials->expire_ts
             && now_time - producer_manager->last_credentials_fetch_time >= CREDENTIALS_FETCH_MIN_INTERVAL)
     {
         // Credentials will expire soon
-        need_fetch = 1; 
+        need_fetch = 1;
+        aos_debug_log("credentials will expire on %lld soon, need fetch credentials", (long long)producer_manager->current_credentials->expire_ts);
     }
-    
+
     if (!need_fetch)
     {
         CS_LEAVE(producer_manager->credentials_lock);
         return 0;
     }
-    
+
     // Create temporary credentials for callback
     log_producer_credentials * temp_credentials = log_producer_credentials_create();
+    if (temp_credentials == NULL)
+    {
+        CS_LEAVE(producer_manager->credentials_lock);
+        aos_error_log("create temporary credentials failed");
+        return -1;
+    }
+
     producer_manager->last_credentials_fetch_time = now_time;
-    
     CS_LEAVE(producer_manager->credentials_lock);
-    
+
     // Call user callback (without holding lock)
     int ret = config->credentials_callback(temp_credentials, config->credentials_userdata);
     now_time = time(NULL);

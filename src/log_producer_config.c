@@ -420,6 +420,10 @@ int log_producer_config_is_valid(log_producer_config * config)
 log_producer_credentials* log_producer_credentials_create()
 {
     log_producer_credentials* credentials = (log_producer_credentials*)malloc(sizeof(log_producer_credentials));
+    if (credentials == NULL)
+    {
+        return NULL;
+    }
     memset(credentials, 0, sizeof(log_producer_credentials));
     return credentials;
 }
