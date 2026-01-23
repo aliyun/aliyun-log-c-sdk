@@ -221,6 +221,7 @@ LOG_EXPORT void log_producer_config_set_net_interface(log_producer_config * conf
 
 /**
  * set remote_address to send log out
+ * @note only support on curl version >= 7.49.0
  * @param config
  * @param remote_address
  */

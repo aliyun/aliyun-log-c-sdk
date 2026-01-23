@@ -9,6 +9,19 @@
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 
+#ifndef CURL_VERSION_BITS
+#define CURL_VERSION_BITS(x,y,z) ((x)<<16|(y)<<8|(z))
+#endif
+
+#ifndef CURL_AT_LEAST_VERSION
+#define CURL_AT_LEAST_VERSION(x,y,z) \
+  (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
+
+#if CURL_AT_LEAST_VERSION(7, 49, 0)
+#define SLS_HAS_CONNECT_TO 1
+#endif
+
 log_status_t sls_log_init(int32_t log_global_flag)
 {
     CURLcode ecode;
@@ -177,6 +190,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
         struct curl_slist *connect_to = NULL;
+#if SLS_HAS_CONNECT_TO
         if (option->remote_address != NULL)
         {
             // example.com::192.168.1.5:
@@ -191,6 +205,7 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             curl_easy_setopt(curl, CURLOPT_CONNECT_TO, connect_to);
             sdsfree(connect_to_item);
         }
+#endif
 
         char nowTime[64];
         get_now_time_str(nowTime, 64);
