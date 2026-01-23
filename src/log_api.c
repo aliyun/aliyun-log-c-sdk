@@ -9,6 +9,15 @@
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 
+#ifndef CURL_VERSION_BITS
+#define CURL_VERSION_BITS(x,y,z) ((x)<<16|(y)<<8|(z))
+#endif
+
+#ifndef CURL_AT_LEAST_VERSION
+#define CURL_AT_LEAST_VERSION(x,y,z) \
+  (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#endif
+
 #if CURL_AT_LEAST_VERSION(7, 49, 0)
 #define SLS_HAS_CONNECT_TO 1
 #endif
