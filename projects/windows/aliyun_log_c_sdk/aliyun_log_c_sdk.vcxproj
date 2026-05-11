@@ -149,6 +149,7 @@
     <ClCompile Include="..\..\..\src\log_producer_sender.c" />
     <ClCompile Include="..\..\..\src\log_queue.c" />
     <ClCompile Include="..\..\..\src\log_util.c" />
+    <ClCompile Include="..\..\..\src\log_windows_mutex.cpp" />
     <ClCompile Include="..\..\..\src\lz4.c" />
     <ClCompile Include="..\..\..\src\md5.c" />
     <ClCompile Include="..\..\..\src\sds.c" />

@@ -21,48 +21,48 @@
 
 //临界区资源
 
-#define CRITICALSECTION LPCRITICAL_SECTION
+typedef struct log_windows_mutex *CRITICALSECTION;
 #define INVALID_CRITSECT NULL
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  ********************************************************************
  * 创建互斥锁
  ********************************************************************
  */
-static inline CRITICALSECTION CreateCriticalSection()
-{
-	CRITICALSECTION cs = (CRITICALSECTION)malloc(sizeof(RTL_CRITICAL_SECTION));
-    InitializeCriticalSection(cs);
-    return cs;
-}
+CRITICALSECTION CreateCriticalSection(void);
 
 /**
  ********************************************************************
  * 删除互斥锁
  ********************************************************************
  */
-static inline void ReleaseCriticalSection(CRITICALSECTION cs) {
-    if (cs != INVALID_CRITSECT) {
-        DeleteCriticalSection(cs);
-        free(cs);
-    }
+void ReleaseCriticalSection(CRITICALSECTION cs);
+void log_windows_mutex_lock(CRITICALSECTION cs);
+void log_windows_mutex_unlock(CRITICALSECTION cs);
+
+#ifdef __cplusplus
 }
+#endif
 
 /// * @brief    加锁
-#define CS_ENTER(cs) EnterCriticalSection(cs)
+#define CS_ENTER(cs) log_windows_mutex_lock(cs)
 /// * @brief    解锁
-#define CS_LEAVE(cs) LeaveCriticalSection(cs)
+#define CS_LEAVE(cs) log_windows_mutex_unlock(cs)
 
 /// * @brief    互斥锁
-#define MUTEX CRITICAL_SECTION
+#define MUTEX CRITICALSECTION
 /// * @brief    加锁
-#define MUTEX_LOCK(mutex) EnterCriticalSection(&mutex)
+#define MUTEX_LOCK(mutex) CS_ENTER(mutex)
 /// * @brief    解锁
-#define MUTEX_UNLOCK(mutex) LeaveCriticalSection(&mutex)
+#define MUTEX_UNLOCK(mutex) CS_LEAVE(mutex)
 /// * @brief    互斥锁初始化
-#define MUTEX_INIT(mutex) InitializeCriticalSection(&mutex)
+#define MUTEX_INIT(mutex) ((mutex) = CreateCriticalSection())
 /// * @brief    互斥锁销毁
-#define MUTEX_DESTROY(mutex) ReleaseCriticalSection(&mutex)
+#define MUTEX_DESTROY(mutex) do { ReleaseCriticalSection(mutex); (mutex) = INVALID_CRITSECT; } while (0)
 
 //信号量资源
 /// * @brief    信号量
@@ -90,74 +90,28 @@ typedef HANDLE SEMA;
 
 //条件量
 
-typedef struct windows_event{
-	HANDLE event;
-}*COND;
-//typedef PRTL_CONDITION_VARIABLE COND;
+typedef struct log_windows_cond *COND;
 typedef int COND_WAIT_T;
 #define COND_WAIT_OK 0
 #define COND_WAIT_TIMEOUT ETIMEDOUT
 #define INVALID_COND NULL
 
-static inline COND CreateCond() {
-	COND cond = NULL;
-	if (!(cond = (COND)malloc(sizeof(struct windows_event))))
-		return cond;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	if ((cond->event = CreateEvent(NULL, FALSE, FALSE, NULL)) == NULL) {
-		free(cond);
-		return NULL;
-	}
+COND CreateCond(void);
+void DeleteCond(COND cond);
+COND_WAIT_T COND_WAIT_TIME(COND cond, CRITICALSECTION cs, int32_t waitMs);
+COND_WAIT_T COND_WAKE(COND cond);
+COND_WAIT_T COND_WAKE_ALL(COND cond);
 
-	return cond;
+#ifdef __cplusplus
 }
-
-static inline void DeleteCond(COND cond) {
-	if (cond != INVALID_COND) {
-		CloseHandle(cond->event);
-		free(cond);
-	}
-}
+#endif
 
 #define COND_SIGNAL(cond) COND_WAKE(cond)
-
-static inline COND_WAIT_T COND_WAIT_TIME(COND cond, CRITICALSECTION cs, int32_t waitMs) {
-	if (cond == INVALID_COND) 
-	{
-		return EINVAL;
-	}
-	DWORD ret;
-	DWORD startTime, endTime, totalWaitMs, remainMs;
-	int result = -1;
-
-	LeaveCriticalSection(cs);
-	ret = WaitForSingleObject((HANDLE)cond->event, waitMs);
-
-	if (ret == WAIT_TIMEOUT)
-	{
-		result = ETIMEDOUT;
-	}
-	else if (ret != WAIT_OBJECT_0)
-	{
-		result = EINVAL;
-	}
-
-	EnterCriticalSection(cs);
-
-	return result;
-}
-
-static inline COND_WAIT_T COND_WAKE(COND cond) {
-	if (cond == INVALID_COND)
-	{
-		return EINVAL;
-	}
-
-	if (!SetEvent((HANDLE)cond->event))
-		return EINVAL;
-
-	return 0;
-}
+#define COND_SIGNAL_ALL(cond) COND_WAKE_ALL(cond)
 
 typedef HANDLE THREAD;
 

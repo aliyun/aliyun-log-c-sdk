@@ -10,7 +10,10 @@
 #include <errno.h>
 
 #ifdef WIN32
+#ifndef __cplusplus
 #define inline __inline
+#endif
+#include <stdint.h>
 #include <winsock2.h>
 #include <sys/timeb.h>
 #include <windows.h>

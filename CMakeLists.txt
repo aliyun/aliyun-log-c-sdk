@@ -41,6 +41,9 @@ FIND_PROGRAM(CURL_CONFIG_BIN NAMES curl-config)
 include_directories(${CURL_INCLUDE_DIR})
 
 aux_source_directory(src SRC_LIST)
+if (NOT WIN32)
+    list(REMOVE_ITEM SRC_LIST src/log_windows_mutex.cpp)
+endif()
 
 add_library(${CMAKE_PROJECT_NAME} SHARED ${SRC_LIST})
 add_library(${CMAKE_PROJECT_NAME}_static STATIC ${SRC_LIST})
