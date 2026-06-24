@@ -74,6 +74,9 @@ typedef struct _log_producer_config
     on_get_credentials_function credentials_callback;
     void * credentials_userdata;
 
+    // API-Key authentication (mutually exclusive with accessKeyId/accessKey)
+    char * apiKey;
+
 }log_producer_config;
 
 
@@ -339,6 +342,16 @@ LOG_EXPORT void log_producer_config_set_credentials_callback(log_producer_config
  * @param userdata user-defined data passed to callback
  */
 LOG_EXPORT void log_producer_config_set_credentials_userdata(log_producer_config * config, void * userdata);
+
+/**
+ * set producer config api-key for API-Key authentication mode
+ * @note api-key mode is mutually exclusive with access-key mode and credentials callback
+ * @note api-key mode requires HTTPS, otherwise config validation will fail
+ * @note this will automatically set authVersion to AUTH_VERSION_APIKEY
+ * @param config
+ * @param api_key the API-Key string
+ */
+LOG_EXPORT void log_producer_config_set_api_key(log_producer_config * config, const char * api_key);
 
 
 LOG_CPP_END

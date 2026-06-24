@@ -321,7 +321,16 @@ void * log_producer_send_fun(void * param)
         sds accessKeyId = NULL;
         sds accessKey = NULL;
         sds stsToken = NULL;
-        _get_credentials_for_sign(producer_manager, &accessKeyId, &accessKey, &stsToken);
+
+        if (config->authVersion == AUTH_VERSION_APIKEY)
+        {
+            // API-Key mode: pass apiKey via accesskeyId parameter
+            accessKeyId = sdsnew(config->apiKey);
+        }
+        else
+        {
+            _get_credentials_for_sign(producer_manager, &accessKeyId, &accessKey, &stsToken);
+        }
 
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
                                                       accessKey, stsToken,

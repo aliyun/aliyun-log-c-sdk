@@ -107,6 +107,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
         }
         free(pConfig->tags);
     }
+    if (pConfig->apiKey != NULL)
+    {
+        sdsfree(pConfig->apiKey);
+    }
     if (pConfig->region != NULL)
     {
         sdsfree(pConfig->region);
@@ -400,15 +404,50 @@ int log_producer_config_is_valid(log_producer_config * config)
         aos_error_log("invalid producer config destination params");
         return 0;
     }
-    // If credentials callback is set, we don't need static accessKey
-    if (config->credentials_callback == NULL)
+
+    // API-Key mode validation
+    if (config->authVersion == AUTH_VERSION_APIKEY)
     {
-        if (config->accessKey == NULL || config->accessKeyId == NULL)
+        if (config->accessKeyId != NULL || config->accessKey != NULL)
         {
-            aos_error_log("invalid producer config authority params");
+            aos_error_log("api-key mode is mutually exclusive with access-key mode");
+            return 0;
+        }
+        if (config->credentials_callback != NULL)
+        {
+            aos_error_log("api-key mode does not support credentials callback");
+            return 0;
+        }
+        if (config->using_https != 1)
+        {
+            aos_error_log("api-key mode requires HTTPS");
+            return 0;
+        }
+        if (config->apiKey == NULL || strlen(config->apiKey) == 0)
+        {
+            aos_error_log("api-key mode requires a non-empty api-key");
             return 0;
         }
     }
+    else
+    {
+        // AK mode should not have apiKey set
+        if (config->apiKey != NULL)
+        {
+            aos_error_log("apiKey is set but authVersion is not AUTH_VERSION_APIKEY, conflict");
+            return 0;
+        }
+        // If credentials callback is set, we don't need static accessKey
+        if (config->credentials_callback == NULL)
+        {
+            if (config->accessKey == NULL || config->accessKeyId == NULL)
+            {
+                aos_error_log("invalid producer config authority params");
+                return 0;
+            }
+        }
+    }
+
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {
         aos_error_log("invalid producer config log merge and buffer params");
@@ -517,4 +556,14 @@ void log_producer_config_set_credentials_userdata(log_producer_config* config, v
         return;
     }
     config->credentials_userdata = userdata;
+}
+
+void log_producer_config_set_api_key(log_producer_config * config, const char * api_key)
+{
+    if (config == NULL || api_key == NULL)
+    {
+        return;
+    }
+    _copy_config_string(api_key, &config->apiKey);
+    config->authVersion = AUTH_VERSION_APIKEY;
 }
