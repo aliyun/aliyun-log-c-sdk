@@ -36,7 +36,7 @@ enum _auth_version
 {
     AUTH_VERSION_1 = 1,
     AUTH_VERSION_4,
-    AUTH_VERSION_APIKEY   // API-Key Bearer token 鉴权
+    AUTH_VERSION_APIKEY   // API-Key Bearer token auth
 };
 
 typedef enum _auth_version auth_version;
