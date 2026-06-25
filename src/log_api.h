@@ -17,6 +17,7 @@ struct _log_post_option
   int operation_timeout; // operation timeout seconds, 0 as default
   int compress_type; // 0 no compress, 1 lz4
   int ntp_time_offset; //time offset between local time and server time
+  int using_https; // 0 http, 1 https
 };
 typedef struct _log_post_option log_post_option;
 

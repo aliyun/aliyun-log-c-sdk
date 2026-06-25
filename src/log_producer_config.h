@@ -51,6 +51,7 @@ typedef struct _log_producer_config
 
     int32_t compressType; // 0 no compress, 1 lz4
     int32_t ntpTimeOffset;
+    int32_t using_https; // 0 http, 1 https
 }log_producer_config;
 
 
@@ -251,7 +252,12 @@ void log_producer_config_print(log_producer_config * config, FILE * pFile);
  */
 LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
 
-
+/**
+ * set producer config using https, default http
+ * @param config
+ * @param using_https 0 http, 1 https
+ */
+LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
 
 LOG_CPP_END
 
