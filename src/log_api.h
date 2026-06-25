@@ -20,6 +20,7 @@ struct _log_post_option
   int ntp_time_offset; //time offset between local time and server time
   int using_https; // 0 http, 1 https
   int mode; // 0, LoadBalance; 1 KeyShard
+  int auth_version; // AUTH_VERSION_1 or AUTH_VERSION_APIKEY
   char *shardKey;
 };
 typedef struct _log_post_option log_post_option;
