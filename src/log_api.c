@@ -265,6 +265,52 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         struct curl_slist* headers = NULL;
 
+        int auth_version = option != NULL ? option->auth_version : AUTH_VERSION_1;
+
+        if (auth_version == AUTH_VERSION_APIKEY)
+        {
+            // API-Key mode: basic headers + Bearer token, no signature needed
+            headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
+            headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
+            if (lz4Flag)
+            {
+                headers = curl_slist_append(headers, "x-log-compresstype:lz4");
+            }
+
+            sds headerHost = sdsnewEmpty(128);
+            headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+            headers=curl_slist_append(headers, headerHost);
+
+            sds headerLen = sdsnewEmpty(64);
+            headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+            headers=curl_slist_append(headers, headerLen);
+
+            sds headerRawLen = sdsnewEmpty(64);
+            headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+            headers=curl_slist_append(headers, headerRawLen);
+
+            sds headerTime = sdsnew("Date:");
+            headerTime = sdscat(headerTime, nowTime);
+            headers=curl_slist_append(headers, headerTime);
+
+            sds headerMD5 = sdsnew("Content-MD5:");
+            headerMD5 = sdscat(headerMD5, md5Buf);
+            headers=curl_slist_append(headers, headerMD5);
+
+            // Authorization: Bearer <api-key>
+            sds headerAuth = sdsnewEmpty(256);
+            headerAuth = sdscatprintf(headerAuth, "Authorization:Bearer %s", accesskeyId);
+            headers=curl_slist_append(headers, headerAuth);
+
+            sdsfree(headerHost);
+            sdsfree(headerLen);
+            sdsfree(headerRawLen);
+            sdsfree(headerTime);
+            sdsfree(headerMD5);
+            sdsfree(headerAuth);
+        }
+        else
+        {
         headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
         headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
         if (lz4Flag)
@@ -343,6 +389,15 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
         headerSig = sdscatprintf(headerSig, "Authorization:LOG %s:%s", accesskeyId, sha1Buf);
         //puts(headerSig);
         headers=curl_slist_append(headers, headerSig);
+        sdsfree(headerTime);
+        sdsfree(headerMD5);
+        sdsfree(headerLen);
+        sdsfree(headerRawLen);
+        sdsfree(headerHost);
+        sdsfree(sigContent);
+        sdsfree(headerSig);
+        } // end of AK mode auth block
+
 
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -433,13 +488,6 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
 
         curl_slist_free_all(headers); /* free the list again */
         sdsfree(url);
-        sdsfree(headerTime);
-        sdsfree(headerMD5);
-        sdsfree(headerLen);
-        sdsfree(headerRawLen);
-        sdsfree(headerHost);
-        sdsfree(sigContent);
-        sdsfree(headerSig);
         /* always cleanup */
         curl_easy_cleanup(curl);
     }

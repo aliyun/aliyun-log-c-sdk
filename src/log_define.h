@@ -28,4 +28,17 @@ struct _post_log_result
 typedef struct _post_log_result post_log_result;
 
 
+#ifdef WIN32
+typedef int auth_version;
+#define AUTH_VERSION_1       1
+#define AUTH_VERSION_APIKEY  2
+#else
+enum _auth_version
+{
+    AUTH_VERSION_1 = 1,
+    AUTH_VERSION_APIKEY   // API-Key Bearer token auth
+};
+typedef enum _auth_version auth_version;
+#endif
+
 #endif

@@ -159,6 +159,7 @@ void * log_producer_send_fun(void * param)
         option.compress_type = config->compressType;
         option.ntp_time_offset = config->ntpTimeOffset;
         option.using_https = config->using_https;
+        option.auth_version = config->authVersion;
         sds accessKeyId = NULL;
         sds accessKey = NULL;
         sds stsToken = NULL;

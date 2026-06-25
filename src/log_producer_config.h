@@ -52,6 +52,10 @@ typedef struct _log_producer_config
     int32_t compressType; // 0 no compress, 1 lz4
     int32_t ntpTimeOffset;
     int32_t using_https; // 0 http, 1 https
+    auth_version authVersion;
+
+    // API-Key authentication (mutually exclusive with accessKeyId/accessKey)
+    char * apiKey;
 }log_producer_config;
 
 
@@ -258,6 +262,16 @@ LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
  * @param using_https 0 http, 1 https
  */
 LOG_EXPORT void log_producer_config_set_using_http(log_producer_config * config, int32_t using_https);
+
+/**
+ * set producer config api-key for API-Key authentication mode
+ * @note api-key mode is mutually exclusive with access-key mode
+ * @note api-key mode requires HTTPS, otherwise config validation will fail
+ * @note this will automatically set authVersion to AUTH_VERSION_APIKEY
+ * @param config
+ * @param api_key the API-Key string
+ */
+LOG_EXPORT void log_producer_config_set_api_key(log_producer_config * config, const char * api_key);
 
 LOG_CPP_END
 

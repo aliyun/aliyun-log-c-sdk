@@ -22,6 +22,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->compressType = 1;
     pConfig->ntpTimeOffset = 0;
     pConfig->using_https = 0;
+    pConfig->authVersion = AUTH_VERSION_1;
 }
 
 
@@ -100,6 +101,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
             sdsfree(pConfig->tags[i].value);
         }
         free(pConfig->tags);
+    }
+    if (pConfig->apiKey != NULL)
+    {
+        sdsfree(pConfig->apiKey);
     }
     free(pConfig);
 }
@@ -367,10 +372,38 @@ int log_producer_config_is_valid(log_producer_config * config)
         aos_error_log("invalid producer config destination params");
         return 0;
     }
-    if (config->accessKey == NULL || config->accessKeyId == NULL)
+    // API-Key mode validation
+    if (config->authVersion == AUTH_VERSION_APIKEY)
     {
-        aos_error_log("invalid producer config authority params");
-        return 0;
+        if (config->accessKeyId != NULL || config->accessKey != NULL)
+        {
+            aos_error_log("api-key mode is mutually exclusive with access-key mode");
+            return 0;
+        }
+        if (config->using_https != 1)
+        {
+            aos_error_log("api-key mode requires HTTPS");
+            return 0;
+        }
+        if (config->apiKey == NULL || strlen(config->apiKey) == 0)
+        {
+            aos_error_log("api-key mode requires a non-empty api-key");
+            return 0;
+        }
+    }
+    else
+    {
+        // AK mode should not have apiKey set
+        if (config->apiKey != NULL)
+        {
+            aos_error_log("apiKey is set but authVersion is not AUTH_VERSION_APIKEY, conflict");
+            return 0;
+        }
+        if (config->accessKey == NULL || config->accessKeyId == NULL)
+        {
+            aos_error_log("invalid producer config authority params");
+            return 0;
+        }
     }
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {
@@ -387,4 +420,14 @@ void log_producer_config_set_using_http(log_producer_config * config, int32_t us
         return;
     }
     config->using_https = using_https;
+}
+
+void log_producer_config_set_api_key(log_producer_config * config, const char * api_key)
+{
+    if (config == NULL || api_key == NULL)
+    {
+        return;
+    }
+    _copy_config_string(api_key, &config->apiKey);
+    config->authVersion = AUTH_VERSION_APIKEY;
 }
