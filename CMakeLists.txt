@@ -63,3 +63,9 @@ INSTALL(FILES
   DESTINATION include/log_c_sdk)
 
 add_subdirectory(sample)
+
+option(BUILD_TESTING "Build SDK tests" OFF)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

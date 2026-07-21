@@ -35,6 +35,7 @@ typedef struct _log_producer_config
     char * securityToken;
     char * topic;
     char * source;
+    // Shared lock for AK/STS and API-Key credential snapshots.
     CRITICALSECTION securityTokenLock;
     log_producer_config_tag * tags;
     int32_t tagAllocSize;
@@ -58,6 +59,10 @@ typedef struct _log_producer_config
     int32_t compressType; // 0 no compress, 1 lz4
     int32_t ntpTimeOffset;
     int using_https; // 0 http, 1 https
+    auth_version authVersion;
+
+    // API-Key authentication (mutually exclusive with accessKeyId/accessKey)
+    char * apiKey;
 
     // for persistent feature
     int32_t usePersistent; // 0 no, 1 yes
@@ -380,6 +385,28 @@ LOG_EXPORT int log_producer_config_is_valid(log_producer_config * config);
  * @return
  */
 LOG_EXPORT int log_producer_persistent_config_is_enabled(log_producer_config * config);
+
+/**
+ * set producer config api-key for API-Key authentication mode
+ * @note api-key mode is mutually exclusive with access-key mode
+ * @note api-key mode requires HTTPS, otherwise config validation will fail
+ * @note this will automatically set authVersion to AUTH_VERSION_APIKEY
+ * @note call this before create_log_producer; use reset_api_key for runtime rotation
+ * @param config
+ * @param api_key the API-Key string
+ */
+LOG_EXPORT void log_producer_config_set_api_key(log_producer_config * config, const char * api_key);
+
+/**
+ * reset API-Key while producer is running (thread safe)
+ * @note config must already be in AUTH_VERSION_APIKEY mode
+ */
+LOG_EXPORT void log_producer_config_reset_api_key(log_producer_config * config, const char * api_key);
+
+/**
+ * inner api: copy the current API-Key under the shared credential lock
+ */
+LOG_EXPORT void log_producer_config_get_api_key(log_producer_config * config, char ** api_key);
 
 
 LOG_CPP_END

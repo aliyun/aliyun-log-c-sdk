@@ -24,6 +24,7 @@ static void _set_default_producer_config(log_producer_config * pConfig)
     pConfig->compressType = 1;
     pConfig->ntpTimeOffset = 0;
     pConfig->using_https = 0;
+    pConfig->authVersion = AUTH_VERSION_1;
     pConfig->maxLogDelayTime = 7*24*3600;
     pConfig->dropDelayLog = 1;
     pConfig->callbackFromSenderThread = 1;
@@ -122,6 +123,10 @@ void destroy_log_producer_config(log_producer_config * pConfig)
     }
     if (pConfig->mode == 1 && NULL != pConfig->shardKey) {
         sdsfree(pConfig->shardKey);
+    }
+    if (pConfig->apiKey != NULL)
+    {
+        sdsfree(pConfig->apiKey);
     }
     free(pConfig);
 }
@@ -402,10 +407,38 @@ int log_producer_config_is_valid(log_producer_config * config)
         aos_error_log("invalid producer config destination params");
 //        return 0;
     }
-    if (config->accessKey == NULL || config->accessKeyId == NULL)
+
+    // API-Key mode validation
+    if (config->authVersion == AUTH_VERSION_APIKEY)
     {
-        aos_error_log("invalid producer config authority params");
-//        return 0;
+        if (config->accessKeyId != NULL || config->accessKey != NULL)
+        {
+            aos_error_log("api-key mode is mutually exclusive with access-key mode");
+            return 0;
+        }
+        if (config->using_https != 1)
+        {
+            aos_error_log("api-key mode requires HTTPS");
+            return 0;
+        }
+        if (config->apiKey == NULL || strlen(config->apiKey) == 0)
+        {
+            aos_error_log("api-key mode requires a non-empty api-key");
+            return 0;
+        }
+    }
+    else
+    {
+        if (config->apiKey != NULL)
+        {
+            aos_error_log("apiKey is set but authVersion is not AUTH_VERSION_APIKEY, conflict");
+            return 0;
+        }
+        if (config->accessKey == NULL || config->accessKeyId == NULL)
+        {
+            aos_error_log("invalid producer config authority params");
+//            return 0;
+        }
     }
     if (config->packageTimeoutInMS < 0 || config->maxBufferBytes < 0 || config->logCountPerPackage < 0 || config->logBytesPerPackage < 0)
     {
@@ -556,4 +589,58 @@ void log_producer_config_set_shardkey(log_producer_config *config, const char *s
     }
 
     _copy_config_string(shardKey, &config->shardKey);
+}
+
+void log_producer_config_set_api_key(log_producer_config * config, const char * api_key)
+{
+    if (config == NULL || api_key == NULL || api_key[0] == '\0')
+    {
+        return;
+    }
+    if (config->securityTokenLock == NULL)
+    {
+        config->securityTokenLock = CreateCriticalSection();
+    }
+    CS_ENTER(config->securityTokenLock);
+    _copy_config_string(api_key, &config->apiKey);
+    config->authVersion = AUTH_VERSION_APIKEY;
+    CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_reset_api_key(log_producer_config * config, const char * api_key)
+{
+    if (config == NULL || api_key == NULL || api_key[0] == '\0')
+    {
+        return;
+    }
+    if (config->securityTokenLock == NULL)
+    {
+        aos_error_log("reset api-key requires initialized API-Key mode");
+        return;
+    }
+    CS_ENTER(config->securityTokenLock);
+    if (config->authVersion != AUTH_VERSION_APIKEY)
+    {
+        CS_LEAVE(config->securityTokenLock);
+        aos_error_log("reset api-key requires AUTH_VERSION_APIKEY mode");
+        return;
+    }
+    _copy_config_string(api_key, &config->apiKey);
+    CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_get_api_key(log_producer_config * config, char ** api_key)
+{
+    if (config == NULL || api_key == NULL)
+    {
+        return;
+    }
+    if (config->securityTokenLock == NULL)
+    {
+        _copy_config_string(config->apiKey, api_key);
+        return;
+    }
+    CS_ENTER(config->securityTokenLock);
+    _copy_config_string(config->apiKey, api_key);
+    CS_LEAVE(config->securityTokenLock);
 }

@@ -211,6 +211,7 @@ void * log_producer_send_fun(void * param)
         option.ntp_time_offset = config->ntpTimeOffset;
         option.mode = config->mode;
         option.shardKey = config->shardKey;
+        option.auth_version = config->authVersion;
         post_log_result * rst;
         if (config->webTracking)
         {
@@ -222,7 +223,15 @@ void * log_producer_send_fun(void * param)
             sds accessKeyId = NULL;
             sds accessKey = NULL;
             sds stsToken = NULL;
-            log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+            if (config->authVersion == AUTH_VERSION_APIKEY)
+            {
+                // API-Key mode: copy a request-scoped snapshot under the shared credential lock.
+                log_producer_config_get_api_key(config, &accessKeyId);
+            }
+            else
+            {
+                log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+            }
             rst = post_logs_from_lz4buf_with_config(config, config->endpoint, config->project, config->logstore, accessKeyId, accessKey, stsToken, send_buf, &option);
             sdsfree(accessKeyId);
             sdsfree(accessKey);
@@ -542,5 +551,4 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
     }
     return param;
 }
-
 

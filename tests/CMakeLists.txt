@@ -1,0 +1,7 @@
+find_package(Threads)
+if(CMAKE_USE_PTHREADS_INIT)
+    include_directories(${CMAKE_SOURCE_DIR}/src)
+    add_executable(api_key_rotation_test api_key_rotation_test.c)
+    target_link_libraries(api_key_rotation_test log_c_sdk_static ${CMAKE_THREAD_LIBS_INIT})
+    add_test(NAME api_key_rotation_test COMMAND api_key_rotation_test)
+endif()

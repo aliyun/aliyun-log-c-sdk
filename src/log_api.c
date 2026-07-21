@@ -466,10 +466,14 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
     if (is_str_empty(accessKeyId) || is_str_empty(accessKeySecret))
     {
-        result->statusCode = 405;
-        result->requestID  =  sdsnewEmpty(64);
-        result->errorMessage = sdsnew("Invalid producer config authority params");
-        return result;
+        // Allow empty AK secret when using the request's API-Key mode snapshot.
+        if (option == NULL || option->auth_version != AUTH_VERSION_APIKEY)
+        {
+            result->statusCode = 405;
+            result->requestID  =  sdsnewEmpty(64);
+            result->errorMessage = sdsnew("Invalid producer config authority params");
+            return result;
+        }
     }
 
     {
@@ -511,7 +515,52 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
         struct cur_slist* headers = NULL;
 
-        headers=cur_slist_append(headers, "Content-Type:application/x-protobuf");
+        int auth_version = option != NULL ? option->auth_version : AUTH_VERSION_1;
+
+        if (auth_version == AUTH_VERSION_APIKEY)
+        {
+            // API-Key mode: basic headers + Bearer token, no signature needed
+            headers=cur_slist_append(headers, "Content-Type:application/x-protobuf");
+            headers=cur_slist_append(headers, "x-log-apiversion:0.6.0");
+            if (lz4Flag)
+            {
+                headers = cur_slist_append(headers, "x-log-compresstype:lz4");
+            }
+
+            sds headerHost = sdsnewEmpty(128);
+            headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+            headers=cur_slist_append(headers, headerHost);
+
+            sds headerLen = sdsnewEmpty(64);
+            headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+            headers=cur_slist_append(headers, headerLen);
+
+            sds headerRawLen = sdsnewEmpty(64);
+            headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+            headers=cur_slist_append(headers, headerRawLen);
+
+            sds headerTime = sdsnew("Date:");
+            headerTime = sdscat(headerTime, nowTime);
+            headers=cur_slist_append(headers, headerTime);
+
+            sds headerMD5 = sdsnew("Content-MD5:");
+            headerMD5 = sdscat(headerMD5, md5Buf);
+            headers=cur_slist_append(headers, headerMD5);
+
+            // Authorization: Bearer <api-key>
+            sds headerAuth = sdsnewEmpty(256);
+            headerAuth = sdscatprintf(headerAuth, "Authorization:Bearer %s", accessKeyId);
+            headers=cur_slist_append(headers, headerAuth);
+
+            sdsfree(headerHost);
+            sdsfree(headerLen);
+            sdsfree(headerRawLen);
+            sdsfree(headerTime);
+            sdsfree(headerMD5);
+            sdsfree(headerAuth);
+        }
+        else
+        {
         headers=cur_slist_append(headers, "x-log-apiversion:0.6.0");
         if (lz4Flag)
         {
@@ -623,6 +672,14 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 //        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)buffer->data);
 //        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, buffer->length);
 
+        sdsfree(headerTime);
+        sdsfree(headerMD5);
+        sdsfree(headerLen);
+        sdsfree(headerRawLen);
+        sdsfree(headerHost);
+        sdsfree(sigContent);
+        sdsfree(headerSig);
+        } // end of AK mode auth block
 
         sds req = sdsnewEmpty(64);
         sds err = sdsnew("n/a");
@@ -652,13 +709,6 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
         cur_slist_free_all(headers); /* free the list again */
         sdsfree(url);
-        sdsfree(headerTime);
-        sdsfree(headerMD5);
-        sdsfree(headerLen);
-        sdsfree(headerRawLen);
-        sdsfree(headerHost);
-        sdsfree(sigContent);
-        sdsfree(headerSig);
         free(dest_count);
     }
 
