@@ -47,7 +47,6 @@ log_producer_config * create_log_producer_config()
     _set_default_producer_config(pConfig);
     pConfig->authVersion = AUTH_VERSION_1;
     pConfig->region = NULL;
-    pConfig->securityTokenLock = CreateCriticalSection();
     return pConfig;
 }
 
@@ -565,6 +564,10 @@ void log_producer_config_set_api_key(log_producer_config * config, const char * 
     {
         return;
     }
+    if (config->securityTokenLock == NULL)
+    {
+        config->securityTokenLock = CreateCriticalSection();
+    }
     CS_ENTER(config->securityTokenLock);
     _copy_config_string(api_key, &config->apiKey);
     config->authVersion = AUTH_VERSION_APIKEY;
@@ -575,6 +578,11 @@ void log_producer_config_reset_api_key(log_producer_config * config, const char 
 {
     if (config == NULL || api_key == NULL || api_key[0] == '\0')
     {
+        return;
+    }
+    if (config->securityTokenLock == NULL)
+    {
+        aos_error_log("reset api-key requires initialized API-Key mode");
         return;
     }
     CS_ENTER(config->securityTokenLock);
@@ -592,6 +600,11 @@ void log_producer_config_get_api_key(log_producer_config * config, char ** api_k
 {
     if (config == NULL || api_key == NULL)
     {
+        return;
+    }
+    if (config->securityTokenLock == NULL)
+    {
+        _copy_config_string(config->apiKey, api_key);
         return;
     }
     CS_ENTER(config->securityTokenLock);
