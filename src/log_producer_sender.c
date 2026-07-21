@@ -225,8 +225,8 @@ void * log_producer_send_fun(void * param)
             sds stsToken = NULL;
             if (config->authVersion == AUTH_VERSION_APIKEY)
             {
-                // API-Key mode: pass apiKey as accessKeyId, no accessKey/stsToken needed
-                accessKeyId = sdsnew(config->apiKey);
+                // API-Key mode: copy a request-scoped snapshot under the shared credential lock.
+                log_producer_config_get_api_key(config, &accessKeyId);
             }
             else
             {
@@ -551,5 +551,4 @@ log_producer_send_param * create_log_producer_send_param(log_producer_config * p
     }
     return param;
 }
-
 

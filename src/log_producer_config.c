@@ -61,6 +61,7 @@ log_producer_config * create_log_producer_config()
     log_producer_config* pConfig = (log_producer_config*)malloc(sizeof(log_producer_config));
     memset(pConfig, 0, sizeof(log_producer_config));
     _set_default_producer_config(pConfig);
+    pConfig->securityTokenLock = CreateCriticalSection();
     return pConfig;
 }
 
@@ -593,10 +594,40 @@ void log_producer_config_set_shardkey(log_producer_config *config, const char *s
 
 void log_producer_config_set_api_key(log_producer_config * config, const char * api_key)
 {
+    if (config == NULL || api_key == NULL || api_key[0] == '\0')
+    {
+        return;
+    }
+    CS_ENTER(config->securityTokenLock);
+    _copy_config_string(api_key, &config->apiKey);
+    config->authVersion = AUTH_VERSION_APIKEY;
+    CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_reset_api_key(log_producer_config * config, const char * api_key)
+{
+    if (config == NULL || api_key == NULL || api_key[0] == '\0')
+    {
+        return;
+    }
+    CS_ENTER(config->securityTokenLock);
+    if (config->authVersion != AUTH_VERSION_APIKEY)
+    {
+        CS_LEAVE(config->securityTokenLock);
+        aos_error_log("reset api-key requires AUTH_VERSION_APIKEY mode");
+        return;
+    }
+    _copy_config_string(api_key, &config->apiKey);
+    CS_LEAVE(config->securityTokenLock);
+}
+
+void log_producer_config_get_api_key(log_producer_config * config, char ** api_key)
+{
     if (config == NULL || api_key == NULL)
     {
         return;
     }
-    _copy_config_string(api_key, &config->apiKey);
-    config->authVersion = AUTH_VERSION_APIKEY;
+    CS_ENTER(config->securityTokenLock);
+    _copy_config_string(config->apiKey, api_key);
+    CS_LEAVE(config->securityTokenLock);
 }

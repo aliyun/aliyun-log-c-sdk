@@ -466,8 +466,8 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
     if (is_str_empty(accessKeyId) || is_str_empty(accessKeySecret))
     {
-        // Allow empty AK when using API-Key mode (checked via config->authVersion)
-        if (config == NULL || config->authVersion != AUTH_VERSION_APIKEY)
+        // Allow empty AK secret when using the request's API-Key mode snapshot.
+        if (option == NULL || option->auth_version != AUTH_VERSION_APIKEY)
         {
             result->statusCode = 405;
             result->requestID  =  sdsnewEmpty(64);
@@ -515,7 +515,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
         struct cur_slist* headers = NULL;
 
-        int auth_version = (config != NULL) ? config->authVersion : AUTH_VERSION_1;
+        int auth_version = option != NULL ? option->auth_version : AUTH_VERSION_1;
 
         if (auth_version == AUTH_VERSION_APIKEY)
         {
@@ -549,7 +549,7 @@ post_log_result * post_logs_from_lz4buf_with_config(log_producer_config *config,
 
             // Authorization: Bearer <api-key>
             sds headerAuth = sdsnewEmpty(256);
-            headerAuth = sdscatprintf(headerAuth, "Authorization:Bearer %s", config->apiKey);
+            headerAuth = sdscatprintf(headerAuth, "Authorization:Bearer %s", accessKeyId);
             headers=cur_slist_append(headers, headerAuth);
 
             sdsfree(headerHost);

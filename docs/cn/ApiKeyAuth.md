@@ -6,7 +6,7 @@ API-Key 鉴权模式允许用户使用 API-Key 进行身份认证，无需 Acces
 
 - **HTTPS 强制**：API-Key 模式**必须**使用 HTTPS，否则 producer 创建会失败
 - **与 AK 模式互斥**：不能同时设置 API-Key 和 AccessKey ID / AccessKey Secret，否则 producer 创建会失败
-- **不支持轮转**：API-Key 模式不支持动态凭证轮转
+- **线程安全轮转**：producer 启动后调用 `log_producer_config_reset_api_key()` 更新 API-Key
 - **持久化兼容**：API-Key 模式与持久化存储功能完全兼容，凭证不会持久化到磁盘
 
 ## 使用方式
@@ -41,6 +41,10 @@ log_producer_client * client = get_log_producer_client(producer, NULL);
 
 // 发送日志
 log_producer_client_add_log(client, 4, "key1", "value1", "key2", "value2");
+
+// producer 运行期间线程安全地轮转 API-Key。正在发送的请求继续使用旧快照，
+// 后续请求使用新的 API-Key。
+log_producer_config_reset_api_key(config, "your-new-api-key");
 
 // 5. 清理
 destroy_log_producer(producer);
