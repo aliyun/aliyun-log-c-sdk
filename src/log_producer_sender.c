@@ -324,8 +324,8 @@ void * log_producer_send_fun(void * param)
 
         if (config->authVersion == AUTH_VERSION_APIKEY)
         {
-            // API-Key mode: pass apiKey via accesskeyId parameter
-            accessKeyId = sdsnew(config->apiKey);
+            // API-Key mode: copy a request-scoped snapshot under the shared credential lock.
+            log_producer_config_get_api_key(config, &accessKeyId);
         }
         else
         {
@@ -565,5 +565,4 @@ log_producer_send_param * create_log_producer_destroy_param(log_producer_config 
     param->builder_time = 0;
     return param;
 }
-
 

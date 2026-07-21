@@ -7,7 +7,7 @@ The API-Key authentication mode allows users to authenticate using an API-Key wi
 - **HTTPS Required**: API-Key mode **must** use HTTPS; otherwise producer creation will fail
 - **Mutually Exclusive with AK Mode**: Cannot set both API-Key and AccessKey ID / AccessKey Secret simultaneously; otherwise producer creation will fail
 - **Mutually Exclusive with Dynamic Credentials**: Cannot set both API-Key and credentials callback
-- **No Rotation Support**: API-Key mode does not support dynamic credential rotation
+- **Thread-safe Rotation**: Use `log_producer_config_reset_api_key()` to rotate the key after the producer starts
 
 ## Usage
 
@@ -34,6 +34,10 @@ log_producer_client * client = get_log_producer_client(producer, NULL);
 
 // Send logs
 log_producer_client_add_log(client, 4, "key1", "value1", "key2", "value2");
+
+// Rotate the API-Key while the producer is running. In-flight requests keep
+// using their request-scoped snapshot; subsequent requests use the new key.
+log_producer_config_reset_api_key(config, "your-new-api-key");
 
 // 4. Cleanup
 destroy_log_producer(producer);
