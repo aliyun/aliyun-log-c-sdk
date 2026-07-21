@@ -163,7 +163,14 @@ void * log_producer_send_fun(void * param)
         sds accessKeyId = NULL;
         sds accessKey = NULL;
         sds stsToken = NULL;
-        log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+        if (config->authVersion == AUTH_VERSION_APIKEY)
+        {
+            log_producer_config_get_api_key(config, &accessKeyId);
+        }
+        else
+        {
+            log_producer_config_get_security(config, &accessKeyId, &accessKey, &stsToken);
+        }
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId, accessKey, stsToken, config->project, config->logstore, send_buf, &option);
         sdsfree(accessKeyId);
         sdsfree(accessKey);
