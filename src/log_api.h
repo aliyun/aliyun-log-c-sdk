@@ -18,6 +18,7 @@ struct _log_post_option
   int compress_type; // 0 no compress, 1 lz4
   int ntp_time_offset; //time offset between local time and server time
   int using_https; // 0 http, 1 https
+  auth_version auth_version; // AUTH_VERSION_1 or AUTH_VERSION_APIKEY
 };
 typedef struct _log_post_option log_post_option;
 
