@@ -321,7 +321,16 @@ void * log_producer_send_fun(void * param)
         sds accessKeyId = NULL;
         sds accessKey = NULL;
         sds stsToken = NULL;
-        _get_credentials_for_sign(producer_manager, &accessKeyId, &accessKey, &stsToken);
+
+        if (config->authVersion == AUTH_VERSION_APIKEY)
+        {
+            // API-Key mode: copy a request-scoped snapshot under the shared credential lock.
+            log_producer_config_get_api_key(config, &accessKeyId);
+        }
+        else
+        {
+            _get_credentials_for_sign(producer_manager, &accessKeyId, &accessKey, &stsToken);
+        }
 
         post_log_result * rst = post_logs_from_lz4buf(config->endpoint, accessKeyId,
                                                       accessKey, stsToken,
@@ -556,5 +565,4 @@ log_producer_send_param * create_log_producer_destroy_param(log_producer_config 
     param->builder_time = 0;
     return param;
 }
-
 

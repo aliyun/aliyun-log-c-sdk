@@ -14,6 +14,8 @@ set(PRODUCER_FRAME_SOURCE_FILES video_frame_producer_sample.c)
 
 set(PRODUCER_DYNAMIC_CREDENTAILS_SOURCE_FILES log_dynamic_credentials_sample.c)
 
+set(PRODUCER_APIKEY_SOURCE_FILES log_apikey_sample.c)
+
 include_directories (${CURL_INCLUDE_DIR})
 include_directories ("${CMAKE_SOURCE_DIR}/src")
 
@@ -46,3 +48,4 @@ _TARGET_SAMPLE_LIBRARIES(log_producer_benchmark "${PRODUCER_BENCHMARK_SOURCE_FIL
 
 _TARGET_SAMPLE_LIBRARIES(video_frame_producer_sample "${PRODUCER_FRAME_SOURCE_FILES}")
 _TARGET_SAMPLE_LIBRARIES(dynamic_credentials_sample "${PRODUCER_DYNAMIC_CREDENTAILS_SOURCE_FILES}")
+_TARGET_SAMPLE_LIBRARIES(apikey_sample "${PRODUCER_APIKEY_SOURCE_FILES}")

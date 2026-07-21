@@ -240,7 +240,45 @@ post_log_result * post_logs_from_lz4buf(const char *endpoint, const char * acces
             aos_error_log("unsuported compresstype %d", option->compress_type);
         }
 
-        if (version == AUTH_VERSION_4)
+        if (version == AUTH_VERSION_APIKEY)
+        {
+            // API-Key mode: basic headers + Bearer token, no signature needed
+            headers=curl_slist_append(headers, "Content-Type:application/x-protobuf");
+            headers=curl_slist_append(headers, "x-log-apiversion:0.6.0");
+
+            sds headerHost = sdsnewEmpty(128);
+            headerHost = sdscatprintf(headerHost, "Host:%s.%s", project, endpoint);
+            headers=curl_slist_append(headers, headerHost);
+
+            sds headerLen = sdsnewEmpty(64);
+            headerLen = sdscatprintf(headerLen, "Content-Length:%d", (int)buffer->length);
+            headers=curl_slist_append(headers, headerLen);
+
+            sds headerRawLen = sdsnewEmpty(64);
+            headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
+            headers=curl_slist_append(headers, headerRawLen);
+
+            sds headerTime = sdsnew("Date:");
+            headerTime = sdscat(headerTime, nowTime);
+            headers=curl_slist_append(headers, headerTime);
+
+            sds headerMD5 = sdsnew("Content-MD5:");
+            headerMD5 = sdscat(headerMD5, md5Buf);
+            headers=curl_slist_append(headers, headerMD5);
+
+            // Authorization: Bearer <api-key>
+            sds headerAuth = sdsnewEmpty(256);
+            headerAuth = sdscatprintf(headerAuth, "Authorization:Bearer %s", accesskeyId);
+            headers=curl_slist_append(headers, headerAuth);
+
+            sdsfree(headerHost);
+            sdsfree(headerLen);
+            sdsfree(headerRawLen);
+            sdsfree(headerTime);
+            sdsfree(headerMD5);
+            sdsfree(headerAuth);
+        }
+        else if (version == AUTH_VERSION_4)
         {
             sds headerRawLen = sdsnewEmpty(64);
             headerRawLen = sdscatprintf(headerRawLen, "x-log-bodyrawsize:%d", (int)buffer->raw_length);
